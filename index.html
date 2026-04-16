@@ -2,17 +2,17 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>CAICAVV - Sistema</title>
+  <title>CAICAVV - Atendimentos</title>
 
   <style>
     body {
       font-family: Arial;
-      background: #f1f5f9;
+      background: #f4f6f9;
       margin: 0;
     }
 
     header {
-      background: #0f172a;
+      background: #1e293b;
       color: white;
       padding: 15px;
       text-align: center;
@@ -20,15 +20,15 @@
     }
 
     .container {
+      padding: 20px;
       max-width: 900px;
       margin: auto;
-      padding: 20px;
     }
 
     input, button {
-      width: 100%;
       padding: 10px;
-      margin-top: 8px;
+      margin: 5px 0;
+      width: 100%;
       border-radius: 8px;
       border: 1px solid #ccc;
     }
@@ -44,16 +44,10 @@
       background: #1d4ed8;
     }
 
-    .grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-    }
-
     .card {
       background: white;
       padding: 15px;
-      margin-top: 15px;
+      margin-top: 10px;
       border-radius: 10px;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
     }
@@ -61,6 +55,7 @@
     .top {
       display: flex;
       justify-content: space-between;
+      align-items: center;
     }
 
     .numero {
@@ -74,16 +69,9 @@
       background: #ef4444;
     }
 
-    .backup {
-      background: #16a34a;
-    }
-
-    .restore {
-      background: #f59e0b;
-    }
-
     .reset {
       background: #dc2626;
+      margin-top: 20px;
     }
   </style>
 </head>
@@ -99,18 +87,11 @@
   <input id="nome" placeholder="Nome do paciente">
   <input id="descricao" placeholder="Descrição do atendimento">
 
-  <button onclick="adicionar()">Adicionar Atendimento</button>
-
-  <div class="grid">
-    <button class="backup" onclick="baixarBackup()">Baixar Backup</button>
-    <button class="restore" onclick="document.getElementById('fileInput').click()">Restaurar Backup</button>
-  </div>
-
-  <input type="file" id="fileInput" style="display:none" onchange="restaurarBackup(event)">
+  <button onclick="adicionarAtendimento()">Adicionar Atendimento</button>
 
   <div id="lista"></div>
 
-  <button class="reset" onclick="resetar()">Resetar Tudo</button>
+  <button class="reset" onclick="resetarTudo()">Resetar Tudo</button>
 
 </div>
 
@@ -119,53 +100,60 @@ let atendimentos = [];
 let contador = 1;
 
 // 🔒 CARREGAR
-function carregar() {
+function carregarAtendimentos() {
   let dados = localStorage.getItem("atendimentos");
   let cont = localStorage.getItem("contador");
 
-  if (dados) atendimentos = JSON.parse(dados);
-  if (cont) contador = parseInt(cont);
+  if (dados) {
+    atendimentos = JSON.parse(dados);
+  }
+
+  if (cont) {
+    contador = parseInt(cont);
+  }
 }
 
 // 💾 SALVAR
-function salvar() {
+function salvarAtendimentos() {
   localStorage.setItem("atendimentos", JSON.stringify(atendimentos));
   localStorage.setItem("contador", contador);
 }
 
 // ➕ ADICIONAR
-function adicionar() {
+function adicionarAtendimento() {
   let nome = document.getElementById("nome").value;
   let descricao = document.getElementById("descricao").value;
 
   if (!nome || !descricao) {
-    alert("Preencha tudo!");
+    alert("Preencha todos os campos!");
     return;
   }
 
-  atendimentos.push({
+  let novo = {
     numero: contador,
-    nome,
-    descricao
-  });
+    nome: nome,
+    descricao: descricao
+  };
 
+  atendimentos.push(novo);
   contador++;
-  salvar();
-  render();
+
+  salvarAtendimentos();
+  renderizar();
 
   document.getElementById("nome").value = "";
   document.getElementById("descricao").value = "";
 }
 
 // ❌ EXCLUIR
-function excluir(i) {
-  atendimentos.splice(i, 1);
-  salvar();
-  render();
+function excluir(index) {
+  atendimentos.splice(index, 1);
+  salvarAtendimentos();
+  renderizar();
 }
 
-// 🎨 RENDER
-function render() {
+// 🎨 RENDERIZAR
+function renderizar() {
   let lista = document.getElementById("lista");
   lista.innerHTML = "";
 
@@ -178,55 +166,33 @@ function render() {
             <button onclick="excluir(${i})">Excluir</button>
           </div>
         </div>
-        <p><b>Nome:</b> ${a.nome}</p>
-        <p><b>Descrição:</b> ${a.descricao}</p>
+        <p><strong>Nome:</strong> ${a.nome}</p>
+        <p><strong>Descrição:</strong> ${a.descricao}</p>
       </div>
     `;
   });
 }
 
-// 📁 BACKUP
-function baixarBackup() {
-  let blob = new Blob([JSON.stringify({atendimentos, contador})], {type: "application/json"});
-  let a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "backup_atendimentos.json";
-  a.click();
-}
-
-// 📥 RESTAURAR
-function restaurarBackup(event) {
-  let file = event.target.files[0];
-  let reader = new FileReader();
-
-  reader.onload = function(e) {
-    let dados = JSON.parse(e.target.result);
-    atendimentos = dados.atendimentos || [];
-    contador = dados.contador || 1;
-
-    salvar();
-    render();
-  };
-
-  reader.readAsText(file);
-}
-
 // 🔄 RESET
-function resetar() {
-  if (confirm("Tem certeza que deseja apagar tudo?")) {
+function resetarTudo() {
+  let confirmar = confirm("Tem certeza que deseja apagar tudo?");
+  
+  if (confirmar) {
     atendimentos = [];
     contador = 1;
     localStorage.clear();
-    render();
+    renderizar();
   }
 }
 
-// 🔐 PROTEÇÃO
-window.addEventListener("beforeunload", salvar);
+// 🔐 PROTEÇÃO EXTRA
+window.addEventListener("beforeunload", function () {
+  salvarAtendimentos();
+});
 
 // 🚀 INICIAR
-carregar();
-render();
+carregarAtendimentos();
+renderizar();
 </script>
 
 </body>
