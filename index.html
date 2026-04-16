@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8">
+  <title>CAICAVV Sistema</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="loginBox">
+  <h2>Login</h2>
+  <input id="email" placeholder="Email">
+  <input id="senha" type="password" placeholder="Senha">
+  <button onclick="login()">Entrar</button>
+</div>
+
+<div id="app" style="display:none">
+
+  <h1>📋 Sistema CAICAVV</h1>
+
+  <p id="userInfo"></p>
+  <button onclick="logout()">Sair</button>
+
+  <hr>
+
+  <h2>Novo Atendimento</h2>
+
+  <input id="nome" placeholder="Nome">
+  <input id="pasta" placeholder="Nº Pasta">
+  <input id="tecnico" placeholder="Técnico">
+  <input id="data" type="date">
+  <input id="hora" type="time">
+
+  <button onclick="adicionar()">Salvar</button>
+
+  <h2>Agenda</h2>
+  <div id="lista"></div>
+
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
