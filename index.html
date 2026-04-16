@@ -1,265 +1,128 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<title>CAICAVV - Sistema</title>
-
+<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>CAICAVV</title>
 <style>
-body {
-  font-family: Arial;
-  background: #f1f5f9;
-  margin: 0;
-}
+body{font-family:Arial;background:#f1f5f9;margin:0}
+header{background:#0f172a;color:#fff;padding:15px;text-align:center;font-size:20px}
+.container{max-width:900px;margin:auto;padding:20px}
+input,button{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box;font-size:14px}
+input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.2)}
+button{background:#2563eb;color:#fff;border:none;cursor:pointer}
+button:hover{background:#1d4ed8}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.card{background:#fff;padding:15px;margin-top:15px;border-radius:10px;box-shadow:0 2px 5px rgba(0,0,0,.1)}
+.top{display:flex;justify-content:space-between}
+.numero{font-weight:bold;color:#2563eb}
+.acoes button{width:auto;margin-left:5px;background:#ef4444}
+.compareceu{background:#16a34a}.faltou{background:#dc2626}
+.backup{background:#16a34a}.restore{background:#f59e0b}.reset{background:#dc2626}
+.menu{display:flex;gap:10px;margin-bottom:10px}
+.menu button{flex:1;background:#e2e8f0;color:#000}
+.menu button.ativo{background:#2563eb;color:#fff}
+.relatorio{background:#fff;padding:10px;border-radius:8px;margin-bottom:15px;box-shadow:0 1px 3px rgba(0,0,0,.1);font-size:14px}
+</style></head><body>
 
-header {
-  background: #0f172a;
-  color: white;
-  padding: 15px;
-  text-align: center;
-  font-size: 20px;
-}
-
-.container {
-  max-width: 900px;
-  margin: auto;
-  padding: 20px;
-}
-
-/* 🔥 CORREÇÃO AQUI */
-input, select, button {
-  width: 100%;
-  padding: 10px;
-  margin-top: 8px;
-  border-radius: 8px;
-  border: 1px solid #ccc;
-  box-sizing: border-box; /* resolve diferença de tamanho */
-  font-size: 14px;
-}
-
-/* 🔥 deixa select igual aos inputs */
-select {
-  appearance: none;
-}
-
-/* efeito profissional */
-input:focus, select:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
-}
-
-button {
-  background: #2563eb;
-  color: white;
-  border: none;
-  cursor: pointer;
-}
-
-button:hover {
-  background: #1d4ed8;
-}
-
-.grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 10px;
-}
-
-.card {
-  background: white;
-  padding: 15px;
-  margin-top: 15px;
-  border-radius: 10px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-}
-
-.top {
-  display: flex;
-  justify-content: space-between;
-}
-
-.numero {
-  font-weight: bold;
-  color: #2563eb;
-}
-
-.acoes button {
-  width: auto;
-  margin-left: 5px;
-  background: #ef4444;
-}
-
-.backup { background: #16a34a; }
-.restore { background: #f59e0b; }
-.reset { background: #dc2626; }
-</style>
-</head>
-
-<body>
-
-<header>CAICAVV - Sistema de Atendimentos</header>
-
+<header>CAICAVV - Sistema</header>
 <div class="container">
+
+<div class="menu">
+<button onclick="filtrar('Josiane',this)" class="ativo">Josiane</button>
+<button onclick="filtrar('Cláudia',this)">Cláudia</button>
+<button onclick="filtrar('Angélica',this)">Angélica</button>
+<button onclick="filtrar('Cintya',this)">Cintya</button>
+</div>
+
+<div id="relatorio" class="relatorio"></div>
 
 <input id="pasta" placeholder="Nº da pasta">
 <input id="nome" placeholder="Nome do paciente">
-
-<select id="tecnico">
-  <option value="">Selecione o técnico</option>
-  <option value="Josiane">Josiane</option>
-  <option value="Cláudia">Cláudia</option>
-  <option value="Angélica">Angélica</option>
-  <option value="Cintya">Cintya</option>
-</select>
-
 <div class="grid">
-  <input type="date" id="data">
-  <input type="time" id="hora">
+<input type="date" id="data">
+<input type="time" id="hora">
 </div>
-
 <input id="descricao" placeholder="Descrição do atendimento">
 
-<button onclick="adicionar()">Adicionar Atendimento</button>
+<button onclick="add()">Adicionar</button>
 
 <div class="grid">
-  <button class="backup" onclick="baixarBackup()">Backup</button>
-  <button class="restore" onclick="document.getElementById('fileInput').click()">Restaurar</button>
+<button class="backup" onclick="bk()">Backup</button>
+<button class="restore" onclick="fileInput.click()">Restaurar</button>
 </div>
 
-<input type="file" id="fileInput" style="display:none" onchange="restaurarBackup(event)">
-
+<input type="file" id="fileInput" style="display:none" onchange="rs(event)">
 <div id="lista"></div>
-
-<button class="reset" onclick="resetar()">Resetar Tudo</button>
+<button class="reset" onclick="reset()">Resetar Tudo</button>
 
 </div>
 
 <script>
-let atendimentos = [];
-let contador = 1;
+let a=[],c=1,f="Josiane";
 
-// 🔒 CARREGAR
-function carregar() {
-  let dados = localStorage.getItem("atendimentos");
-  let cont = localStorage.getItem("contador");
-
-  if (dados) atendimentos = JSON.parse(dados);
-  if (cont) contador = parseInt(cont);
+function load(){
+let d=localStorage.getItem("a"),ct=localStorage.getItem("c");
+if(d)a=JSON.parse(d);if(ct)c=parseInt(ct)
+}
+function save(){
+localStorage.setItem("a",JSON.stringify(a));
+localStorage.setItem("c",c)
 }
 
-// 💾 SALVAR
-function salvar() {
-  localStorage.setItem("atendimentos", JSON.stringify(atendimentos));
-  localStorage.setItem("contador", contador);
+function add(){
+let p=pasta.value,n=nome.value,d=data.value,h=hora.value,ds=descricao.value;
+if(!p||!n||!d||!h||!ds)return alert("Preencha tudo");
+a.push({numero:c,pasta:p,nome:n,tecnico:f,data:d,hora:h,descricao:ds,status:"agendado"});
+c++;save();render();document.querySelectorAll("input").forEach(i=>i.value="")
 }
 
-// ➕ ADICIONAR
-function adicionar() {
-  let pasta = document.getElementById("pasta").value;
-  let nome = document.getElementById("nome").value;
-  let tecnico = document.getElementById("tecnico").value;
-  let data = document.getElementById("data").value;
-  let hora = document.getElementById("hora").value;
-  let descricao = document.getElementById("descricao").value;
+function marcar(i,s){a[i].status=s;save();render()}
+function del(i){a.splice(i,1);save();render()}
 
-  if (!pasta || !nome || !tecnico || !data || !hora || !descricao) {
-    alert("Preencha todos os campos!");
-    return;
-  }
-
-  atendimentos.push({
-    numero: contador,
-    pasta,
-    nome,
-    tecnico,
-    data,
-    hora,
-    descricao
-  });
-
-  contador++;
-  salvar();
-  render();
-
-  document.querySelectorAll("input").forEach(i => i.value = "");
-  document.getElementById("tecnico").value = "";
+function filtrar(t,btn){
+f=t;document.querySelectorAll(".menu button").forEach(b=>b.classList.remove("ativo"));
+btn.classList.add("ativo");render()
 }
 
-// ❌ EXCLUIR
-function excluir(i) {
-  atendimentos.splice(i, 1);
-  salvar();
-  render();
+function rel(){
+let l=a.filter(x=>x.tecnico==f),
+ag=l.length,ok=l.filter(x=>x.status=="compareceu").length,ft=l.filter(x=>x.status=="faltou").length;
+relatorio.innerHTML=`<b>${f}</b><br>📅 ${ag} | ✅ ${ok} | ❌ ${ft}`
 }
 
-// 🎨 RENDER
-function render() {
-  let lista = document.getElementById("lista");
-  lista.innerHTML = "";
-
-  atendimentos.forEach((a, i) => {
-    lista.innerHTML += `
-      <div class="card">
-        <div class="top">
-          <span class="numero">#${a.numero}</span>
-          <div class="acoes">
-            <button onclick="excluir(${i})">Excluir</button>
-          </div>
-        </div>
-        <p><b>Pasta:</b> ${a.pasta}</p>
-        <p><b>Nome:</b> ${a.nome}</p>
-        <p><b>Técnico:</b> ${a.tecnico}</p>
-        <p><b>Data:</b> ${a.data}</p>
-        <p><b>Hora:</b> ${a.hora}</p>
-        <p><b>Descrição:</b> ${a.descricao}</p>
-      </div>
-    `;
-  });
+function render(){
+lista.innerHTML="";rel();
+a.filter(x=>x.tecnico==f).forEach((x,i)=>{
+lista.innerHTML+=`
+<div class="card">
+<div class="top"><span class="numero">#${x.numero}</span>
+<div class="acoes"><button onclick="del(${i})">X</button></div></div>
+<p><b>Pasta:</b> ${x.pasta}</p>
+<p><b>Nome:</b> ${x.nome}</p>
+<p><b>Data:</b> ${x.data}</p>
+<p><b>Hora:</b> ${x.hora}</p>
+<p><b>Status:</b> ${x.status}</p>
+<div class="grid">
+<button class="compareceu" onclick="marcar(${i},'compareceu')">✔</button>
+<button class="faltou" onclick="marcar(${i},'faltou')">✖</button>
+</div></div>`
+})
 }
 
-// 📁 BACKUP
-function baixarBackup() {
-  let blob = new Blob([JSON.stringify({atendimentos, contador})], {type: "application/json"});
-  let a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "backup.json";
-  a.click();
+function bk(){
+let b=new Blob([JSON.stringify({a,c})],{type:"application/json"}),
+l=document.createElement("a");
+l.href=URL.createObjectURL(b);l.download="backup.json";l.click()
 }
 
-// 📥 RESTAURAR
-function restaurarBackup(event) {
-  let file = event.target.files[0];
-  let reader = new FileReader();
-
-  reader.onload = function(e) {
-    let dados = JSON.parse(e.target.result);
-    atendimentos = dados.atendimentos || [];
-    contador = dados.contador || 1;
-
-    salvar();
-    render();
-  };
-
-  reader.readAsText(file);
+function rs(e){
+let r=new FileReader();
+r.onload=x=>{let d=JSON.parse(x.target.result);a=d.a||[];c=d.c||1;save();render()};
+r.readAsText(e.target.files[0])
 }
 
-// 🔄 RESET
-function resetar() {
-  if (confirm("Apagar tudo?")) {
-    atendimentos = [];
-    contador = 1;
-    localStorage.clear();
-    render();
-  }
+function reset(){
+if(confirm("Apagar tudo?")){a=[];c=1;localStorage.clear();render()}
 }
 
-// 🔐 PROTEÇÃO
-window.addEventListener("beforeunload", salvar);
-
-// 🚀 INICIAR
-carregar();
-render();
+window.addEventListener("beforeunload",save);
+load();render();
 </script>
 
-</body>
-</html>
+</body></html>
