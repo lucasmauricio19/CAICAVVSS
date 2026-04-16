@@ -1,5 +1,5 @@
 
-// 🔥 COLE SUA CONFIG AQUI
+// 🔥 CONFIG FIREBASE (COLOQUE A SUA)
 const firebaseConfig = {
   apiKey: "SUA_API_KEY",
   authDomain: "SEU_AUTH_DOMAIN",
@@ -13,7 +13,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 //
-// ➕ SALVAR
+// ➕ ADICIONAR ATENDIMENTO
 //
 function adicionar() {
 
@@ -24,7 +24,7 @@ function adicionar() {
   let hora = document.getElementById("hora").value;
 
   if (!nome || !pasta || !tecnico || !data || !hora) {
-    alert("Preencha tudo!");
+    alert("Preencha todos os campos!");
     return;
   }
 
@@ -37,7 +37,7 @@ function adicionar() {
     criadoEm: Date.now()
   });
 
-  limpar();
+  limparCampos();
 }
 
 //
@@ -54,7 +54,7 @@ db.collection("atendimentos")
       let a = doc.data();
 
       lista.innerHTML += `
-        <div style="margin:10px;padding:10px;background:#1e293b">
+        <div>
           <b>${a.nome}</b><br>
           Pasta: ${a.pasta}<br>
           Técnico: ${a.tecnico}<br>
@@ -65,7 +65,10 @@ db.collection("atendimentos")
 
   });
 
-function limpar() {
+//
+// 🧹 LIMPAR CAMPOS
+//
+function limparCampos() {
   document.getElementById("nome").value = "";
   document.getElementById("pasta").value = "";
   document.getElementById("tecnico").value = "";
