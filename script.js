@@ -1,5 +1,5 @@
 
-// 🔥 Firebase config (COLE O SEU AQUI)
+// 🔥 COLE SUA CONFIGURAÇÃO DO FIREBASE AQUI
 const firebaseConfig = {
   apiKey: "SUA_API_KEY",
   authDomain: "SEU_AUTH_DOMAIN",
@@ -9,62 +9,44 @@ const firebaseConfig = {
   appId: "SEU_APP_ID"
 };
 
-// inicializa Firebase
 firebase.initializeApp(firebaseConfig);
-const auth = firebase.auth();
 const db = firebase.firestore();
 
-let userAtual = null;
-
 //
-// 🔐 LOGIN
-//
-function login() {
-  let email = document.getElementById("email").value;
-  let senha = document.getElementById("senha").value;
-
-  auth.signInWithEmailAndPassword(email, senha)
-    .then(user => {
-      userAtual = user.user;
-      entrarApp();
-    })
-    .catch(err => alert(err.message));
-}
-
-function logout() {
-  auth.signOut().then(() => location.reload());
-}
-
-function entrarApp() {
-  document.getElementById("loginBox").style.display = "none";
-  document.getElementById("app").style.display = "block";
-  document.getElementById("userInfo").innerText =
-    "Logado como: " + userAtual.email;
-
-  carregarDados();
-}
-
-//
-// 🧠 ADICIONAR ATENDIMENTO
+// ➕ ADICIONAR ATENDIMENTO
 //
 function adicionar() {
+
+  let nome = document.getElementById("nome").value;
+  let pasta = document.getElementById("pasta").value;
+  let tecnico = document.getElementById("tecnico").value;
+  let data = document.getElementById("data").value;
+  let hora = document.getElementById("hora").value;
+
+  if (!nome || !pasta || !tecnico || !data || !hora) {
+    alert("Preencha tudo!");
+    return;
+  }
+
   db.collection("atendimentos").add({
-    nome: document.getElementById("nome").value,
-    pasta: document.getElementById("pasta").value,
-    tecnico: document.getElementById("tecnico").value,
-    data: document.getElementById("data").value,
-    hora: document.getElementById("hora").value
+    nome,
+    pasta,
+    tecnico,
+    data,
+    hora,
+    criadoEm: new Date()
   });
 
-  alert("Salvo!");
-  carregarDados();
+  limparCampos();
 }
 
 //
-// 📊 CARREGAR DADOS
+// 📥 CARREGAR EM TEMPO REAL
 //
-function carregarDados() {
-  db.collection("atendimentos").onSnapshot(snapshot => {
+db.collection("atendimentos")
+  .orderBy("criadoEm", "desc")
+  .onSnapshot(snapshot => {
+
     let lista = document.getElementById("lista");
     lista.innerHTML = "";
 
@@ -73,12 +55,23 @@ function carregarDados() {
 
       lista.innerHTML += `
         <div>
-          <b>${a.nome}</b> - Pasta ${a.pasta}<br>
+          <b>${a.nome}</b><br>
+          Pasta: ${a.pasta}<br>
           Técnico: ${a.tecnico}<br>
           ${a.data} | ${a.hora}
-          <hr>
         </div>
       `;
     });
+
   });
+
+//
+// 🧹 LIMPAR CAMPOS
+//
+function limparCampos() {
+  document.getElementById("nome").value = "";
+  document.getElementById("pasta").value = "";
+  document.getElementById("tecnico").value = "";
+  document.getElementById("data").value = "";
+  document.getElementById("hora").value = "";
 }

@@ -7,38 +7,27 @@
 </head>
 <body>
 
-<div id="loginBox">
-  <h2>Login</h2>
-  <input id="email" placeholder="Email">
-  <input id="senha" type="password" placeholder="Senha">
-  <button onclick="login()">Entrar</button>
-</div>
+<h1>📋 Sistema CAICAVV - Atendimentos</h1>
 
-<div id="app" style="display:none">
-  <h1>📋 Sistema CAICAVV</h1>
+<div class="form">
 
-  <p id="userInfo"></p>
-  <button onclick="logout()">Sair</button>
-
-  <hr>
-
-  <h2>Novo Atendimento</h2>
-
-  <input id="nome" placeholder="Nome">
-  <input id="pasta" placeholder="Nº Pasta">
+  <input id="nome" placeholder="Nome do paciente">
+  <input id="pasta" placeholder="Nº da pasta">
   <input id="tecnico" placeholder="Técnico">
   <input id="data" type="date">
   <input id="hora" type="time">
 
-  <button onclick="adicionar()">Salvar</button>
+  <button onclick="adicionar()">Adicionar Atendimento</button>
 
-  <h2>Agenda</h2>
-  <div id="lista"></div>
 </div>
 
-<!-- 🔥 Firebase (OBRIGATÓRIO) -->
+<hr>
+
+<h2>📅 Lista de Atendimentos</h2>
+<div id="lista"></div>
+
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 
 <script src="script.js"></script>
