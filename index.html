@@ -25,7 +25,7 @@ header {
   padding: 20px;
 }
 
-input, button {
+input, select, button {
   width: 100%;
   padding: 10px;
   margin-top: 8px;
@@ -88,7 +88,14 @@ button:hover {
 
 <input id="pasta" placeholder="Nº da pasta">
 <input id="nome" placeholder="Nome do paciente">
-<input id="tecnico" placeholder="Técnico responsável">
+
+<select id="tecnico">
+  <option value="">Selecione o técnico</option>
+  <option value="João">João</option>
+  <option value="Maria">Maria</option>
+  <option value="Carlos">Carlos</option>
+  <option value="Ana">Ana</option>
+</select>
 
 <div class="grid">
   <input type="date" id="data">
@@ -160,6 +167,7 @@ function adicionar() {
   render();
 
   document.querySelectorAll("input").forEach(i => i.value = "");
+  document.getElementById("tecnico").value = "";
 }
 
 // ❌ EXCLUIR
