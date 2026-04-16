@@ -7,26 +7,26 @@
 </head>
 <body>
 
-<h1>📋 Sistema CAICAVV - Atendimentos</h1>
+<h1>📋 CAICAVV - Atendimentos</h1>
 
 <div class="form">
 
-  <input id="nome" placeholder="Nome do paciente">
-  <input id="pasta" placeholder="Nº da pasta">
+  <input id="nome" placeholder="Nome">
+  <input id="pasta" placeholder="Pasta">
   <input id="tecnico" placeholder="Técnico">
   <input id="data" type="date">
   <input id="hora" type="time">
 
-  <button onclick="adicionar()">Adicionar Atendimento</button>
+  <button onclick="adicionar()">Salvar</button>
 
 </div>
 
 <hr>
 
-<h2>📅 Lista de Atendimentos</h2>
+<h2>Lista</h2>
 <div id="lista"></div>
 
-<!-- Firebase -->
+<!-- 🔥 FIREBASE (OBRIGATÓRIO) -->
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 

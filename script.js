@@ -1,10 +1,10 @@
 
-// 🔥 COLE SUA CONFIGURAÇÃO DO FIREBASE AQUI
+// 🔥 COLE SUA CONFIG AQUI
 const firebaseConfig = {
   apiKey: "SUA_API_KEY",
   authDomain: "SEU_AUTH_DOMAIN",
   projectId: "SEU_PROJECT_ID",
-  storageBucket: "SEU_BUCKET",
+  storageBucket: "SEU_STORAGE",
   messagingSenderId: "SEU_ID",
   appId: "SEU_APP_ID"
 };
@@ -13,7 +13,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 //
-// ➕ ADICIONAR ATENDIMENTO
+// ➕ SALVAR
 //
 function adicionar() {
 
@@ -34,14 +34,14 @@ function adicionar() {
     tecnico,
     data,
     hora,
-    criadoEm: new Date()
+    criadoEm: Date.now()
   });
 
-  limparCampos();
+  limpar();
 }
 
 //
-// 📥 CARREGAR EM TEMPO REAL
+// 📥 LISTA EM TEMPO REAL
 //
 db.collection("atendimentos")
   .orderBy("criadoEm", "desc")
@@ -54,7 +54,7 @@ db.collection("atendimentos")
       let a = doc.data();
 
       lista.innerHTML += `
-        <div>
+        <div style="margin:10px;padding:10px;background:#1e293b">
           <b>${a.nome}</b><br>
           Pasta: ${a.pasta}<br>
           Técnico: ${a.tecnico}<br>
@@ -65,10 +65,7 @@ db.collection("atendimentos")
 
   });
 
-//
-// 🧹 LIMPAR CAMPOS
-//
-function limparCampos() {
+function limpar() {
   document.getElementById("nome").value = "";
   document.getElementById("pasta").value = "";
   document.getElementById("tecnico").value = "";
