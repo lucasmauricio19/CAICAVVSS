@@ -25,27 +25,13 @@ header {
   padding: 20px;
 }
 
-/* 🔥 CORREÇÃO AQUI */
 input, select, button {
   width: 100%;
   padding: 10px;
   margin-top: 8px;
   border-radius: 8px;
   border: 1px solid #ccc;
-  box-sizing: border-box; /* resolve diferença de tamanho */
-  font-size: 14px;
-}
-
-/* 🔥 deixa select igual aos inputs */
-select {
-  appearance: none;
-}
-
-/* efeito profissional */
-input:focus, select:focus {
-  outline: none;
-  border-color: #2563eb;
-  box-shadow: 0 0 0 2px rgba(37,99,235,0.2);
+  box-sizing: border-box;
 }
 
 button {
@@ -89,6 +75,22 @@ button:hover {
   background: #ef4444;
 }
 
+.presenca button {
+  width: auto;
+  margin-right: 5px;
+}
+
+.compareceu { background: #16a34a; }
+.faltou { background: #dc2626; }
+
+.relatorio {
+  background: white;
+  padding: 15px;
+  margin-top: 20px;
+  border-radius: 10px;
+  font-weight: bold;
+}
+
 .backup { background: #16a34a; }
 .restore { background: #f59e0b; }
 .reset { background: #dc2626; }
@@ -106,10 +108,10 @@ button:hover {
 
 <select id="tecnico">
   <option value="">Selecione o técnico</option>
-  <option value="Josiane">Josiane</option>
-  <option value="Cláudia">Cláudia</option>
-  <option value="Angélica">Angélica</option>
-  <option value="Cintya">Cintya</option>
+  <option>João</option>
+  <option>Maria</option>
+  <option>Carlos</option>
+  <option>Ana</option>
 </select>
 
 <div class="grid">
@@ -121,14 +123,9 @@ button:hover {
 
 <button onclick="adicionar()">Adicionar Atendimento</button>
 
-<div class="grid">
-  <button class="backup" onclick="baixarBackup()">Backup</button>
-  <button class="restore" onclick="document.getElementById('fileInput').click()">Restaurar</button>
-</div>
-
-<input type="file" id="fileInput" style="display:none" onchange="restaurarBackup(event)">
-
 <div id="lista"></div>
+
+<div class="relatorio" id="relatorio"></div>
 
 <button class="reset" onclick="resetar()">Resetar Tudo</button>
 
@@ -138,7 +135,6 @@ button:hover {
 let atendimentos = [];
 let contador = 1;
 
-// 🔒 CARREGAR
 function carregar() {
   let dados = localStorage.getItem("atendimentos");
   let cont = localStorage.getItem("contador");
@@ -147,13 +143,11 @@ function carregar() {
   if (cont) contador = parseInt(cont);
 }
 
-// 💾 SALVAR
 function salvar() {
   localStorage.setItem("atendimentos", JSON.stringify(atendimentos));
   localStorage.setItem("contador", contador);
 }
 
-// ➕ ADICIONAR
 function adicionar() {
   let pasta = document.getElementById("pasta").value;
   let nome = document.getElementById("nome").value;
@@ -174,7 +168,8 @@ function adicionar() {
     tecnico,
     data,
     hora,
-    descricao
+    descricao,
+    status: "agendado"
   });
 
   contador++;
@@ -185,19 +180,38 @@ function adicionar() {
   document.getElementById("tecnico").value = "";
 }
 
-// ❌ EXCLUIR
+function marcarStatus(i, status) {
+  atendimentos[i].status = status;
+  salvar();
+  render();
+}
+
 function excluir(i) {
   atendimentos.splice(i, 1);
   salvar();
   render();
 }
 
-// 🎨 RENDER
 function render() {
   let lista = document.getElementById("lista");
+  let relatorio = document.getElementById("relatorio");
+
   lista.innerHTML = "";
 
+  let realizados = 0;
+  let agendados = atendimentos.length;
+
+  let mesAtual = new Date().getMonth();
+  let anoAtual = new Date().getFullYear();
+
   atendimentos.forEach((a, i) => {
+
+    let dataAt = new Date(a.data);
+
+    if (dataAt.getMonth() === mesAtual && dataAt.getFullYear() === anoAtual) {
+      if (a.status === "compareceu") realizados++;
+    }
+
     lista.innerHTML += `
       <div class="card">
         <div class="top">
@@ -206,44 +220,30 @@ function render() {
             <button onclick="excluir(${i})">Excluir</button>
           </div>
         </div>
+
         <p><b>Pasta:</b> ${a.pasta}</p>
         <p><b>Nome:</b> ${a.nome}</p>
         <p><b>Técnico:</b> ${a.tecnico}</p>
         <p><b>Data:</b> ${a.data}</p>
         <p><b>Hora:</b> ${a.hora}</p>
         <p><b>Descrição:</b> ${a.descricao}</p>
+        <p><b>Status:</b> ${a.status}</p>
+
+        <div class="presenca">
+          <button class="compareceu" onclick="marcarStatus(${i}, 'compareceu')">Compareceu</button>
+          <button class="faltou" onclick="marcarStatus(${i}, 'faltou')">Não compareceu</button>
+        </div>
       </div>
     `;
   });
+
+  relatorio.innerHTML = `
+    📊 Relatório do mês:<br>
+    Total agendados: ${agendados}<br>
+    Compareceram: ${realizados}
+  `;
 }
 
-// 📁 BACKUP
-function baixarBackup() {
-  let blob = new Blob([JSON.stringify({atendimentos, contador})], {type: "application/json"});
-  let a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = "backup.json";
-  a.click();
-}
-
-// 📥 RESTAURAR
-function restaurarBackup(event) {
-  let file = event.target.files[0];
-  let reader = new FileReader();
-
-  reader.onload = function(e) {
-    let dados = JSON.parse(e.target.result);
-    atendimentos = dados.atendimentos || [];
-    contador = dados.contador || 1;
-
-    salvar();
-    render();
-  };
-
-  reader.readAsText(file);
-}
-
-// 🔄 RESET
 function resetar() {
   if (confirm("Apagar tudo?")) {
     atendimentos = [];
@@ -253,10 +253,8 @@ function resetar() {
   }
 }
 
-// 🔐 PROTEÇÃO
 window.addEventListener("beforeunload", salvar);
 
-// 🚀 INICIAR
 carregar();
 render();
 </script>
