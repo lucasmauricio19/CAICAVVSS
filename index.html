@@ -2,44 +2,41 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8">
-  <title>CAICAVV Sistema</title>
+  <title>Sistema CAICAVV</title>
+
+  <!-- Ícones -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
   <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
 
-<h1>📋 Sistema CAICAVV - Atendimentos</h1>
+  <!-- HEADER -->
+  <header>
+    <img src="logo.png" class="logo">
+    <h1>CAICAVV</h1>
+  </header>
 
-<div class="form">
+  <div class="container">
 
-  <input id="nome" placeholder="Nome do paciente">
-  <input id="pasta" placeholder="Nº da pasta">
+    <!-- MENU LATERAL -->
+    <aside>
+      <ul>
+        <li><i class="fas fa-calendar"></i> Agenda</li>
+        <li><i class="fas fa-user"></i> Pacientes</li>
+        <li><i class="fas fa-user-gear"></i> Técnicos</li>
+        <li><i class="fas fa-cog"></i> Configurações</li>
+      </ul>
+    </aside>
 
-  <!-- 👇 TÉCNICOS FIXOS -->
-  <select id="tecnico">
-    <option value="">Selecione o técnico</option>
-    <option value="Josiane">Josiane</option>
-    <option value="Cláudia">Cláudia</option>
-    <option value="Angélica">Angélica</option>
-    <option value="Cintya">Cintya</option>
-  </select>
+    <!-- CONTEÚDO -->
+    <main>
+      <h2>Agenda</h2>
+      <p>Aqui vai seu calendário...</p>
+    </main>
 
-  <input id="data" type="date">
-  <input id="hora" type="time">
-
-  <button onclick="adicionar()">Adicionar Atendimento</button>
-
-</div>
-
-<hr>
-
-<h2>📅 Atendimentos</h2>
-<div id="lista"></div>
-
-<!-- 🔥 FIREBASE -->
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
-
-<script src="script.js"></script>
+  </div>
 
 </body>
 </html>
