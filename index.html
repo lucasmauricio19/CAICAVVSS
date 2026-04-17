@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+  <link rel="icon" href="logo.png">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CAICAVV</title>
@@ -31,6 +32,8 @@ button{background:#2563eb;color:#fff;border:none;cursor:pointer}
 button:hover{opacity:.95}
 button:disabled{background:#94a3b8;cursor:not-allowed}
 .card{background:#fff;padding:10px;margin-top:10px;border-radius:8px}
+.card.realizado{filter:grayscale(1);opacity:.82;background:#f8fafc;border:1px solid #cbd5e1}
+.selo-realizado{display:inline-block;margin-top:6px;padding:4px 8px;border-radius:999px;background:#0f172a;color:#fff;font-size:12px;font-weight:700;letter-spacing:.3px}
 .menu{display:flex;gap:5px;flex-wrap:wrap}
 .menu button{flex:1;background:#ddd;color:#000}
 .menu .ativo{background:#2563eb;color:#fff}
@@ -277,6 +280,19 @@ function confirmarPasta(){
   avisoCadastro.textContent = "Cadastro encontrado com sucesso.";
 }
 
+function ativarEnterLogin(){
+  [user, pass].forEach(campo => {
+    campo.addEventListener("keydown", (event) => {
+      if(event.key === "Enter") {
+        event.preventDefault();
+        login();
+      }
+    });
+  });
+}
+
+ativarEnterLogin();
+
 async function login(){
   let u = String(user.value || "").trim().toLowerCase();
   let p = String(pass.value || "");
@@ -516,6 +532,12 @@ function rel(){
   `;
 }
 
+function getDataHoraAtendimento(item){
+  const dataParte = item.data || "9999-12-31";
+  const horaParte = item.hora || "23:59";
+  return `${dataParte}T${horaParte}`;
+}
+
 function render(){
   if(!tecnicoLogado) return;
 
@@ -532,9 +554,14 @@ function render(){
   });
 
   dados.sort((a,b) => {
-    const aa = `${a.data || ""} ${a.hora || ""}`;
-    const bb = `${b.data || ""} ${b.hora || ""}`;
-    return bb.localeCompare(aa);
+    const aRealizado = a.status === "compareceu" || a.status === "faltou";
+    const bRealizado = b.status === "compareceu" || b.status === "faltou";
+
+    if(aRealizado !== bRealizado){
+      return aRealizado ? 1 : -1;
+    }
+
+    return getDataHoraAtendimento(a).localeCompare(getDataHoraAtendimento(b));
   });
 
   if(dados.length === 0){
@@ -543,16 +570,20 @@ function render(){
   }
 
   dados.forEach(a=>{
+    const realizado = a.status === "compareceu" || a.status === "faltou";
+    const statusLabel = a.status === "compareceu" ? "Compareceu" : a.status === "faltou" ? "Faltou" : "Agendado";
+
     lista.innerHTML += `
-      <div class="card">
+      <div class="card ${realizado ? 'realizado' : ''}">
         <p><b>Pasta:</b> ${escapeHTML(a.pasta)}</p>
         <p><b>Nome:</b> ${escapeHTML(a.nome)}</p>
         <p><b>Técnico:</b> ${escapeHTML(a.tecnico)}</p>
         <p>${escapeHTML(a.data)} ${escapeHTML(a.hora)}</p>
         <p><b>Descrição:</b> ${escapeHTML(a.descricao || "")}</p>
-        <p>Status: ${escapeHTML(a.status)}</p>
+        <p><b>Status:</b> ${escapeHTML(statusLabel)}</p>
+        ${realizado ? `<span class="selo-realizado">JÁ REALIZADO</span>` : ""}
 
-        ${permissoes[role].marcar ? `
+        ${permissoes[role].marcar && !realizado ? `
           <button class="compareceu" onclick="marcar('${a.id}','compareceu')">✔ Compareceu</button>
           <button class="faltou" onclick="marcar('${a.id}','faltou')">✖ Faltou</button>
         ` : ""}
