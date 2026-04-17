@@ -30,6 +30,15 @@ button:disabled{background:#94a3b8;cursor:not-allowed}
 .toast.show{display:block}
 .toast.erro{background:#b91c1c}
 .toast.sucesso{background:#166534}
+.modal-fundo{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:10000;padding:20px}
+.modal-fundo.show{display:flex}
+.modal-box{background:#fff;color:#0f172a;max-width:420px;width:100%;border-radius:14px;padding:20px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal-box h3{margin:0 0 8px 0;font-size:20px}
+.modal-box p{margin:0 0 16px 0;line-height:1.4}
+.modal-acoes{display:flex;gap:10px}
+.modal-acoes button{margin-top:0}
+.modal-cancelar{background:#64748b}
+.modal-confirmar{background:#b91c1c}
 .linha-pasta{display:flex;gap:8px;align-items:flex-end}
 .linha-pasta input{flex:1}
 .linha-pasta button{width:220px;min-width:220px;margin-top:0}
@@ -42,6 +51,17 @@ input:disabled{background:#e2e8f0;color:#334155;opacity:1}
 
 <header>CAICAVV</header>
 <div id="toast" class="toast"></div>
+
+<div id="modalExcluir" class="modal-fundo">
+  <div class="modal-box">
+    <h3>Excluir agendamento</h3>
+    <p>Deseja realmente excluir esse agendamento?</p>
+    <div class="modal-acoes">
+      <button type="button" class="modal-cancelar" onclick="fecharModalExcluir()">Cancelar</button>
+      <button type="button" class="modal-confirmar" onclick="confirmarExclusao()">Excluir</button>
+    </div>
+  </div>
+</div>
 
 <div class="container" id="loginDiv">
   <h3>Login</h3>
@@ -124,6 +144,7 @@ let tecnicoLogado = null;
 let filtroAtual = "";
 let pastaConfirmada = false;
 let toastTimeout = null;
+let agendamentoPendenteExclusao = null;
 
 
 function mostrarToast(msg, tipo="erro"){
@@ -361,7 +382,7 @@ function add(){
 
   btnAdicionar.disabled = true;
 
-  atendimentos.push(obj);
+  atendimentos.unshift(obj);
   salvarAtendimentosLocal();
 
   pasta.value = "";
@@ -416,13 +437,7 @@ function excluir(id){
     return;
   }
 
-  if(!confirm("Deseja realmente excluir este atendimento?")){
-    return;
-  }
-
-  atendimentos = atendimentos.filter(a => a.id !== id);
-  salvarAtendimentosLocal();
-  render();
+  abrirModalExcluir(id);
 }
 
 function filtrar(t,btn){
@@ -465,6 +480,12 @@ function render(){
     if(role === "recepcao") return !filtroAtual || a.tecnico === filtroAtual;
     if(role === "adm") return !filtroAtual || a.tecnico === filtroAtual;
     return false;
+  });
+
+  dados.sort((a,b) => {
+    const aa = `${a.data || ""} ${a.hora || ""}`;
+    const bb = `${b.data || ""} ${b.hora || ""}`;
+    return bb.localeCompare(aa);
   });
 
   if(dados.length === 0){
