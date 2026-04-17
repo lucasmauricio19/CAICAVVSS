@@ -7,6 +7,20 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<script>
+const firebaseConfig = {
+  apiKey: "AIzaSyBSRvz_snCwUCXvWTp3gnpV8fa0K13Fcrc",
+  authDomain: "caicavvagendamentos.firebaseapp.com",
+  projectId: "caicavvagendamentos",
+  storageBucket: "caicavvagendamentos.firebasestorage.app",
+  messagingSenderId: "402044173505",
+  appId: "1:402044173505:web:300c6bca3116adc108a840"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+const DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos");
+</script>
 
 <style>
 body{font-family:Arial;background:#f1f5f9;margin:0}
@@ -100,19 +114,38 @@ const cadastros = {"1": ["EMELLY GABRIELLY DA ANUNCIAÇÃO"], "2": ["LAURA RODRI
 
 <script>
 let atendimentos = [];
-const CHAVE_ATENDIMENTOS = "caicavv_atendimentos";
+const horariosAtendimento = [
+  "08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30",
+  "13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30"
+];
 
-function salvarAtendimentosLocal(){
-  localStorage.setItem(CHAVE_ATENDIMENTOS, JSON.stringify(atendimentos));
+async function salvarAtendimentosFirebase(){
+  try{
+    await DOC_ATENDIMENTOS.set({
+      itens: atendimentos,
+      atualizadoEm: new Date().toISOString()
+    }, { merge: true });
+  }catch(e){
+    console.error(e);
+    mostrarErro("Erro ao salvar no Firebase.");
+    throw e;
+  }
 }
 
-function carregarAtendimentosLocal(){
+async function carregarAtendimentosFirebase(){
   try{
-    const bruto = localStorage.getItem(CHAVE_ATENDIMENTOS);
-    atendimentos = bruto ? JSON.parse(bruto) : [];
+    const snap = await DOC_ATENDIMENTOS.get();
+    if(snap.exists){
+      const dados = snap.data() || {};
+      atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
+    } else {
+      atendimentos = [];
+      await DOC_ATENDIMENTOS.set({ itens: [], criadoEm: new Date().toISOString() }, { merge: true });
+    }
   }catch(e){
     console.error(e);
     atendimentos = [];
+    mostrarErro("Não foi possível carregar os dados do Firebase.");
   }
 }
 
@@ -162,12 +195,8 @@ function mostrarToast(msg, tipo="erro"){
 function gerarHorarios(){
   const select = document.getElementById("hora");
   if(!select) return;
-  const horarios = [
-    "08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30",
-    "13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30"
-  ];
   select.innerHTML = '<option value="">Selecione o horário</option>' +
-    horarios.map(h => `<option value="${h}">${h}</option>`).join("");
+    horariosAtendimento.map(h => `<option value="${h}">${h}</option>`).join("");
 }
 
 function temConflitoAgendamento(tecnico, dataValor, horaValor){
@@ -248,7 +277,7 @@ function confirmarPasta(){
   avisoCadastro.textContent = "Cadastro encontrado com sucesso.";
 }
 
-function login(){
+async function login(){
   let u = String(user.value || "").trim().toLowerCase();
   let p = String(pass.value || "");
 
@@ -272,13 +301,13 @@ function login(){
 
     montarMenu();
     aplicarPermissoesNaTela();
-    carregar();
+    await carregar();
   } else {
     mostrarErro("Senha ou usuário incorretos");
   }
 }
 
-(function restaurarSessao(){
+(async function restaurarSessao(){
   const u = lerSessao();
   if(u && usuarios[u]){
     tecnicoLogado = usuarios[u];
@@ -294,7 +323,7 @@ function login(){
 
     montarMenu();
     aplicarPermissoesNaTela();
-    carregar();
+    await carregar();
   }
 })();
 
@@ -334,7 +363,7 @@ function aplicarPermissoesNaTela(){
   btnAdicionar.disabled = !podeAdicionar;
 }
 
-function add(){
+async function add(){
   if(!tecnicoLogado) return;
 
   if(!permissoes[tecnicoLogado.role].add){
@@ -383,7 +412,7 @@ function add(){
   btnAdicionar.disabled = true;
 
   atendimentos.unshift(obj);
-  salvarAtendimentosLocal();
+  await salvarAtendimentosFirebase();
 
   pasta.value = "";
   nome.value = "";
@@ -398,12 +427,12 @@ function add(){
   btnAdicionar.disabled = false;
 }
 
-function carregar(){
-  carregarAtendimentosLocal();
+async function carregar(){
+  await carregarAtendimentosFirebase();
   render();
 }
 
-function marcar(id,status){
+async function marcar(id,status){
   if(!tecnicoLogado) return;
 
   if(!permissoes[tecnicoLogado.role].marcar){
@@ -425,7 +454,7 @@ function marcar(id,status){
   item.status = status;
   item.atualizadoPor = tecnicoLogado.nome;
   item.atualizadoEm = new Date().toISOString();
-  salvarAtendimentosLocal();
+  await salvarAtendimentosFirebase();
   render();
 }
 
@@ -438,6 +467,26 @@ function excluir(id){
   }
 
   abrirModalExcluir(id);
+}
+
+function abrirModalExcluir(id){
+  agendamentoPendenteExclusao = id;
+  modalExcluir.classList.add("show");
+}
+
+function fecharModalExcluir(){
+  agendamentoPendenteExclusao = null;
+  modalExcluir.classList.remove("show");
+}
+
+async function confirmarExclusao(){
+  if(!agendamentoPendenteExclusao) return;
+
+  atendimentos = atendimentos.filter(a => a.id !== agendamentoPendenteExclusao);
+  await salvarAtendimentosFirebase();
+  fecharModalExcluir();
+  render();
+  mostrarToast("Agendamento excluído com sucesso.", "sucesso");
 }
 
 function filtrar(t,btn){
