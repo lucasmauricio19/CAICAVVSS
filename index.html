@@ -158,7 +158,8 @@ const usuarios = {
   "cintya.caicavv": { nome: "Cintya", role: "tecnico" },
   "angelica.caicavv": { nome: "Angélica", role: "tecnico" },
   "recepcao.caicavv": { nome: "Recepção", role: "recepcao" },
-  "adm.caicavv": { nome: "Administrativo", role: "adm" }
+  "adm.caicavv": { nome: "Johanna", role: "adm" },
+  "mayara.caicavv": { nome: "Mayara", role: "coordenacao" }
 };
 
 const senhas = {
@@ -167,13 +168,15 @@ const senhas = {
   "cintya.caicavv": "caicavv26@",
   "angelica.caicavv": "caicavv26@",
   "recepcao.caicavv": "caicavv26@",
-  "adm.caicavv": "1202"
+  "adm.caicavv": "1202",
+  "mayara.caicavv": "caicavv26@"
 };
 
 const permissoes = {
   tecnico:  { ver: false, add: true,  del: true,  marcar: true },
   recepcao: { ver: true,  add: false, del: false, marcar: true },
-  adm:      { ver: true,  add: true,  del: true,  marcar: true }
+  adm:         { ver: true,  add: true,  del: true,  marcar: true },
+  coordenacao: { ver: true,  add: true,  del: true,  marcar: true }
 };
 
 let tecnicoLogado = null;
@@ -352,7 +355,7 @@ function montarMenu(){
   let html = "";
   let role = tecnicoLogado.role;
 
-  if(role === "recepcao" || role === "adm"){
+  if(role === "recepcao" || role === "adm" || role === "coordenacao"){
     let tecnicos = Object.values(usuarios)
       .filter(u => u.role === "tecnico")
       .map(u => u.nome);
@@ -550,6 +553,7 @@ function render(){
     if(role === "tecnico") return a.tecnico === tecnicoLogado.nome;
     if(role === "recepcao") return !filtroAtual || a.tecnico === filtroAtual;
     if(role === "adm") return !filtroAtual || a.tecnico === filtroAtual;
+    if(role === "coordenacao") return !filtroAtual || a.tecnico === filtroAtual;
     return false;
   });
 
