@@ -42,7 +42,6 @@ input:disabled{background:#e2e8f0;color:#334155;opacity:1}
 
 <header>CAICAVV</header>
 <div id="toast" class="toast"></div>
-<div id="firebaseStatus" class="toast" style="top:70px;background:#2563eb;display:none"></div>
 
 <div class="container" id="loginDiv">
   <h3>Login</h3>
@@ -80,42 +79,21 @@ const cadastros = {"1": ["EMELLY GABRIELLY DA ANUNCIAÇÃO"], "2": ["LAURA RODRI
 </script>
 
 <script>
-const firebaseConfig = {
-  apiKey: "SUA_KEY",
-  authDomain: "SEU_DOMINIO",
-  projectId: "SEU_ID"
-};
+let atendimentos = [];
+const CHAVE_ATENDIMENTOS = "caicavv_atendimentos";
 
-let db = null;
-let unsubscribeAtendimentos = null;
-let firebasePronto = false;
-
-function firebaseConfigurado(){
-  return firebaseConfig.apiKey !== "SUA_KEY" &&
-         firebaseConfig.authDomain !== "SEU_DOMINIO" &&
-         firebaseConfig.projectId !== "SEU_ID";
+function salvarAtendimentosLocal(){
+  localStorage.setItem(CHAVE_ATENDIMENTOS, JSON.stringify(atendimentos));
 }
 
-function mostrarStatusFirebase(msg, tipo="erro"){
-  const el = document.getElementById("firebaseStatus");
-  if(!el) return;
-  el.textContent = msg;
-  el.style.display = "block";
-  el.style.background = tipo === "sucesso" ? "#166534" : tipo === "info" ? "#2563eb" : "#b91c1c";
-}
-
-try {
-  if(firebaseConfigurado()){
-    firebase.initializeApp(firebaseConfig);
-    db = firebase.firestore();
-    firebasePronto = true;
-    mostrarStatusFirebase("Firebase online conectado.", "sucesso");
-  } else {
-    document.getElementById("firebaseStatus").style.display = "none";
+function carregarAtendimentosLocal(){
+  try{
+    const bruto = localStorage.getItem(CHAVE_ATENDIMENTOS);
+    atendimentos = bruto ? JSON.parse(bruto) : [];
+  }catch(e){
+    console.error(e);
+    atendimentos = [];
   }
-} catch (e) {
-  console.error(e);
-  mostrarStatusFirebase("Erro ao iniciar o Firebase. Verifique a configuração.", "erro");
 }
 
 const usuarios = {
@@ -143,7 +121,6 @@ const permissoes = {
 };
 
 let tecnicoLogado = null;
-let atendimentos = [];
 let filtroAtual = "";
 let pastaConfirmada = false;
 let toastTimeout = null;
@@ -339,11 +316,6 @@ function aplicarPermissoesNaTela(){
 function add(){
   if(!tecnicoLogado) return;
 
-  if(!firebasePronto || !db){
-    mostrarErro("Configure o Firebase real para salvar online e manter os dados após F5.");
-    return;
-  }
-
   if(!permissoes[tecnicoLogado.role].add){
     mostrarErro("Sem permissão para adicionar.");
     return;
@@ -374,6 +346,7 @@ function add(){
   }
 
   let obj = {
+    id: "id_" + Date.now() + "_" + Math.random().toString(36).slice(2, 9),
     pasta: pastaValor,
     nome: nomeValor,
     tecnico: tecnicoDestino,
@@ -388,57 +361,29 @@ function add(){
 
   btnAdicionar.disabled = true;
 
-  db.collection("atendimentos").add(obj)
-    .then(() => {
-      pasta.value = "";
-      nome.value = "";
-      data.value = "";
-      hora.value = "";
-      descricao.value = "";
-      avisoCadastro.textContent = "Clique em Confirmar pasta para buscar o nome.";
-      pastaConfirmada = false;
-      mostrarToast("Agendamento adicionado com sucesso.", "sucesso");
-    })
-    .catch((erro) => {
-      console.error(erro);
-      mostrarErro("Erro ao adicionar atendimento.");
-      mostrarStatusFirebase("Falha ao salvar online. Verifique sua configuração e regras do Firestore.", "erro");
-    })
-    .finally(() => {
-      btnAdicionar.disabled = false;
-    });
+  atendimentos.push(obj);
+  salvarAtendimentosLocal();
+
+  pasta.value = "";
+  nome.value = "";
+  data.value = "";
+  hora.value = horariosAtendimento[0] || "";
+  descricao.value = "";
+  avisoCadastro.textContent = "Clique em Confirmar pasta para buscar o nome.";
+  pastaConfirmada = false;
+
+  render();
+  mostrarToast("Agendamento adicionado com sucesso.", "sucesso");
+  btnAdicionar.disabled = false;
 }
 
 function carregar(){
-  if(!firebasePronto || !db){
-    mostrarErro("Firebase não está configurado. Sem isso, o agendamento some ao atualizar a página.");
-    render();
-    return;
-  }
-
-  if(unsubscribeAtendimentos){
-    unsubscribeAtendimentos();
-  }
-
-  unsubscribeAtendimentos = db.collection("atendimentos").onSnapshot(snap=>{
-    atendimentos = [];
-    snap.forEach(doc=>{
-      let d = doc.data();
-      d.id = doc.id;
-      atendimentos.push(d);
-    });
-    mostrarStatusFirebase("Dados sincronizados ao vivo.", "sucesso");
-    render();
-  }, (erro) => {
-    console.error(erro);
-    mostrarErro("Erro ao carregar atendimentos do Firebase.");
-    mostrarStatusFirebase("Sem conexão online com o Firebase.", "erro");
-  });
+  carregarAtendimentosLocal();
+  render();
 }
 
 function marcar(id,status){
   if(!tecnicoLogado) return;
-  if(!firebasePronto || !db){ mostrarErro("Firebase não configurado."); return; }
 
   if(!permissoes[tecnicoLogado.role].marcar){
     mostrarErro("Sem permissão.");
@@ -450,18 +395,21 @@ function marcar(id,status){
     return;
   }
 
-  db.collection("atendimentos").doc(id).update({
-    status,
-    atualizadoPor: tecnicoLogado.nome,
-    atualizadoEm: new Date().toISOString()
-  }).catch(() => {
-    mostrarErro("Erro ao atualizar status.");
-  });
+  const item = atendimentos.find(a => a.id === id);
+  if(!item){
+    mostrarErro("Atendimento não encontrado.");
+    return;
+  }
+
+  item.status = status;
+  item.atualizadoPor = tecnicoLogado.nome;
+  item.atualizadoEm = new Date().toISOString();
+  salvarAtendimentosLocal();
+  render();
 }
 
 function excluir(id){
   if(!tecnicoLogado) return;
-  if(!firebasePronto || !db){ mostrarErro("Firebase não configurado."); return; }
 
   if(!permissoes[tecnicoLogado.role].del){
     mostrarErro("Sem permissão.");
@@ -472,10 +420,9 @@ function excluir(id){
     return;
   }
 
-  db.collection("atendimentos").doc(id).delete()
-    .catch(() => {
-      mostrarErro("Erro ao excluir atendimento.");
-    });
+  atendimentos = atendimentos.filter(a => a.id !== id);
+  salvarAtendimentosLocal();
+  render();
 }
 
 function filtrar(t,btn){
