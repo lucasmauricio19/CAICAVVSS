@@ -1,128 +1,416 @@
-<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>CAICAVV</title>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CAICAVV</title>
+
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
 <style>
 body{font-family:Arial;background:#f1f5f9;margin:0}
-header{background:#0f172a;color:#fff;padding:15px;text-align:center;font-size:20px}
+header{background:#0f172a;color:#fff;padding:15px;text-align:center}
 .container{max-width:900px;margin:auto;padding:20px}
-input,button{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box;font-size:14px}
-input:focus{outline:none;border-color:#2563eb;box-shadow:0 0 0 2px rgba(37,99,235,.2)}
+input,button{width:100%;padding:10px;margin-top:8px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box}
 button{background:#2563eb;color:#fff;border:none;cursor:pointer}
-button:hover{background:#1d4ed8}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.card{background:#fff;padding:15px;margin-top:15px;border-radius:10px;box-shadow:0 2px 5px rgba(0,0,0,.1)}
-.top{display:flex;justify-content:space-between}
-.numero{font-weight:bold;color:#2563eb}
-.acoes button{width:auto;margin-left:5px;background:#ef4444}
-.compareceu{background:#16a34a}.faltou{background:#dc2626}
-.backup{background:#16a34a}.restore{background:#f59e0b}.reset{background:#dc2626}
-.menu{display:flex;gap:10px;margin-bottom:10px}
-.menu button{flex:1;background:#e2e8f0;color:#000}
-.menu button.ativo{background:#2563eb;color:#fff}
-.relatorio{background:#fff;padding:10px;border-radius:8px;margin-bottom:15px;box-shadow:0 1px 3px rgba(0,0,0,.1);font-size:14px}
-</style></head><body>
+button:hover{opacity:.95}
+button:disabled{background:#94a3b8;cursor:not-allowed}
+.card{background:#fff;padding:10px;margin-top:10px;border-radius:8px}
+.menu{display:flex;gap:5px;flex-wrap:wrap}
+.menu button{flex:1;background:#ddd;color:#000}
+.menu .ativo{background:#2563eb;color:#fff}
+.compareceu{background:green}
+.faltou{background:red}
+.excluir{background:#b91c1c}
+.hidden{display:none!important}
+.info{background:#e2e8f0;padding:10px;border-radius:8px;margin-top:10px}
+</style>
+</head>
 
-<header>CAICAVV - Sistema</header>
-<div class="container">
+<body>
 
-<div class="menu">
-<button onclick="filtrar('Josiane',this)" class="ativo">Josiane</button>
-<button onclick="filtrar('Cláudia',this)">Cláudia</button>
-<button onclick="filtrar('Angélica',this)">Angélica</button>
-<button onclick="filtrar('Cintya',this)">Cintya</button>
+<header>CAICAVV</header>
+
+<!-- LOGIN -->
+<div class="container" id="loginDiv">
+  <h3>Login</h3>
+  <input id="user" placeholder="Usuário" autocomplete="username">
+  <input id="pass" type="password" placeholder="Senha" autocomplete="current-password">
+  <button onclick="login()">Entrar</button>
 </div>
 
-<div id="relatorio" class="relatorio"></div>
+<!-- APP -->
+<div class="container" id="app" style="display:none">
 
-<input id="pasta" placeholder="Nº da pasta">
-<input id="nome" placeholder="Nome do paciente">
-<div class="grid">
-<input type="date" id="data">
-<input type="time" id="hora">
-</div>
-<input id="descricao" placeholder="Descrição do atendimento">
+  <div class="info" id="boasVindas"></div>
 
-<button onclick="add()">Adicionar</button>
+  <div class="menu" id="menu"></div>
 
-<div class="grid">
-<button class="backup" onclick="bk()">Backup</button>
-<button class="restore" onclick="fileInput.click()">Restaurar</button>
-</div>
+  <div id="relatorio" class="info"></div>
 
-<input type="file" id="fileInput" style="display:none" onchange="rs(event)">
-<div id="lista"></div>
-<button class="reset" onclick="reset()">Resetar Tudo</button>
+  <div id="formAtendimento">
+    <input id="pasta" placeholder="Nº pasta" maxlength="30">
+    <input id="nome" placeholder="Nome" maxlength="120">
+    <input type="date" id="data">
+    <input type="time" id="hora">
+    <input id="descricao" placeholder="Descrição" maxlength="250">
+    <button id="btnAdicionar" onclick="add()">Adicionar</button>
+  </div>
+
+  <div id="lista"></div>
+
+  <button onclick="logout()">Sair</button>
 
 </div>
 
 <script>
-let a=[],c=1,f="Josiane";
+// 🔥 FIREBASE
+const firebaseConfig = {
+  apiKey: "SUA_KEY",
+  authDomain: "SEU_DOMINIO",
+  projectId: "SEU_ID"
+};
 
-function load(){
-let d=localStorage.getItem("a"),ct=localStorage.getItem("c");
-if(d)a=JSON.parse(d);if(ct)c=parseInt(ct)
-}
-function save(){
-localStorage.setItem("a",JSON.stringify(a));
-localStorage.setItem("c",c)
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+
+// 👤 USUÁRIOS
+const usuarios = {
+  "josiane.caicavv": { nome: "Josiane", role: "tecnico" },
+  "claudia.caicavv": { nome: "Cláudia", role: "tecnico" },
+  "cintya.caicavv": { nome: "Cintya", role: "tecnico" },
+  "angelica.caicavv": { nome: "Angélica", role: "tecnico" },
+  "recepcao.caicavv": { nome: "Recepção", role: "recepcao" },
+  "adm.caicavv": { nome: "Administrativo", role: "adm" }
+};
+
+// 🔑 SENHAS
+// ⚠️ Isso ainda NÃO é seguro de verdade porque está no front-end.
+// É apenas a continuação do seu modelo atual.
+const senhas = {
+  "josiane.caicavv": "caicavv26@",
+  "claudia.caicavv": "caicavv26@",
+  "cintya.caicavv": "caicavv26@",
+  "angelica.caicavv": "caicavv26@",
+  "recepcao.caicavv": "caicavv26@",
+  "adm.caicavv": "1202"
+};
+
+// 🔐 PERMISSÕES
+const permissoes = {
+  tecnico:  { ver: false, add: true,  del: true,  marcar: true },
+  recepcao: { ver: true,  add: false, del: false, marcar: true },
+  adm:      { ver: true,  add: true,  del: true,  marcar: true }
+};
+
+let tecnicoLogado = null;
+let atendimentos = [];
+let filtroAtual = "";
+
+// proteção básica de texto
+function escapeHTML(str){
+  return String(str || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
+function textoSeguro(valor, max=120){
+  return escapeHTML(String(valor || "").trim().slice(0, max));
+}
+
+function mostrarErro(msg){
+  alert(msg);
+}
+
+function salvarSessao(login){
+  sessionStorage.setItem("caicavv_user", login);
+}
+
+function lerSessao(){
+  return sessionStorage.getItem("caicavv_user");
+}
+
+function limparSessao(){
+  sessionStorage.removeItem("caicavv_user");
+}
+
+// LOGIN
+function login(){
+  let u = String(user.value || "").trim().toLowerCase();
+  let p = String(pass.value || "");
+
+  if(!u || !p){
+    mostrarErro("Preencha usuário e senha.");
+    return;
+  }
+
+  if(usuarios[u] && senhas[u] === p){
+    tecnicoLogado = usuarios[u];
+
+    if(tecnicoLogado.role === "tecnico"){
+      filtroAtual = tecnicoLogado.nome;
+    } else {
+      filtroAtual = "";
+    }
+
+    salvarSessao(u);
+
+    loginDiv.style.display = "none";
+    app.style.display = "block";
+
+    montarMenu();
+    aplicarPermissoesNaTela();
+    carregar();
+  } else {
+    mostrarErro("Login inválido.");
+  }
+}
+
+// AUTOLOGIN DE SESSÃO
+(function restaurarSessao(){
+  const u = lerSessao();
+  if(u && usuarios[u]){
+    tecnicoLogado = usuarios[u];
+
+    if(tecnicoLogado.role === "tecnico"){
+      filtroAtual = tecnicoLogado.nome;
+    } else {
+      filtroAtual = "";
+    }
+
+    loginDiv.style.display = "none";
+    app.style.display = "block";
+
+    montarMenu();
+    aplicarPermissoesNaTela();
+    carregar();
+  }
+})();
+
+// LOGOUT
+function logout(){
+  limparSessao();
+  location.reload();
+}
+
+// MENU
+function montarMenu(){
+  let html = "";
+  let role = tecnicoLogado.role;
+
+  if(role === "recepcao" || role === "adm"){
+    let tecnicos = Object.values(usuarios)
+      .filter(u => u.role === "tecnico")
+      .map(u => u.nome);
+
+    tecnicos.forEach((t, i)=>{
+      html += `<button ${i===0 ? 'class="ativo"' : ""} onclick="filtrar('${escapeHTML(t)}',this)">${escapeHTML(t)}</button>`;
+    });
+
+    if(tecnicos.length > 0 && !filtroAtual){
+      filtroAtual = tecnicos[0];
+    }
+  } else {
+    html = `<button class="ativo">${escapeHTML(tecnicoLogado.nome)}</button>`;
+  }
+
+  menu.innerHTML = html;
+  boasVindas.innerHTML = `<b>Usuário:</b> ${escapeHTML(tecnicoLogado.nome)} | <b>Perfil:</b> ${escapeHTML(tecnicoLogado.role)}`;
+}
+
+function aplicarPermissoesNaTela(){
+  const role = tecnicoLogado.role;
+  const podeAdicionar = permissoes[role].add;
+
+  formAtendimento.classList.toggle("hidden", !podeAdicionar);
+  btnAdicionar.disabled = !podeAdicionar;
+}
+
+// ADICIONAR
 function add(){
-let p=pasta.value,n=nome.value,d=data.value,h=hora.value,ds=descricao.value;
-if(!p||!n||!d||!h||!ds)return alert("Preencha tudo");
-a.push({numero:c,pasta:p,nome:n,tecnico:f,data:d,hora:h,descricao:ds,status:"agendado"});
-c++;save();render();document.querySelectorAll("input").forEach(i=>i.value="")
+  if(!tecnicoLogado) return;
+
+  if(!permissoes[tecnicoLogado.role].add){
+    mostrarErro("Sem permissão para adicionar.");
+    return;
+  }
+
+  let pastaValor = textoSeguro(pasta.value, 30);
+  let nomeValor = textoSeguro(nome.value, 120);
+  let dataValor = String(data.value || "");
+  let horaValor = String(hora.value || "");
+  let descricaoValor = textoSeguro(descricao.value, 250);
+
+  if(!pastaValor || !nomeValor || !dataValor || !horaValor){
+    mostrarErro("Preencha pasta, nome, data e hora.");
+    return;
+  }
+
+  let tecnicoDestino = filtroAtual || tecnicoLogado.nome;
+
+  let obj = {
+    pasta: pastaValor,
+    nome: nomeValor,
+    tecnico: tecnicoDestino,
+    data: dataValor,
+    hora: horaValor,
+    descricao: descricaoValor,
+    status: "agendado",
+    criadoPor: tecnicoLogado.nome,
+    roleCriador: tecnicoLogado.role,
+    criadoEm: new Date().toISOString()
+  };
+
+  db.collection("atendimentos").add(obj)
+    .then(() => {
+      pasta.value = "";
+      nome.value = "";
+      data.value = "";
+      hora.value = "";
+      descricao.value = "";
+    })
+    .catch(() => {
+      mostrarErro("Erro ao adicionar atendimento.");
+    });
 }
 
-function marcar(i,s){a[i].status=s;save();render()}
-function del(i){a.splice(i,1);save();render()}
+// CARREGAR
+function carregar(){
+  db.collection("atendimentos").onSnapshot(snap=>{
+    atendimentos = [];
+    snap.forEach(doc=>{
+      let d = doc.data();
+      d.id = doc.id;
+      atendimentos.push(d);
+    });
+    render();
+  }, () => {
+    mostrarErro("Erro ao carregar atendimentos do Firebase.");
+  });
+}
 
+// MARCAR
+function marcar(id,status){
+  if(!tecnicoLogado) return;
+
+  if(!permissoes[tecnicoLogado.role].marcar){
+    mostrarErro("Sem permissão.");
+    return;
+  }
+
+  if(status !== "compareceu" && status !== "faltou"){
+    mostrarErro("Status inválido.");
+    return;
+  }
+
+  db.collection("atendimentos").doc(id).update({
+    status,
+    atualizadoPor: tecnicoLogado.nome,
+    atualizadoEm: new Date().toISOString()
+  }).catch(() => {
+    mostrarErro("Erro ao atualizar status.");
+  });
+}
+
+// EXCLUIR
+function excluir(id){
+  if(!tecnicoLogado) return;
+
+  if(!permissoes[tecnicoLogado.role].del){
+    mostrarErro("Sem permissão.");
+    return;
+  }
+
+  if(!confirm("Deseja realmente excluir este atendimento?")){
+    return;
+  }
+
+  db.collection("atendimentos").doc(id).delete()
+    .catch(() => {
+      mostrarErro("Erro ao excluir atendimento.");
+    });
+}
+
+// FILTRO
 function filtrar(t,btn){
-f=t;document.querySelectorAll(".menu button").forEach(b=>b.classList.remove("ativo"));
-btn.classList.add("ativo");render()
+  filtroAtual = t;
+
+  document.querySelectorAll(".menu button")
+    .forEach(b=>b.classList.remove("ativo"));
+
+  btn.classList.add("ativo");
+
+  render();
 }
 
+// RELATÓRIO
 function rel(){
-let l=a.filter(x=>x.tecnico==f),
-ag=l.length,ok=l.filter(x=>x.status=="compareceu").length,ft=l.filter(x=>x.status=="faltou").length;
-relatorio.innerHTML=`<b>${f}</b><br>📅 ${ag} | ✅ ${ok} | ❌ ${ft}`
+  if(!filtroAtual){
+    relatorio.innerHTML = "<b>Selecione um técnico.</b>";
+    return;
+  }
+
+  let l = atendimentos.filter(a=>a.tecnico===filtroAtual);
+
+  let ag = l.length;
+  let ok = l.filter(a=>a.status==="compareceu").length;
+  let ft = l.filter(a=>a.status==="faltou").length;
+
+  relatorio.innerHTML = `
+    <b>${escapeHTML(filtroAtual)}</b><br>
+    📅 ${ag} | ✅ ${ok} | ❌ ${ft}
+  `;
 }
 
+// RENDER
 function render(){
-lista.innerHTML="";rel();
-a.filter(x=>x.tecnico==f).forEach((x,i)=>{
-lista.innerHTML+=`
-<div class="card">
-<div class="top"><span class="numero">#${x.numero}</span>
-<div class="acoes"><button onclick="del(${i})">X</button></div></div>
-<p><b>Pasta:</b> ${x.pasta}</p>
-<p><b>Nome:</b> ${x.nome}</p>
-<p><b>Data:</b> ${x.data}</p>
-<p><b>Hora:</b> ${x.hora}</p>
-<p><b>Status:</b> ${x.status}</p>
-<div class="grid">
-<button class="compareceu" onclick="marcar(${i},'compareceu')">✔</button>
-<button class="faltou" onclick="marcar(${i},'faltou')">✖</button>
-</div></div>`
-})
-}
+  if(!tecnicoLogado) return;
 
-function bk(){
-let b=new Blob([JSON.stringify({a,c})],{type:"application/json"}),
-l=document.createElement("a");
-l.href=URL.createObjectURL(b);l.download="backup.json";l.click()
-}
+  lista.innerHTML = "";
+  rel();
 
-function rs(e){
-let r=new FileReader();
-r.onload=x=>{let d=JSON.parse(x.target.result);a=d.a||[];c=d.c||1;save();render()};
-r.readAsText(e.target.files[0])
-}
+  let role = tecnicoLogado.role;
 
-function reset(){
-if(confirm("Apagar tudo?")){a=[];c=1;localStorage.clear();render()}
-}
+  let dados = atendimentos.filter(a=>{
+    if(role === "tecnico") return a.tecnico === tecnicoLogado.nome;
+    if(role === "recepcao") return !filtroAtual || a.tecnico === filtroAtual;
+    if(role === "adm") return !filtroAtual || a.tecnico === filtroAtual;
+    return false;
+  });
 
-window.addEventListener("beforeunload",save);
-load();render();
+  if(dados.length === 0){
+    lista.innerHTML = `<div class="card">Nenhum atendimento encontrado.</div>`;
+    return;
+  }
+
+  dados.forEach(a=>{
+    lista.innerHTML += `
+      <div class="card">
+        <p><b>Pasta:</b> ${escapeHTML(a.pasta)}</p>
+        <p><b>Nome:</b> ${escapeHTML(a.nome)}</p>
+        <p><b>Técnico:</b> ${escapeHTML(a.tecnico)}</p>
+        <p>${escapeHTML(a.data)} ${escapeHTML(a.hora)}</p>
+        <p><b>Descrição:</b> ${escapeHTML(a.descricao || "")}</p>
+        <p>Status: ${escapeHTML(a.status)}</p>
+
+        ${permissoes[role].marcar ? `
+          <button class="compareceu" onclick="marcar('${a.id}','compareceu')">✔ Compareceu</button>
+          <button class="faltou" onclick="marcar('${a.id}','faltou')">✖ Faltou</button>
+        ` : ""}
+
+        ${permissoes[role].del ? `
+          <button class="excluir" onclick="excluir('${a.id}')">🗑 Excluir</button>
+        ` : ""}
+      </div>
+    `;
+  });
+}
 </script>
 
-</body></html>
+</body>
+</html>
