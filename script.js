@@ -1,5 +1,4 @@
-
-// 🔥 CONFIG FIREBASE (COLOQUE A SUA)
+// 🔥 CONFIG FIREBASE
 const firebaseConfig = {
   apiKey: "SUA_API_KEY",
   authDomain: "SEU_AUTH_DOMAIN",
@@ -13,10 +12,25 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 //
+// 🖼️ ADICIONAR LOGO NO HEADER AUTOMATICAMENTE
+//
+window.addEventListener("DOMContentLoaded", () => {
+  const header = document.querySelector("header");
+
+  if (header && !header.querySelector(".logo")) {
+    const logo = document.createElement("img");
+    logo.src = "logo.png";
+    logo.alt = "Logo CAICAVV";
+    logo.className = "logo";
+
+    header.prepend(logo);
+  }
+});
+
+//
 // ➕ ADICIONAR ATENDIMENTO
 //
 function adicionar() {
-
   let nome = document.getElementById("nome").value;
   let pasta = document.getElementById("pasta").value;
   let tecnico = document.getElementById("tecnico").value;
@@ -35,9 +49,12 @@ function adicionar() {
     data,
     hora,
     criadoEm: Date.now()
+  }).then(() => {
+    limparCampos();
+  }).catch((error) => {
+    console.error("Erro ao adicionar atendimento:", error);
+    alert("Erro ao salvar no Firebase.");
   });
-
-  limparCampos();
 }
 
 //
@@ -46,7 +63,6 @@ function adicionar() {
 db.collection("atendimentos")
   .orderBy("criadoEm", "desc")
   .onSnapshot(snapshot => {
-
     let lista = document.getElementById("lista");
     lista.innerHTML = "";
 
@@ -62,7 +78,8 @@ db.collection("atendimentos")
         </div>
       `;
     });
-
+  }, error => {
+    console.error("Erro ao carregar lista:", error);
   });
 
 //

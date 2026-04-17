@@ -3,6 +3,19 @@ body {
   margin: 0;
   font-family: Arial, sans-serif;
   background: #f4f6f9;
+  position: relative;
+}
+
+/* Marca d’água */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: url("logo.png") no-repeat center;
+  background-size: 280px;
+  opacity: 0.05;
+  pointer-events: none;
+  z-index: 0;
 }
 
 /* HEADER */
@@ -12,16 +25,25 @@ header {
   background: #1e293b;
   color: white;
   padding: 10px 20px;
+  position: relative;
+  z-index: 1;
 }
 
 .logo {
   height: 40px;
+  width: 40px;
+  object-fit: contain;
   margin-right: 10px;
+  border-radius: 50%;
+  background: white;
+  padding: 2px;
 }
 
 /* LAYOUT */
 .container {
   display: flex;
+  position: relative;
+  z-index: 1;
 }
 
 /* MENU */
@@ -30,6 +52,8 @@ aside {
   background: #0f172a;
   height: 100vh;
   color: white;
+  position: relative;
+  z-index: 1;
 }
 
 aside ul {
@@ -51,6 +75,8 @@ aside li:hover {
 main {
   flex: 1;
   padding: 20px;
+  position: relative;
+  z-index: 1;
 }
 
 /* TÍTULOS */
@@ -61,4 +87,14 @@ h1, h2 {
 /* Ícones */
 aside i {
   margin-right: 10px;
+}
+
+/* Cards da lista */
+#lista div {
+  background: white;
+  padding: 12px;
+  margin-top: 10px;
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  border-left: 4px solid #1e293b;
 }
