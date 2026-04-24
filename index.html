@@ -123,7 +123,7 @@ option.livre{color:#166534;background:#dcfce7}
 @media(max-width:700px){.v7-extra-acoes{grid-template-columns:1fr}}
 
 
-/* ===== V8: menu lateral, busca e relatório mensal ===== */
+/* ===== V8: menu lateral e relatórios ===== */
 .menu-lateral-fundo{position:fixed;inset:0;background:rgba(15,23,42,.42);display:none;z-index:9998}.menu-lateral-fundo.show{display:block}.menu-lateral{position:fixed;top:0;left:0;width:min(390px,92vw);height:100vh;background:#fff;z-index:9999;transform:translateX(-105%);transition:.22s ease;box-shadow:18px 0 40px rgba(15,23,42,.18);padding:22px;box-sizing:border-box;overflow:auto}.menu-lateral.show{transform:translateX(0)}.menu-lateral-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.menu-lateral-topo h3{margin:0;color:#081946;font-size:22px}.menu-lateral-fechar{width:44px!important;height:44px!important;border-radius:12px!important;background:#e2e8f0!important;color:#0f172a!important;font-size:22px!important;padding:0!important;margin:0!important}.menu-bloco{border:1px solid #e8edf7;border-radius:14px;padding:16px;margin-top:14px;background:#f8fafc}.menu-bloco h4{margin:0 0 10px;color:#081946;font-size:17px}.menu-bloco p{margin:6px 0 12px;color:#64748b;font-size:13px;line-height:1.4}.menu-bloco input,.menu-bloco select{height:46px;border:1px solid #d7dde8;border-radius:8px;background:#fff;color:#081946;font-size:15px;padding:0 12px!important;margin-top:8px!important}.menu-bloco button{height:44px;border-radius:8px!important;font-weight:800;margin-top:10px!important}.btn-relatorio{background:#2563eb!important}.btn-secundario{background:#0f766e!important}.resultado-pesquisa-menu{margin-top:12px;max-height:260px;overflow:auto}.resultado-pesquisa-menu .item{background:#fff;border:1px solid #e8edf7;border-radius:10px;padding:10px;margin-top:8px;color:#081946}.resultado-pesquisa-menu .muted{color:#64748b;font-size:13px}.badge-menu{display:inline-block;border-radius:999px;background:#eaf1ff;color:#2563eb;font-size:12px;font-weight:900;padding:4px 8px;margin-top:6px}.alerta-relatorio{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;margin-top:14px;font-size:14px;line-height:1.35}.relatorio-permissao{font-size:12px;color:#64748b;margin-top:8px}
 
 </style>
@@ -140,12 +140,7 @@ option.livre{color:#166534;background:#dcfce7}
     <h3>Menu CAICAVV</h3>
     <button type="button" class="menu-lateral-fechar" onclick="fecharMenuLateral()">×</button>
   </div>
-  <div class="menu-bloco">
-    <h4>Busca de paciente</h4>
-    <p>Pesquise por número da pasta ou nome. Esse campo fica separado para não carregar o site principal.</p>
-    <input id="buscaPacienteMenu" type="search" placeholder="Ex: 25 ou Maria" oninput="pesquisarPacienteMenu()">
-    <div id="resultadoPacienteMenu" class="resultado-pesquisa-menu"></div>
-  </div>
+
   <div class="menu-bloco">
     <h4>Relatório mensal</h4>
     <p>Gera relatório de todos os técnicos com pasta, dia e status. Sem nome e sem horário.</p>
@@ -153,8 +148,32 @@ option.livre{color:#166534;background:#dcfce7}
     <button type="button" class="btn-relatorio" onclick="abrirRelatorioMensal()">Abrir relatório mensal</button>
     <div class="relatorio-permissao">Responsável pelo relatório: Recepção.</div>
   </div>
+
+  <div class="menu-bloco">
+    <h4>Relatório por dia</h4>
+    <p>Escolha uma data para ver os atendimentos do dia, com totais de presença, falta e pendência.</p>
+    <input id="dataRelatorioDia" type="date">
+    <button type="button" class="btn-relatorio" onclick="abrirRelatorioDia()">Abrir relatório por dia</button>
+  </div>
+
+  <div class="menu-bloco">
+    <h4>Relatório por técnico</h4>
+    <p>Escolha um técnico para gerar o resumo dele em um mês específico.</p>
+    <select id="tecnicoRelatorio"></select>
+    <input id="mesRelatorioTecnico" type="month">
+    <button type="button" class="btn-relatorio" onclick="abrirRelatorioTecnico()">Abrir relatório por técnico</button>
+  </div>
+
+  <div class="menu-bloco">
+    <h4>Lista de faltas</h4>
+    <p>Mostra as pastas com mais faltas no mês selecionado, em ordem do maior para o menor.</p>
+    <input id="mesListaFaltas" type="month">
+    <button type="button" class="btn-relatorio" onclick="abrirListaFaltas()">Abrir lista de faltas</button>
+  </div>
+
   <div id="avisoDia30" class="alerta-relatorio hidden"></div>
 </aside>
+
 
 
 <div id="modalExcluir" class="modal-fundo">
@@ -1101,25 +1120,34 @@ function fecharMenuLateral(){
   if(fundo) fundo.classList.remove("show");
   if(menu) menu.classList.remove("show");
 }
-function prepararMesRelatorio(){
-  const campo = document.getElementById("mesRelatorio");
-  if(!campo || campo.value) return;
+function mesAtualValor(){
   const hoje = new Date();
-  campo.value = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,"0")}`;
+  return `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,"0")}`;
 }
-function pesquisarPacienteMenu(){
-  const campo = document.getElementById("buscaPacienteMenu");
-  const saida = document.getElementById("resultadoPacienteMenu");
-  if(!campo || !saida) return;
-  const termo = normalizarBusca(campo.value.trim());
-  if(!termo){ saida.innerHTML = '<div class="muted">Digite uma pasta ou nome para pesquisar.</div>'; return; }
-  const resultadosCadastros = Object.entries(cadastros).filter(([pasta, nomes])=> normalizarBusca(pasta).includes(termo) || nomes.some(n=>normalizarBusca(n).includes(termo))).slice(0,12);
-  const resultadosAtendimentos = atendimentos.filter(a=> normalizarBusca(`${a.pasta || ""} ${a.nome || ""} ${a.tecnico || ""}`).includes(termo)).sort((a,b)=>getDataHoraAtendimento(b).localeCompare(getDataHoraAtendimento(a))).slice(0,8);
-  let html = "";
-  if(resultadosCadastros.length){ html += '<div class="muted"><b>Cadastro de pastas</b></div>' + resultadosCadastros.map(([pasta, nomes])=>`<div class="item"><b>Pasta ${escapeHTML(pasta)}</b><br>${escapeHTML(nomes.join(" / "))}</div>`).join(""); }
-  if(resultadosAtendimentos.length){ html += '<div class="muted" style="margin-top:12px"><b>Atendimentos encontrados</b></div>' + resultadosAtendimentos.map(a=>`<div class="item"><b>Pasta ${escapeHTML(a.pasta || "")}</b> <span class="badge-menu">${escapeHTML(statusBonito(a.status))}</span><br><span class="muted">${escapeHTML(formatarDataBR(a.data))} • ${escapeHTML(a.tecnico || "")}</span></div>`).join(""); }
-  saida.innerHTML = html || '<div class="muted">Nenhum resultado encontrado.</div>';
+
+function prepararMesRelatorio(){
+  const mes = mesAtualValor();
+  ["mesRelatorio", "mesRelatorioTecnico", "mesListaFaltas"].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el && !el.value) el.value = mes;
+  });
+  const dia = document.getElementById("dataRelatorioDia");
+  if(dia && !dia.value){
+    const hoje = new Date();
+    dia.value = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,"0")}-${String(hoje.getDate()).padStart(2,"0")}`;
+  }
+  carregarTecnicosRelatorio();
 }
+
+function carregarTecnicosRelatorio(){
+  const select = document.getElementById("tecnicoRelatorio");
+  if(!select) return;
+  const valorAtual = select.value;
+  const tecnicos = getTecnicosDisponiveis();
+  select.innerHTML = '<option value="">Selecione o técnico</option>' + tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("");
+  if(valorAtual && tecnicos.includes(valorAtual)) select.value = valorAtual;
+}
+
 function getPeriodoMes(yyyyMm){
   const [ano, mes] = (yyyyMm || "").split("-").map(Number);
   if(!ano || !mes) return null;
@@ -1128,29 +1156,91 @@ function getPeriodoMes(yyyyMm){
   const fim = `${ano}-${String(mes).padStart(2,"0")}-${String(ultimoDia).padStart(2,"0")}`;
   return {ano, mes, inicio, fim, label: `${String(mes).padStart(2,"0")}/${ano}`};
 }
+
+function statusRelatorio(status){
+  if(status === "compareceu") return "Veio";
+  if(status === "faltou") return "Não veio";
+  return "Pendente";
+}
+
+function resumirItensRelatorio(itens){
+  const resumo = {total: itens.length, presencas:0, faltas:0, pendentes:0};
+  itens.forEach(a=>{
+    if(a.status === "compareceu") resumo.presencas++;
+    else if(a.status === "faltou") resumo.faltas++;
+    else resumo.pendentes++;
+  });
+  return resumo;
+}
+
+function agruparPorTecnico(itens){
+  const porTecnico = {};
+  itens.forEach(a=>{
+    const tecnico = a.tecnico || "Sem técnico";
+    if(!porTecnico[tecnico]) porTecnico[tecnico] = {total:0, presencas:0, faltas:0, pendentes:0, itens:[]};
+    porTecnico[tecnico].total++;
+    porTecnico[tecnico].itens.push(a);
+    if(a.status === "compareceu") porTecnico[tecnico].presencas++;
+    else if(a.status === "faltou") porTecnico[tecnico].faltas++;
+    else porTecnico[tecnico].pendentes++;
+  });
+  return porTecnico;
+}
+
 function dadosRelatorioMensal(yyyyMm){
   const periodo = getPeriodoMes(yyyyMm);
   if(!periodo) return {periodo:null, itens:[], resumo:{total:0, presencas:0, faltas:0, pendentes:0}, porTecnico:{}};
-  const itens = atendimentos.filter(a=>a.data >= periodo.inicio && a.data <= periodo.fim).sort((a,b)=>`${a.tecnico || ""}|${a.data || ""}|${a.pasta || ""}`.localeCompare(`${b.tecnico || ""}|${b.data || ""}|${b.pasta || ""}`));
-  const resumo = {total: itens.length, presencas:0, faltas:0, pendentes:0};
-  const porTecnico = {};
-  itens.forEach(a=>{ const tecnico = a.tecnico || "Sem técnico"; if(!porTecnico[tecnico]) porTecnico[tecnico] = {total:0, presencas:0, faltas:0, pendentes:0, itens:[]}; porTecnico[tecnico].total++; porTecnico[tecnico].itens.push(a); if(a.status === "compareceu"){ resumo.presencas++; porTecnico[tecnico].presencas++; } else if(a.status === "faltou"){ resumo.faltas++; porTecnico[tecnico].faltas++; } else { resumo.pendentes++; porTecnico[tecnico].pendentes++; } });
-  return {periodo, itens, resumo, porTecnico};
+  const itens = atendimentos
+    .filter(a=>a.data >= periodo.inicio && a.data <= periodo.fim)
+    .sort((a,b)=>`${a.tecnico || ""}|${a.data || ""}|${a.pasta || ""}`.localeCompare(`${b.tecnico || ""}|${b.data || ""}|${b.pasta || ""}`));
+  return {periodo, itens, resumo:resumirItensRelatorio(itens), porTecnico:agruparPorTecnico(itens)};
 }
-function statusRelatorio(status){ if(status === "compareceu") return "Veio"; if(status === "faltou") return "Não veio"; return "Pendente"; }
+
+function montarResumoCards(resumo){
+  return `<div class="cards"><div class="card"><div class="num">${resumo.total}</div><div class="lbl">Agendamentos</div></div><div class="card"><div class="num">${resumo.presencas}</div><div class="lbl">Presenças</div></div><div class="card"><div class="num">${resumo.faltas}</div><div class="lbl">Faltas</div></div><div class="card"><div class="num">${resumo.pendentes}</div><div class="lbl">Pendentes</div></div></div>`;
+}
+
+function estiloJanelaRelatorio(){
+  return `<style>body{font-family:Arial,sans-serif;background:#f3f6fb;color:#081946;margin:0;padding:26px}.wrap{max-width:1100px;margin:auto;background:#fff;border:1px solid #e8edf7;border-radius:16px;padding:26px;box-shadow:0 10px 32px rgba(15,23,42,.08)}h1{margin:0 0 4px;font-size:28px}.sub{color:#64748b;margin-bottom:22px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.card{background:#f8fafc;border:1px solid #e8edf7;border-radius:12px;padding:16px}.num{font-size:28px;font-weight:900;color:#2563eb}.lbl{color:#64748b;font-size:13px;font-weight:800}.acoes{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.acoes button{border:0;border-radius:10px;background:#2563eb;color:#fff;font-weight:800;padding:12px 16px;cursor:pointer}.acoes button.sec{background:#0f766e}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #e2e8f0;padding:10px;text-align:left;font-size:14px}th{background:#0f172a;color:#fff}.tecnico td{background:#eaf1ff;color:#0f172a;font-weight:900}.aviso{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;margin-top:14px}@media print{body{background:#fff;padding:0}.wrap{box-shadow:none;border:0}.acoes{display:none}.cards{grid-template-columns:repeat(4,1fr)}}@media(max-width:800px){.cards{grid-template-columns:1fr 1fr}}</style>`;
+}
+
+function abrirJanelaRelatorio(titulo, subtitulo, conteudo){
+  const nova = window.open("", "_blank");
+  if(!nova){ mostrarErro("O navegador bloqueou a abertura do relatório. Permita pop-ups para este site."); return; }
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>${escapeHTML(titulo)}</title>${estiloJanelaRelatorio()}</head><body><div class="wrap"><h1>${escapeHTML(titulo)}</h1><div class="sub">${subtitulo}</div>${conteudo}</div></body></html>`;
+  nova.document.open();
+  nova.document.write(html);
+  nova.document.close();
+}
+
+function csvRelatorio(linhas){
+  return linhas.map(l=>l.map(c=>`"${String(c ?? "").replace(/"/g,'""')}"`).join(";")).join("\n");
+}
+
+function baixarCSV(nome, linhas){
+  const csv = csvRelatorio(linhas);
+  const blob = new Blob(["\ufeff" + csv], {type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = nome;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+
 function csvRelatorioMensal(yyyyMm){
   const {itens} = dadosRelatorioMensal(yyyyMm);
   const linhas = [["Técnico","Pasta","Dia","Status"]];
   itens.forEach(a=>linhas.push([a.tecnico || "", a.pasta || "", formatarDataBR(a.data), statusRelatorio(a.status)]));
-  return linhas.map(l=>l.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(";")).join("\n");
+  return linhas;
 }
+
 function baixarCSVRelatorio(yyyyMm){
-  const csv = csvRelatorioMensal(yyyyMm);
-  const blob = new Blob(["\ufeff" + csv], {type:"text/csv;charset=utf-8"});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url; a.download = `relatorio-caicavv-${yyyyMm || "mensal"}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 1000);
+  baixarCSV(`relatorio-caicavv-${yyyyMm || "mensal"}.csv`, csvRelatorioMensal(yyyyMm));
 }
+
 function abrirRelatorioMensal(){
   prepararMesRelatorio();
   const mes = document.getElementById("mesRelatorio")?.value;
@@ -1158,16 +1248,70 @@ function abrirRelatorioMensal(){
   if(!dados.periodo){ mostrarErro("Selecione um mês válido para gerar o relatório."); return; }
   const resumoTecnicos = Object.entries(dados.porTecnico).map(([tecnico,r])=>`<tr><td>${escapeHTML(tecnico)}</td><td>${r.total}</td><td>${r.presencas}</td><td>${r.faltas}</td><td>${r.pendentes}</td></tr>`).join("");
   const linhas = Object.entries(dados.porTecnico).map(([tecnico,r])=>`<tr class="tecnico"><td colspan="4">${escapeHTML(tecnico)} — ${r.total} agendamento(s), ${r.presencas} presença(s), ${r.faltas} falta(s)</td></tr>${r.itens.map(a=>`<tr><td>${escapeHTML(a.pasta || "")}</td><td>${escapeHTML(formatarDataBR(a.data))}</td><td>${escapeHTML(statusRelatorio(a.status))}</td><td>${escapeHTML(tecnico)}</td></tr>`).join("")}`).join("");
-  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Relatório CAICAVV ${escapeHTML(dados.periodo.label)}</title><style>body{font-family:Arial,sans-serif;background:#f3f6fb;color:#081946;margin:0;padding:26px}.wrap{max-width:1100px;margin:auto;background:#fff;border:1px solid #e8edf7;border-radius:16px;padding:26px;box-shadow:0 10px 32px rgba(15,23,42,.08)}h1{margin:0 0 4px;font-size:28px}.sub{color:#64748b;margin-bottom:22px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.card{background:#f8fafc;border:1px solid #e8edf7;border-radius:12px;padding:16px}.num{font-size:28px;font-weight:900;color:#2563eb}.lbl{color:#64748b;font-size:13px;font-weight:800}.acoes{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.acoes button{border:0;border-radius:10px;background:#2563eb;color:#fff;font-weight:800;padding:12px 16px;cursor:pointer}.acoes button.sec{background:#0f766e}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #e2e8f0;padding:10px;text-align:left;font-size:14px}th{background:#0f172a;color:#fff}.tecnico td{background:#eaf1ff;color:#0f172a;font-weight:900}.aviso{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;margin-top:14px}@media print{body{background:#fff;padding:0}.wrap{box-shadow:none;border:0}.acoes{display:none}.cards{grid-template-columns:repeat(4,1fr)}}@media(max-width:800px){.cards{grid-template-columns:1fr 1fr}}</style></head><body><div class="wrap"><h1>Relatório mensal CAICAVV</h1><div class="sub">Período: ${escapeHTML(dados.periodo.label)} • Responsável pelo relatório: Recepção</div><div class="cards"><div class="card"><div class="num">${dados.resumo.total}</div><div class="lbl">Agendamentos</div></div><div class="card"><div class="num">${dados.resumo.presencas}</div><div class="lbl">Presenças</div></div><div class="card"><div class="num">${dados.resumo.faltas}</div><div class="lbl">Faltas</div></div><div class="card"><div class="num">${dados.resumo.pendentes}</div><div class="lbl">Pendentes</div></div></div><div class="acoes"><button onclick="window.print()">Imprimir / salvar PDF</button><button class="sec" onclick="opener && opener.baixarCSVRelatorio('${escapeHTML(mes)}')">Exportar CSV</button></div><h2>Resumo por técnico</h2><table><thead><tr><th>Técnico</th><th>Agendamentos</th><th>Presenças</th><th>Faltas</th><th>Pendentes</th></tr></thead><tbody>${resumoTecnicos || '<tr><td colspan="5">Sem dados neste mês.</td></tr>'}</tbody></table><h2>Lista do mês</h2><table><thead><tr><th>Pasta</th><th>Dia</th><th>Veio ou não veio</th><th>Técnico</th></tr></thead><tbody>${linhas || '<tr><td colspan="4">Sem dados neste mês.</td></tr>'}</tbody></table><div class="aviso">Este relatório não mostra nome nem horário, apenas pasta, dia e status do atendimento.</div></div></body></html>`;
-  const nova = window.open("", "_blank");
-  if(!nova){ mostrarErro("O navegador bloqueou a abertura do relatório. Permita pop-ups para este site."); return; }
-  nova.document.open(); nova.document.write(html); nova.document.close();
+  const conteudo = `${montarResumoCards(dados.resumo)}<div class="acoes"><button onclick="window.print()">Imprimir / salvar PDF</button><button class="sec" onclick="opener && opener.baixarCSVRelatorio('${escapeHTML(mes)}')">Exportar CSV</button></div><h2>Resumo por técnico</h2><table><thead><tr><th>Técnico</th><th>Agendamentos</th><th>Presenças</th><th>Faltas</th><th>Pendentes</th></tr></thead><tbody>${resumoTecnicos || '<tr><td colspan="5">Sem dados neste mês.</td></tr>'}</tbody></table><h2>Lista do mês</h2><table><thead><tr><th>Pasta</th><th>Dia</th><th>Veio ou não veio</th><th>Técnico</th></tr></thead><tbody>${linhas || '<tr><td colspan="4">Sem dados neste mês.</td></tr>'}</tbody></table><div class="aviso">Este relatório não mostra nome nem horário, apenas pasta, dia e status do atendimento.</div>`;
+  abrirJanelaRelatorio(`Relatório mensal CAICAVV`, `Período: ${escapeHTML(dados.periodo.label)} • Responsável pelo relatório: Recepção`, conteudo);
 }
+
+function abrirRelatorioDia(){
+  prepararMesRelatorio();
+  const dia = document.getElementById("dataRelatorioDia")?.value;
+  if(!dia){ mostrarErro("Selecione uma data para gerar o relatório por dia."); return; }
+  const itens = atendimentos
+    .filter(a=>a.data === dia)
+    .sort((a,b)=>`${a.tecnico || ""}|${a.pasta || ""}`.localeCompare(`${b.tecnico || ""}|${b.pasta || ""}`));
+  const resumo = resumirItensRelatorio(itens);
+  const linhas = itens.map(a=>`<tr><td>${escapeHTML(a.tecnico || "")}</td><td>${escapeHTML(a.pasta || "")}</td><td>${escapeHTML(statusRelatorio(a.status))}</td></tr>`).join("");
+  const conteudo = `${montarResumoCards(resumo)}<div class="acoes"><button onclick="window.print()">Imprimir / salvar PDF</button></div><table><thead><tr><th>Técnico</th><th>Pasta</th><th>Veio ou não veio</th></tr></thead><tbody>${linhas || '<tr><td colspan="3">Sem dados nesta data.</td></tr>'}</tbody></table><div class="aviso">Relatório diário sem nome e sem horário.</div>`;
+  abrirJanelaRelatorio(`Relatório por dia`, `Data: ${escapeHTML(formatarDataBR(dia))} • Responsável pelo relatório: Recepção`, conteudo);
+}
+
+function abrirRelatorioTecnico(){
+  prepararMesRelatorio();
+  const tecnico = document.getElementById("tecnicoRelatorio")?.value;
+  const mes = document.getElementById("mesRelatorioTecnico")?.value;
+  const periodo = getPeriodoMes(mes);
+  if(!tecnico){ mostrarErro("Selecione um técnico para gerar o relatório."); return; }
+  if(!periodo){ mostrarErro("Selecione um mês válido para o relatório por técnico."); return; }
+  const itens = atendimentos
+    .filter(a=>a.tecnico === tecnico && a.data >= periodo.inicio && a.data <= periodo.fim)
+    .sort((a,b)=>`${a.data || ""}|${a.pasta || ""}`.localeCompare(`${b.data || ""}|${b.pasta || ""}`));
+  const resumo = resumirItensRelatorio(itens);
+  const linhas = itens.map(a=>`<tr><td>${escapeHTML(a.pasta || "")}</td><td>${escapeHTML(formatarDataBR(a.data))}</td><td>${escapeHTML(statusRelatorio(a.status))}</td></tr>`).join("");
+  const conteudo = `${montarResumoCards(resumo)}<div class="acoes"><button onclick="window.print()">Imprimir / salvar PDF</button></div><table><thead><tr><th>Pasta</th><th>Dia</th><th>Veio ou não veio</th></tr></thead><tbody>${linhas || '<tr><td colspan="3">Sem dados para este técnico no mês selecionado.</td></tr>'}</tbody></table><div class="aviso">Relatório por técnico sem nome e sem horário.</div>`;
+  abrirJanelaRelatorio(`Relatório por técnico`, `Técnico: ${escapeHTML(tecnico)} • Período: ${escapeHTML(periodo.label)} • Responsável pelo relatório: Recepção`, conteudo);
+}
+
+function abrirListaFaltas(){
+  prepararMesRelatorio();
+  const mes = document.getElementById("mesListaFaltas")?.value;
+  const periodo = getPeriodoMes(mes);
+  if(!periodo){ mostrarErro("Selecione um mês válido para a lista de faltas."); return; }
+  const mapa = {};
+  atendimentos
+    .filter(a=>a.status === "faltou" && a.data >= periodo.inicio && a.data <= periodo.fim)
+    .forEach(a=>{
+      const pasta = a.pasta || "Sem pasta";
+      if(!mapa[pasta]) mapa[pasta] = {pasta, faltas:0, dias:[], tecnicos:new Set()};
+      mapa[pasta].faltas++;
+      if(a.data) mapa[pasta].dias.push(formatarDataBR(a.data));
+      if(a.tecnico) mapa[pasta].tecnicos.add(a.tecnico);
+    });
+  const ordenado = Object.values(mapa).sort((a,b)=>b.faltas-a.faltas || String(a.pasta).localeCompare(String(b.pasta)));
+  const linhas = ordenado.map(i=>`<tr><td>${escapeHTML(i.pasta)}</td><td>${i.faltas}</td><td>${escapeHTML(i.dias.join(", "))}</td><td>${escapeHTML([...i.tecnicos].join(", "))}</td></tr>`).join("");
+  const conteudo = `<div class="acoes"><button onclick="window.print()">Imprimir / salvar PDF</button></div><table><thead><tr><th>Pasta</th><th>Quantidade de faltas</th><th>Dias</th><th>Técnicos</th></tr></thead><tbody>${linhas || '<tr><td colspan="4">Nenhuma falta registrada neste mês.</td></tr>'}</tbody></table><div class="aviso">Lista ordenada da maior quantidade de faltas para a menor.</div>`;
+  abrirJanelaRelatorio(`Lista de faltas`, `Período: ${escapeHTML(periodo.label)} • Responsável pelo relatório: Recepção`, conteudo);
+}
+
 function verificarAvisoDia30(){
   const aviso = document.getElementById("avisoDia30");
   if(!aviso) return;
   const hoje = new Date();
-  if(hoje.getDate() >= 30){ aviso.classList.remove("hidden"); aviso.innerHTML = "Hoje já é dia 30 ou fim de mês. Gere o relatório mensal antes de fechar o mês."; } else { aviso.classList.add("hidden"); }
+  if(hoje.getDate() >= 30){
+    aviso.classList.remove("hidden");
+    aviso.innerHTML = "Hoje já é dia 30 ou fim de mês. Gere o relatório mensal antes de fechar o mês.";
+  } else {
+    aviso.classList.add("hidden");
+  }
 }
 
 function render(){
