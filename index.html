@@ -110,6 +110,18 @@ body.modo-app{background:#f3f6fb;color:#071943}body.modo-app::before,body.modo-a
 .reagendar{background:#7c3aed!important}
 @media(max-width:800px){.filtros-v6{grid-template-columns:1fr}.atalhos-v6{display:grid;grid-template-columns:repeat(3,1fr)}}
 
+
+/* ===== V7: histórico, logs e horários ocupados ===== */
+.v7-extra-acoes{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.v7-extra-acoes button{height:42px!important;border-radius:8px!important;font-weight:800;font-size:14px;margin:0!important}
+.v7-historico{background:#2563eb!important}.v7-log{background:#475569!important}
+.v7-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;margin-top:10px;color:#081946}
+.v7-box b{color:#081946}.v7-muted{color:#64748b;font-size:13px}.v7-lista{max-height:360px;overflow:auto;margin-top:10px}.v7-item{border-bottom:1px solid #e2e8f0;padding:10px 0}.v7-item:last-child{border-bottom:0}.v7-tag{display:inline-block;background:#eaf1ff;color:#2563eb;border-radius:999px;padding:4px 10px;font-weight:800;font-size:12px;margin-top:4px}.v7-tag.ok{background:#dcfce7;color:#166534}.v7-tag.falta{background:#fee2e2;color:#991b1b}.v7-tag.log{background:#f1f5f9;color:#334155}
+option.ocupado{color:#991b1b;background:#fee2e2}
+option.livre{color:#166534;background:#dcfce7}
+.relatorio-card .rel-responsavel{display:block;font-size:13px;color:#64748b;margin-top:6px;font-weight:700}
+@media(max-width:700px){.v7-extra-acoes{grid-template-columns:1fr}}
+
 </style>
 </head>
 
@@ -156,6 +168,28 @@ body.modo-app{background:#f3f6fb;color:#071943}body.modo-app::before,body.modo-a
   </div>
 </div>
 
+<div id="modalHistorico" class="modal-fundo">
+  <div class="modal-box">
+    <h3>Histórico do paciente</h3>
+    <p>Resumo dos atendimentos encontrados para a mesma pasta.</p>
+    <div id="conteudoHistorico"></div>
+    <div class="modal-acoes" style="margin-top:12px">
+      <button type="button" class="modal-cancelar" onclick="fecharModalHistorico()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalLog" class="modal-fundo">
+  <div class="modal-box">
+    <h3>Log de alterações</h3>
+    <p>Registro de quem alterou, quando alterou e o que foi feito.</p>
+    <div id="conteudoLog"></div>
+    <div class="modal-acoes" style="margin-top:12px">
+      <button type="button" class="modal-cancelar" onclick="fecharModalLog()">Fechar</button>
+    </div>
+  </div>
+</div>
+
 <div class="container login-container" id="loginDiv">
   <div class="login-card">
     <div class="login-avatar" aria-hidden="true">👥</div>
@@ -177,7 +211,7 @@ body.modo-app{background:#f3f6fb;color:#071943}body.modo-app::before,body.modo-a
     <button class="btn-login" onclick="login()">↪ Entrar</button>
     <p class="login-rodape">🛡️ Sistema restrito para técnicos autorizados</p>
   </div>
-  <div class="login-versao">CAICAVV&nbsp; • &nbsp;Sistema Interno<br><span>Versão 1.6.0</span></div>
+  <div class="login-versao">CAICAVV&nbsp; • &nbsp;Sistema Interno<br><span>Versão 1.7.0</span></div>
 </div>
 
 <div class="container app-container" id="app" style="display:none">
@@ -226,6 +260,7 @@ const cadastros = {"1": ["EMELLY GABRIELLY DA ANUNCIAÇÃO"], "2": ["LAURA RODRI
 
 <script>
 let atendimentos = [];
+let logsAlteracoes = [];
 const horariosAtendimento = [
   "08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30",
   "13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30"
@@ -236,6 +271,7 @@ async function salvarAtendimentosFirebase(){
   try{
     await DOC_ATENDIMENTOS.set({
       itens: atendimentos,
+      logs: logsAlteracoes,
       atualizadoEm: new Date().toISOString()
     }, { merge: true });
   }catch(e){
@@ -251,13 +287,16 @@ async function carregarAtendimentosFirebase(){
     if(snap.exists){
       const dados = snap.data() || {};
       atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
+      logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
     } else {
       atendimentos = [];
-      await DOC_ATENDIMENTOS.set({ itens: [], criadoEm: new Date().toISOString() }, { merge: true });
+      logsAlteracoes = [];
+      await DOC_ATENDIMENTOS.set({ itens: [], logs: [], criadoEm: new Date().toISOString() }, { merge: true });
     }
   }catch(e){
     console.error(e);
     atendimentos = [];
+    logsAlteracoes = [];
     mostrarErro("Não foi possível carregar os dados do Firebase.");
   }
 }
@@ -309,11 +348,28 @@ function mostrarToast(msg, tipo="erro"){
   }, 3000);
 }
 
+function horarioEstaOcupado(tecnico, dataValor, horaValor, ignorarId=null){
+  if(!tecnico || !dataValor || !horaValor) return false;
+  return temConflitoAgendamento(tecnico, dataValor, horaValor, ignorarId);
+}
+
+function montarOptionsHorarios(tecnico, dataValor, ignorarId=null, valorAtual=""){
+  return '<option value="">Selecione o horário</option>' + horariosAtendimento.map(h => {
+    const ocupado = horarioEstaOcupado(tecnico, dataValor, h, ignorarId);
+    const selecionado = h === valorAtual ? 'selected' : '';
+    const label = ocupado ? `${h} - ocupado` : `${h} - livre`;
+    const classe = ocupado ? 'ocupado' : 'livre';
+    const disabled = ocupado && h !== valorAtual ? 'disabled' : '';
+    return `<option class="${classe}" value="${h}" ${selecionado} ${disabled}>${label}</option>`;
+  }).join("");
+}
+
 function gerarHorarios(){
   const select = document.getElementById("hora");
   if(!select) return;
-  select.innerHTML = '<option value="">Selecione o horário</option>' +
-    horariosAtendimento.map(h => `<option value="${h}">${h}</option>`).join("");
+  const tecnicoDestino = filtroAtual || (tecnicoLogado ? tecnicoLogado.nome : "");
+  const dataValor = document.getElementById("data") ? data.value : "";
+  select.innerHTML = montarOptionsHorarios(tecnicoDestino, dataValor, null, select.value);
 }
 
 function temConflitoAgendamento(tecnico, dataValor, horaValor, ignorarId=null){
@@ -332,10 +388,12 @@ function getTecnicosDisponiveis(){
   return [...new Set(nomes)];
 }
 
-function gerarHorariosEdicao(){
+function gerarHorariosEdicao(valorAtual=""){
   if(!editHora) return;
-  editHora.innerHTML = '<option value="">Selecione o horário</option>' +
-    horariosAtendimento.map(h => `<option value="${h}">${h}</option>`).join("");
+  const idAtual = agendamentoEmEdicao || null;
+  const tecnicoAtual = editTecnico ? editTecnico.value : "";
+  const dataAtual = editData ? editData.value : "";
+  editHora.innerHTML = montarOptionsHorarios(tecnicoAtual, dataAtual, idAtual, valorAtual || editHora.value);
 }
 
 function gerarTecnicosEdicao(){
@@ -366,6 +424,12 @@ function limparSessao(){ sessionStorage.removeItem("caicavv_user"); }
 gerarHorarios();
 gerarHorariosEdicao();
 gerarTecnicosEdicao();
+setTimeout(()=>{
+  const dataCampo = document.getElementById("data");
+  if(dataCampo) dataCampo.addEventListener("change", gerarHorarios);
+  if(typeof editData !== "undefined" && editData) editData.addEventListener("change", ()=>gerarHorariosEdicao(editHora.value));
+  if(typeof editTecnico !== "undefined" && editTecnico) editTecnico.addEventListener("change", ()=>gerarHorariosEdicao(editHora.value));
+}, 0);
 
 function normalizarPasta(valor){
   return String(valor || "").replace(/\D/g, "");
@@ -574,13 +638,15 @@ async function add(){
   btnAdicionar.disabled = true;
 
   atendimentos.unshift(obj);
+  registrarLog("Agendamento criado", obj, `Atendimento marcado para ${formatarDataBR(obj.data)} às ${obj.hora}, com ${obj.tecnico}.`);
   await salvarAtendimentosFirebase();
 
   pasta.value = "";
   nome.value = "";
   data.value = "";
-  hora.value = horariosAtendimento[0] || "";
+  hora.value = "";
   descricao.value = "";
+  gerarHorarios();
   avisoCadastro.textContent = "Clique em Confirmar pasta para buscar o nome.";
   pastaConfirmada = false;
 
@@ -613,7 +679,9 @@ async function marcar(id,status){
     return;
   }
 
+  const statusAnterior = item.status || "agendado";
   item.status = status;
+  registrarLog("Status alterado", item, `Status alterado de ${statusBonito(statusAnterior)} para ${statusBonito(status)}.`);
   item.atualizadoPor = tecnicoLogado.nome;
   item.atualizadoEm = new Date().toISOString();
   await salvarAtendimentosFirebase();
@@ -652,6 +720,7 @@ function abrirModalEdicao(id){
   editNome.value = item.nome || "";
   editTecnico.value = item.tecnico || "";
   editData.value = item.data || "";
+  gerarHorariosEdicao(item.hora || "");
   editHora.value = item.hora || "";
   editDescricao.value = item.descricao || "";
   editStatus.value = item.status || "agendado";
@@ -742,6 +811,15 @@ async function salvarEdicao(){
     }
   }
 
+  const mudancas = [];
+  if(item.pasta !== novaPasta) mudancas.push(`pasta: ${item.pasta || "—"} → ${novaPasta}`);
+  if(item.nome !== novoNome) mudancas.push(`nome: ${item.nome || "—"} → ${novoNome}`);
+  if(item.tecnico !== novoTecnico) mudancas.push(`técnico: ${item.tecnico || "—"} → ${novoTecnico}`);
+  if(item.data !== novaData) mudancas.push(`data: ${formatarDataBR(item.data)} → ${formatarDataBR(novaData)}`);
+  if(item.hora !== novaHora) mudancas.push(`hora: ${item.hora || "—"} → ${novaHora}`);
+  if((item.descricao || "") !== novaDescricao) mudancas.push(`descrição alterada`);
+  if((item.status || "agendado") !== novoStatus) mudancas.push(`status: ${statusBonito(item.status)} → ${statusBonito(novoStatus)}`);
+
   item.pasta = novaPasta;
   item.nome = novoNome;
   item.tecnico = novoTecnico;
@@ -749,6 +827,7 @@ async function salvarEdicao(){
   item.hora = novaHora;
   item.descricao = novaDescricao;
   item.status = novoStatus;
+  if(mudancas.length) registrarLog("Agendamento editado", item, mudancas.join("; "));
   item.atualizadoPor = tecnicoLogado.nome;
   item.atualizadoEm = new Date().toISOString();
 
@@ -782,6 +861,8 @@ function fecharModalExcluir(){
 async function confirmarExclusao(){
   if(!agendamentoPendenteExclusao) return;
 
+  const itemExcluido = atendimentos.find(a => a.id === agendamentoPendenteExclusao);
+  if(itemExcluido) registrarLog("Agendamento excluído", itemExcluido, `Atendimento de ${formatarDataBR(itemExcluido.data)} às ${itemExcluido.hora} foi excluído.`);
   atendimentos = atendimentos.filter(a => a.id !== agendamentoPendenteExclusao);
   await salvarAtendimentosFirebase();
   fecharModalExcluir();
@@ -796,6 +877,7 @@ function filtrar(t,btn){
     .forEach(b=>b.classList.remove("ativo"));
 
   btn.classList.add("ativo");
+  gerarHorarios();
   render();
 }
 
@@ -819,6 +901,7 @@ function rel(){
       <span class="rel-metrica">▣ <b>${ag}</b></span>
       <span class="rel-metrica ok">☑ <b>${ok}</b></span>
       <span class="rel-metrica erro">✕ <b>${ft}</b></span>
+      <span class="rel-responsavel">Relatório operacional: responsabilidade da Recepção.</span>
     </div>
   `;
 }
@@ -863,6 +946,7 @@ function definirFiltroData(modo){
   const ativo = modo === "hoje" ? "btnHoje" : modo === "amanha" ? "btnAmanha" : modo === "todos" ? "btnTodos" : "";
   if(ativo && document.getElementById(ativo)) document.getElementById(ativo).classList.add("ativo");
 
+  gerarHorarios();
   render();
 }
 
@@ -874,6 +958,68 @@ function textoBusca(){
 function normalizarBusca(valor){
   return String(valor || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 }
+function registrarLog(acao, item, detalhes=""){
+  const agora = new Date().toISOString();
+  const registro = {
+    id: "log_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8),
+    atendimentoId: item && item.id ? item.id : "",
+    pasta: item && item.pasta ? item.pasta : "",
+    nome: item && item.nome ? item.nome : "",
+    tecnico: item && item.tecnico ? item.tecnico : "",
+    acao,
+    detalhes,
+    usuario: tecnicoLogado ? tecnicoLogado.nome : "Sistema",
+    perfil: tecnicoLogado ? tecnicoLogado.role : "sistema",
+    dataHora: agora
+  };
+  logsAlteracoes.unshift(registro);
+  if(logsAlteracoes.length > 500) logsAlteracoes = logsAlteracoes.slice(0, 500);
+}
+
+function formatarDataHoraBR(iso){
+  if(!iso) return "";
+  const d = new Date(iso);
+  if(Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
+function statusBonito(status){
+  if(status === "compareceu") return "Compareceu";
+  if(status === "faltou") return "Faltou";
+  return "Agendado";
+}
+
+function abrirHistoricoPaciente(id){
+  const item = atendimentos.find(a => a.id === id);
+  if(!item) return mostrarErro("Atendimento não encontrado.");
+  const relacionados = atendimentos.filter(a => normalizarPasta(a.pasta) === normalizarPasta(item.pasta));
+  const total = relacionados.length;
+  const ok = relacionados.filter(a=>a.status === "compareceu").length;
+  const faltas = relacionados.filter(a=>a.status === "faltou").length;
+  const pendentes = relacionados.filter(a=>a.status === "agendado" || !a.status).length;
+  const linhas = relacionados.slice().sort((a,b)=>getDataHoraAtendimento(b).localeCompare(getDataHoraAtendimento(a))).map(a=>{
+    const cls = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : "";
+    return `<div class="v7-item"><b>${escapeHTML(formatarDataBR(a.data))} às ${escapeHTML(a.hora)}</b><br><span class="v7-muted">Técnico: ${escapeHTML(a.tecnico)} • ${escapeHTML(a.descricao || "Sem descrição")}</span><br><span class="v7-tag ${cls}">${escapeHTML(statusBonito(a.status))}</span></div>`;
+  }).join("");
+  conteudoHistorico.innerHTML = `
+    <div class="v7-box"><b>${escapeHTML(item.nome)}</b><br><span class="v7-muted">Pasta ${escapeHTML(item.pasta)}</span></div>
+    <div class="v7-box"><b>Total:</b> ${total} &nbsp; <b>Compareceu:</b> ${ok} &nbsp; <b>Faltou:</b> ${faltas} &nbsp; <b>Pendente:</b> ${pendentes}</div>
+    <div class="v7-lista">${linhas || '<div class="v7-muted">Nenhum histórico encontrado.</div>'}</div>`;
+  modalHistorico.classList.add("show");
+}
+
+function fecharModalHistorico(){ modalHistorico.classList.remove("show"); }
+
+function abrirLogAtendimento(id){
+  const item = atendimentos.find(a => a.id === id);
+  const basePasta = item ? normalizarPasta(item.pasta) : "";
+  const logs = logsAlteracoes.filter(l => l.atendimentoId === id || (basePasta && normalizarPasta(l.pasta) === basePasta)).slice(0,80);
+  conteudoLog.innerHTML = `<div class="v7-lista">${logs.map(l=>`<div class="v7-item"><b>${escapeHTML(l.acao)}</b> <span class="v7-tag log">${escapeHTML(l.usuario)} / ${escapeHTML(l.perfil)}</span><br><span class="v7-muted">${escapeHTML(formatarDataHoraBR(l.dataHora))}</span><br>${escapeHTML(l.detalhes || "Sem detalhes")}</div>`).join("") || '<div class="v7-muted">Nenhum log encontrado para este atendimento.</div>'}</div>`;
+  modalLog.classList.add("show");
+}
+
+function fecharModalLog(){ modalLog.classList.remove("show"); }
+
 
 function passaBusca(item, termo){
   if(!termo) return true;
@@ -996,6 +1142,7 @@ function render(){
           </div>
 
           <div class="atendimento-acoes">
+            <div class="v7-extra-acoes"><button class="v7-historico" onclick="abrirHistoricoPaciente('${a.id}')">▤ Histórico</button><button class="v7-log" onclick="abrirLogAtendimento('${a.id}')">☰ Log</button></div>
             ${podeEditarAtendimento(a) ? `<button class="editar" onclick="abrirModalEdicao('${a.id}')">✎ &nbsp; Editar</button>` : ""}
             ${podeEditarAtendimento(a) ? `<button class="reagendar" onclick="abrirReagendamento('${a.id}')">↻ &nbsp; Reagendar</button>` : ""}
             ${permissoes[role].marcar && !realizado ? `<button class="compareceu" onclick="marcar('${a.id}','compareceu')">☑ &nbsp; Compareceu</button><button class="faltou" onclick="marcar('${a.id}','faltou')">☒ &nbsp; Faltou</button>` : ""}
