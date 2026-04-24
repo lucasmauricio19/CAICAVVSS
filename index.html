@@ -122,13 +122,40 @@ option.livre{color:#166534;background:#dcfce7}
 .relatorio-card .rel-responsavel{display:block;font-size:13px;color:#64748b;margin-top:6px;font-weight:700}
 @media(max-width:700px){.v7-extra-acoes{grid-template-columns:1fr}}
 
+
+/* ===== V8: menu lateral, busca e relatório mensal ===== */
+.menu-lateral-fundo{position:fixed;inset:0;background:rgba(15,23,42,.42);display:none;z-index:9998}.menu-lateral-fundo.show{display:block}.menu-lateral{position:fixed;top:0;left:0;width:min(390px,92vw);height:100vh;background:#fff;z-index:9999;transform:translateX(-105%);transition:.22s ease;box-shadow:18px 0 40px rgba(15,23,42,.18);padding:22px;box-sizing:border-box;overflow:auto}.menu-lateral.show{transform:translateX(0)}.menu-lateral-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.menu-lateral-topo h3{margin:0;color:#081946;font-size:22px}.menu-lateral-fechar{width:44px!important;height:44px!important;border-radius:12px!important;background:#e2e8f0!important;color:#0f172a!important;font-size:22px!important;padding:0!important;margin:0!important}.menu-bloco{border:1px solid #e8edf7;border-radius:14px;padding:16px;margin-top:14px;background:#f8fafc}.menu-bloco h4{margin:0 0 10px;color:#081946;font-size:17px}.menu-bloco p{margin:6px 0 12px;color:#64748b;font-size:13px;line-height:1.4}.menu-bloco input,.menu-bloco select{height:46px;border:1px solid #d7dde8;border-radius:8px;background:#fff;color:#081946;font-size:15px;padding:0 12px!important;margin-top:8px!important}.menu-bloco button{height:44px;border-radius:8px!important;font-weight:800;margin-top:10px!important}.btn-relatorio{background:#2563eb!important}.btn-secundario{background:#0f766e!important}.resultado-pesquisa-menu{margin-top:12px;max-height:260px;overflow:auto}.resultado-pesquisa-menu .item{background:#fff;border:1px solid #e8edf7;border-radius:10px;padding:10px;margin-top:8px;color:#081946}.resultado-pesquisa-menu .muted{color:#64748b;font-size:13px}.badge-menu{display:inline-block;border-radius:999px;background:#eaf1ff;color:#2563eb;font-size:12px;font-weight:900;padding:4px 8px;margin-top:6px}.alerta-relatorio{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;margin-top:14px;font-size:14px;line-height:1.35}.relatorio-permissao{font-size:12px;color:#64748b;margin-top:8px}
+
 </style>
 </head>
 
 <body>
 
-<header class="topo-login"><button type="button" class="icone-menu-topo" aria-label="Menu">☰</button><div class="marca-caicavv"><span class="marca-icone" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2.4L20 5.6V11.2C20 16.2 16.6 20.5 12 21.6C7.4 20.5 4 16.2 4 11.2V5.6L12 2.4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9.5 11V9.8C9.5 8.4 10.6 7.3 12 7.3C13.4 7.3 14.5 8.4 14.5 9.8V11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="8.2" y="10.6" width="7.6" height="6" rx="1.2" stroke="currentColor" stroke-width="2"/></svg></span><strong>CAICAVV</strong></div><button type="button" class="icone-perfil-topo" aria-label="Perfil">◎</button></header>
+<header class="topo-login"><button type="button" class="icone-menu-topo" aria-label="Menu" onclick="toggleMenuLateral()">☰</button><div class="marca-caicavv"><span class="marca-icone" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2.4L20 5.6V11.2C20 16.2 16.6 20.5 12 21.6C7.4 20.5 4 16.2 4 11.2V5.6L12 2.4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9.5 11V9.8C9.5 8.4 10.6 7.3 12 7.3C13.4 7.3 14.5 8.4 14.5 9.8V11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="8.2" y="10.6" width="7.6" height="6" rx="1.2" stroke="currentColor" stroke-width="2"/></svg></span><strong>CAICAVV</strong></div><button type="button" class="icone-perfil-topo" aria-label="Perfil">◎</button></header>
 <div id="toast" class="toast"></div>
+
+<div id="menuLateralFundo" class="menu-lateral-fundo" onclick="fecharMenuLateral()"></div>
+<aside id="menuLateral" class="menu-lateral" aria-label="Menu lateral">
+  <div class="menu-lateral-topo">
+    <h3>Menu CAICAVV</h3>
+    <button type="button" class="menu-lateral-fechar" onclick="fecharMenuLateral()">×</button>
+  </div>
+  <div class="menu-bloco">
+    <h4>Busca de paciente</h4>
+    <p>Pesquise por número da pasta ou nome. Esse campo fica separado para não carregar o site principal.</p>
+    <input id="buscaPacienteMenu" type="search" placeholder="Ex: 25 ou Maria" oninput="pesquisarPacienteMenu()">
+    <div id="resultadoPacienteMenu" class="resultado-pesquisa-menu"></div>
+  </div>
+  <div class="menu-bloco">
+    <h4>Relatório mensal</h4>
+    <p>Gera relatório de todos os técnicos com pasta, dia e status. Sem nome e sem horário.</p>
+    <input id="mesRelatorio" type="month">
+    <button type="button" class="btn-relatorio" onclick="abrirRelatorioMensal()">Abrir relatório mensal</button>
+    <div class="relatorio-permissao">Responsável pelo relatório: Recepção.</div>
+  </div>
+  <div id="avisoDia30" class="alerta-relatorio hidden"></div>
+</aside>
+
 
 <div id="modalExcluir" class="modal-fundo">
   <div class="modal-box">
@@ -211,7 +238,7 @@ option.livre{color:#166534;background:#dcfce7}
     <button class="btn-login" onclick="login()">↪ Entrar</button>
     <p class="login-rodape">🛡️ Sistema restrito para técnicos autorizados</p>
   </div>
-  <div class="login-versao">CAICAVV&nbsp; • &nbsp;Sistema Interno<br><span>Versão 1.7.0</span></div>
+  <div class="login-versao">CAICAVV&nbsp; • &nbsp;Sistema Interno<br><span>Versão 1.8.0</span></div>
 </div>
 
 <div class="container app-container" id="app" style="display:none">
@@ -1056,6 +1083,91 @@ function abrirReagendamento(id){
   if(document.getElementById("editStatus")) editStatus.value = "agendado";
   setTimeout(()=>{ if(document.getElementById("editData")) editData.focus(); }, 50);
   mostrarToast("Altere a data e o horário para reagendar.", "sucesso");
+}
+
+
+function toggleMenuLateral(){
+  const fundo = document.getElementById("menuLateralFundo");
+  const menu = document.getElementById("menuLateral");
+  if(!fundo || !menu) return;
+  fundo.classList.toggle("show");
+  menu.classList.toggle("show");
+  prepararMesRelatorio();
+  verificarAvisoDia30();
+}
+function fecharMenuLateral(){
+  const fundo = document.getElementById("menuLateralFundo");
+  const menu = document.getElementById("menuLateral");
+  if(fundo) fundo.classList.remove("show");
+  if(menu) menu.classList.remove("show");
+}
+function prepararMesRelatorio(){
+  const campo = document.getElementById("mesRelatorio");
+  if(!campo || campo.value) return;
+  const hoje = new Date();
+  campo.value = `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,"0")}`;
+}
+function pesquisarPacienteMenu(){
+  const campo = document.getElementById("buscaPacienteMenu");
+  const saida = document.getElementById("resultadoPacienteMenu");
+  if(!campo || !saida) return;
+  const termo = normalizarBusca(campo.value.trim());
+  if(!termo){ saida.innerHTML = '<div class="muted">Digite uma pasta ou nome para pesquisar.</div>'; return; }
+  const resultadosCadastros = Object.entries(cadastros).filter(([pasta, nomes])=> normalizarBusca(pasta).includes(termo) || nomes.some(n=>normalizarBusca(n).includes(termo))).slice(0,12);
+  const resultadosAtendimentos = atendimentos.filter(a=> normalizarBusca(`${a.pasta || ""} ${a.nome || ""} ${a.tecnico || ""}`).includes(termo)).sort((a,b)=>getDataHoraAtendimento(b).localeCompare(getDataHoraAtendimento(a))).slice(0,8);
+  let html = "";
+  if(resultadosCadastros.length){ html += '<div class="muted"><b>Cadastro de pastas</b></div>' + resultadosCadastros.map(([pasta, nomes])=>`<div class="item"><b>Pasta ${escapeHTML(pasta)}</b><br>${escapeHTML(nomes.join(" / "))}</div>`).join(""); }
+  if(resultadosAtendimentos.length){ html += '<div class="muted" style="margin-top:12px"><b>Atendimentos encontrados</b></div>' + resultadosAtendimentos.map(a=>`<div class="item"><b>Pasta ${escapeHTML(a.pasta || "")}</b> <span class="badge-menu">${escapeHTML(statusBonito(a.status))}</span><br><span class="muted">${escapeHTML(formatarDataBR(a.data))} • ${escapeHTML(a.tecnico || "")}</span></div>`).join(""); }
+  saida.innerHTML = html || '<div class="muted">Nenhum resultado encontrado.</div>';
+}
+function getPeriodoMes(yyyyMm){
+  const [ano, mes] = (yyyyMm || "").split("-").map(Number);
+  if(!ano || !mes) return null;
+  const inicio = `${ano}-${String(mes).padStart(2,"0")}-01`;
+  const ultimoDia = new Date(ano, mes, 0).getDate();
+  const fim = `${ano}-${String(mes).padStart(2,"0")}-${String(ultimoDia).padStart(2,"0")}`;
+  return {ano, mes, inicio, fim, label: `${String(mes).padStart(2,"0")}/${ano}`};
+}
+function dadosRelatorioMensal(yyyyMm){
+  const periodo = getPeriodoMes(yyyyMm);
+  if(!periodo) return {periodo:null, itens:[], resumo:{total:0, presencas:0, faltas:0, pendentes:0}, porTecnico:{}};
+  const itens = atendimentos.filter(a=>a.data >= periodo.inicio && a.data <= periodo.fim).sort((a,b)=>`${a.tecnico || ""}|${a.data || ""}|${a.pasta || ""}`.localeCompare(`${b.tecnico || ""}|${b.data || ""}|${b.pasta || ""}`));
+  const resumo = {total: itens.length, presencas:0, faltas:0, pendentes:0};
+  const porTecnico = {};
+  itens.forEach(a=>{ const tecnico = a.tecnico || "Sem técnico"; if(!porTecnico[tecnico]) porTecnico[tecnico] = {total:0, presencas:0, faltas:0, pendentes:0, itens:[]}; porTecnico[tecnico].total++; porTecnico[tecnico].itens.push(a); if(a.status === "compareceu"){ resumo.presencas++; porTecnico[tecnico].presencas++; } else if(a.status === "faltou"){ resumo.faltas++; porTecnico[tecnico].faltas++; } else { resumo.pendentes++; porTecnico[tecnico].pendentes++; } });
+  return {periodo, itens, resumo, porTecnico};
+}
+function statusRelatorio(status){ if(status === "compareceu") return "Veio"; if(status === "faltou") return "Não veio"; return "Pendente"; }
+function csvRelatorioMensal(yyyyMm){
+  const {itens} = dadosRelatorioMensal(yyyyMm);
+  const linhas = [["Técnico","Pasta","Dia","Status"]];
+  itens.forEach(a=>linhas.push([a.tecnico || "", a.pasta || "", formatarDataBR(a.data), statusRelatorio(a.status)]));
+  return linhas.map(l=>l.map(c=>`"${String(c).replace(/"/g,'""')}"`).join(";")).join("\n");
+}
+function baixarCSVRelatorio(yyyyMm){
+  const csv = csvRelatorioMensal(yyyyMm);
+  const blob = new Blob(["\ufeff" + csv], {type:"text/csv;charset=utf-8"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url; a.download = `relatorio-caicavv-${yyyyMm || "mensal"}.csv`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url), 1000);
+}
+function abrirRelatorioMensal(){
+  prepararMesRelatorio();
+  const mes = document.getElementById("mesRelatorio")?.value;
+  const dados = dadosRelatorioMensal(mes);
+  if(!dados.periodo){ mostrarErro("Selecione um mês válido para gerar o relatório."); return; }
+  const resumoTecnicos = Object.entries(dados.porTecnico).map(([tecnico,r])=>`<tr><td>${escapeHTML(tecnico)}</td><td>${r.total}</td><td>${r.presencas}</td><td>${r.faltas}</td><td>${r.pendentes}</td></tr>`).join("");
+  const linhas = Object.entries(dados.porTecnico).map(([tecnico,r])=>`<tr class="tecnico"><td colspan="4">${escapeHTML(tecnico)} — ${r.total} agendamento(s), ${r.presencas} presença(s), ${r.faltas} falta(s)</td></tr>${r.itens.map(a=>`<tr><td>${escapeHTML(a.pasta || "")}</td><td>${escapeHTML(formatarDataBR(a.data))}</td><td>${escapeHTML(statusRelatorio(a.status))}</td><td>${escapeHTML(tecnico)}</td></tr>`).join("")}`).join("");
+  const html = `<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Relatório CAICAVV ${escapeHTML(dados.periodo.label)}</title><style>body{font-family:Arial,sans-serif;background:#f3f6fb;color:#081946;margin:0;padding:26px}.wrap{max-width:1100px;margin:auto;background:#fff;border:1px solid #e8edf7;border-radius:16px;padding:26px;box-shadow:0 10px 32px rgba(15,23,42,.08)}h1{margin:0 0 4px;font-size:28px}.sub{color:#64748b;margin-bottom:22px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.card{background:#f8fafc;border:1px solid #e8edf7;border-radius:12px;padding:16px}.num{font-size:28px;font-weight:900;color:#2563eb}.lbl{color:#64748b;font-size:13px;font-weight:800}.acoes{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.acoes button{border:0;border-radius:10px;background:#2563eb;color:#fff;font-weight:800;padding:12px 16px;cursor:pointer}.acoes button.sec{background:#0f766e}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #e2e8f0;padding:10px;text-align:left;font-size:14px}th{background:#0f172a;color:#fff}.tecnico td{background:#eaf1ff;color:#0f172a;font-weight:900}.aviso{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;margin-top:14px}@media print{body{background:#fff;padding:0}.wrap{box-shadow:none;border:0}.acoes{display:none}.cards{grid-template-columns:repeat(4,1fr)}}@media(max-width:800px){.cards{grid-template-columns:1fr 1fr}}</style></head><body><div class="wrap"><h1>Relatório mensal CAICAVV</h1><div class="sub">Período: ${escapeHTML(dados.periodo.label)} • Responsável pelo relatório: Recepção</div><div class="cards"><div class="card"><div class="num">${dados.resumo.total}</div><div class="lbl">Agendamentos</div></div><div class="card"><div class="num">${dados.resumo.presencas}</div><div class="lbl">Presenças</div></div><div class="card"><div class="num">${dados.resumo.faltas}</div><div class="lbl">Faltas</div></div><div class="card"><div class="num">${dados.resumo.pendentes}</div><div class="lbl">Pendentes</div></div></div><div class="acoes"><button onclick="window.print()">Imprimir / salvar PDF</button><button class="sec" onclick="opener && opener.baixarCSVRelatorio('${escapeHTML(mes)}')">Exportar CSV</button></div><h2>Resumo por técnico</h2><table><thead><tr><th>Técnico</th><th>Agendamentos</th><th>Presenças</th><th>Faltas</th><th>Pendentes</th></tr></thead><tbody>${resumoTecnicos || '<tr><td colspan="5">Sem dados neste mês.</td></tr>'}</tbody></table><h2>Lista do mês</h2><table><thead><tr><th>Pasta</th><th>Dia</th><th>Veio ou não veio</th><th>Técnico</th></tr></thead><tbody>${linhas || '<tr><td colspan="4">Sem dados neste mês.</td></tr>'}</tbody></table><div class="aviso">Este relatório não mostra nome nem horário, apenas pasta, dia e status do atendimento.</div></div></body></html>`;
+  const nova = window.open("", "_blank");
+  if(!nova){ mostrarErro("O navegador bloqueou a abertura do relatório. Permita pop-ups para este site."); return; }
+  nova.document.open(); nova.document.write(html); nova.document.close();
+}
+function verificarAvisoDia30(){
+  const aviso = document.getElementById("avisoDia30");
+  if(!aviso) return;
+  const hoje = new Date();
+  if(hoje.getDate() >= 30){ aviso.classList.remove("hidden"); aviso.innerHTML = "Hoje já é dia 30 ou fim de mês. Gere o relatório mensal antes de fechar o mês."; } else { aviso.classList.add("hidden"); }
 }
 
 function render(){
