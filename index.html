@@ -40,6 +40,8 @@ button:disabled{background:#94a3b8;cursor:not-allowed}
 .compareceu{background:green}
 .faltou{background:red}
 .excluir{background:#b91c1c}
+.editar{background:#0f766e}
+.salvar{background:#166534}
 .hidden{display:none!important}
 .info{background:#e2e8f0;padding:10px;border-radius:8px;margin-top:10px}
 .aviso{font-size:13px;color:#334155;margin-top:6px}
@@ -59,14 +61,40 @@ button:disabled{background:#94a3b8;cursor:not-allowed}
 .linha-pasta{display:flex;gap:8px;align-items:flex-end}
 .linha-pasta input{flex:1}
 .linha-pasta button{width:220px;min-width:220px;margin-top:0}
-input:disabled{background:#e2e8f0;color:#334155;opacity:1}
+input:disabled,select:disabled{background:#e2e8f0;color:#334155;opacity:1}
 @media (max-width:700px){.linha-pasta{flex-direction:column}.linha-pasta button{width:100%;min-width:0;margin-top:8px}}
+
+/* Entrada estilo profissional */
+body::before{content:"";position:fixed;inset:0;pointer-events:none;background:radial-gradient(circle at 7% 0%,rgba(226,232,240,.85) 0 120px,transparent 122px),radial-gradient(circle at 93% 100%,rgba(226,232,240,.85) 0 120px,transparent 122px);z-index:-2}
+body::after{content:"";position:fixed;inset:0;pointer-events:none;background-image:radial-gradient(#cbd5e1 1.4px,transparent 1.4px),radial-gradient(#cbd5e1 1.4px,transparent 1.4px);background-size:18px 18px;background-position:70px 455px,calc(100% - 150px) 455px;background-repeat:no-repeat;z-index:-1}
+.topo-login{height:92px;background:#08204a;color:#fff;padding:0;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 0 rgba(15,23,42,.12)}
+.marca-caicavv{display:flex;align-items:center;gap:18px;font-size:34px;letter-spacing:.5px;font-weight:900}
+.marca-icone{width:42px;height:42px;display:inline-flex;align-items:center;justify-content:center;color:#fff}
+.marca-icone svg{width:42px;height:42px}
+.login-container{max-width:none;min-height:calc(100vh - 92px);padding:64px 20px 28px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start}
+.login-card{width:100%;max-width:620px;background:#fff;border:1px solid #e2e8f0;border-radius:16px;padding:54px 44px 38px;box-shadow:0 24px 50px rgba(15,23,42,.12);box-sizing:border-box;text-align:center}
+.login-avatar{width:82px;height:82px;border-radius:50%;margin:0 auto 26px;background:#e8f0ff;color:#2563eb;display:flex;align-items:center;justify-content:center;font-size:36px}
+.login-card h3{margin:0;color:#0f1f44;font-size:28px;line-height:1.15;font-weight:800}
+.login-subtitulo{margin:14px 0 0;color:#64708a;font-size:16px}
+.login-linha{height:1px;background:#e2e8f0;margin:30px 0 30px}
+.campo-login{height:58px;border:1px solid #cfd8e6;border-radius:9px;margin-top:18px;display:flex;align-items:center;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.04);transition:.18s}
+.campo-login:focus-within{border-color:#2563eb;box-shadow:0 0 0 3px rgba(37,99,235,.12)}
+.campo-login span{width:54px;display:flex;align-items:center;justify-content:center;color:#64748b;flex:0 0 54px;font-size:22px}
+.campo-login input{height:56px;border:0!important;margin:0!important;padding:0 14px 0 0!important;border-radius:9px;background:transparent;font-size:16px;color:#0f172a;box-shadow:none!important}
+.campo-login input:focus{outline:none}
+.btn-olho{width:52px!important;min-width:52px;background:transparent!important;color:#64748b!important;border:0!important;margin:0!important;padding:0!important;box-shadow:none!important;display:flex;align-items:center;justify-content:center}
+.btn-login{height:56px;margin-top:30px!important;border-radius:9px!important;background:linear-gradient(90deg,#2f73f6,#1d4ed8)!important;font-size:16px;font-weight:800;display:flex;align-items:center;justify-content:center;gap:12px;box-shadow:0 10px 22px rgba(37,99,235,.25)}
+.login-rodape{margin:30px 0 0;color:#5f6f8d;font-size:15px}
+.login-versao{margin-top:52px;text-align:center;color:#64708a;font-size:16px;line-height:2}
+.login-versao span{font-size:15px}
+@media(max-width:700px){.topo-login{height:78px}.marca-caicavv{font-size:28px}.marca-icone,.marca-icone svg{width:34px;height:34px}.login-container{min-height:calc(100vh - 78px);padding:34px 14px 22px}.login-card{padding:36px 22px 30px}.login-card h3{font-size:24px}.login-avatar{width:70px;height:70px}.login-versao{margin-top:30px}}
+
 </style>
 </head>
 
 <body>
 
-<header>CAICAVV</header>
+<header class="topo-login"><div class="marca-caicavv"><span class="marca-icone" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2.4L20 5.6V11.2C20 16.2 16.6 20.5 12 21.6C7.4 20.5 4 16.2 4 11.2V5.6L12 2.4Z" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9.5 11V9.8C9.5 8.4 10.6 7.3 12 7.3C13.4 7.3 14.5 8.4 14.5 9.8V11" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><rect x="8.2" y="10.6" width="7.6" height="6" rx="1.2" stroke="currentColor" stroke-width="2"/></svg></span><strong>CAICAVV</strong></div></header>
 <div id="toast" class="toast"></div>
 
 <div id="modalExcluir" class="modal-fundo">
@@ -80,11 +108,55 @@ input:disabled{background:#e2e8f0;color:#334155;opacity:1}
   </div>
 </div>
 
-<div class="container" id="loginDiv">
-  <h3>Login</h3>
-  <input id="user" placeholder="Usuário" autocomplete="username">
-  <input id="pass" type="password" placeholder="Senha" autocomplete="current-password">
-  <button onclick="login()">Entrar</button>
+<div id="modalEditar" class="modal-fundo">
+  <div class="modal-box">
+    <h3>Editar agendamento</h3>
+    <p>Altere somente o que estiver errado e depois salve.</p>
+
+    <input id="editPasta" placeholder="Nº pasta" maxlength="30" oninput="editPasta.value=normalizarPasta(editPasta.value)">
+    <button type="button" class="editar" onclick="buscarNomeEdicao()">Buscar nome pela pasta</button>
+
+    <input id="editNome" placeholder="Nome" maxlength="220">
+    <select id="editTecnico"></select>
+    <input type="date" id="editData">
+    <select id="editHora"></select>
+    <input id="editDescricao" placeholder="Descrição" maxlength="250">
+
+    <select id="editStatus">
+      <option value="agendado">Pendente / agendado</option>
+      <option value="compareceu">Compareceu</option>
+      <option value="faltou">Faltou</option>
+    </select>
+
+    <div class="modal-acoes" style="margin-top:12px">
+      <button type="button" class="modal-cancelar" onclick="fecharModalEdicao()">Cancelar</button>
+      <button type="button" class="salvar" onclick="salvarEdicao()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div class="container login-container" id="loginDiv">
+  <div class="login-card">
+    <div class="login-avatar" aria-hidden="true">👥</div>
+    <h3>Acesso ao Sistema</h3>
+    <p class="login-subtitulo">Informe suas credenciais para continuar</p>
+    <div class="login-linha"></div>
+
+    <label class="campo-login">
+      <span aria-hidden="true">♙</span>
+      <input id="user" placeholder="Usuário" autocomplete="username">
+    </label>
+
+    <label class="campo-login">
+      <span aria-hidden="true">▣</span>
+      <input id="pass" type="password" placeholder="Senha" autocomplete="current-password">
+      <button type="button" class="btn-olho" onclick="alternarSenha()" aria-label="Mostrar ou esconder senha">◉</button>
+    </label>
+
+    <button class="btn-login" onclick="login()">↪ Entrar</button>
+    <p class="login-rodape">🛡️ Sistema restrito para técnicos autorizados</p>
+  </div>
+  <div class="login-versao">CAICAVV&nbsp; • &nbsp;Sistema Interno<br><span>Versão 1.0.0</span></div>
 </div>
 
 <div class="container" id="app" style="display:none">
@@ -184,6 +256,7 @@ let filtroAtual = "";
 let pastaConfirmada = false;
 let toastTimeout = null;
 let agendamentoPendenteExclusao = null;
+let agendamentoEmEdicao = null;
 
 
 function mostrarToast(msg, tipo="erro"){
@@ -205,12 +278,33 @@ function gerarHorarios(){
     horariosAtendimento.map(h => `<option value="${h}">${h}</option>`).join("");
 }
 
-function temConflitoAgendamento(tecnico, dataValor, horaValor){
+function temConflitoAgendamento(tecnico, dataValor, horaValor, ignorarId=null){
   return atendimentos.some(a =>
+    a.id !== ignorarId &&
     a.tecnico === tecnico &&
     a.data === dataValor &&
     a.hora === horaValor
   );
+}
+
+function getTecnicosDisponiveis(){
+  const nomes = Object.values(usuarios)
+    .filter(u => u.role === "tecnico")
+    .map(u => u.nome);
+  return [...new Set(nomes)];
+}
+
+function gerarHorariosEdicao(){
+  if(!editHora) return;
+  editHora.innerHTML = '<option value="">Selecione o horário</option>' +
+    horariosAtendimento.map(h => `<option value="${h}">${h}</option>`).join("");
+}
+
+function gerarTecnicosEdicao(){
+  if(!editTecnico) return;
+  editTecnico.innerHTML = getTecnicosDisponiveis()
+    .map(t => `<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`)
+    .join("");
 }
 
 function escapeHTML(str){
@@ -232,6 +326,8 @@ function lerSessao(){ return sessionStorage.getItem("caicavv_user"); }
 function limparSessao(){ sessionStorage.removeItem("caicavv_user"); }
 
 gerarHorarios();
+gerarHorariosEdicao();
+gerarTecnicosEdicao();
 
 function normalizarPasta(valor){
   return String(valor || "").replace(/\D/g, "");
@@ -281,6 +377,12 @@ function confirmarPasta(){
 
   nome.value = Array.isArray(encontrado) ? encontrado[0] : encontrado;
   avisoCadastro.textContent = "Cadastro encontrado com sucesso.";
+}
+
+function alternarSenha(){
+  const campo = document.getElementById("pass");
+  if(!campo) return;
+  campo.type = campo.type === "password" ? "text" : "password";
 }
 
 function ativarEnterLogin(){
@@ -477,6 +579,144 @@ async function marcar(id,status){
   render();
 }
 
+function podeEditarAtendimento(item){
+  if(!tecnicoLogado || !item) return false;
+  const role = tecnicoLogado.role;
+
+  if(role === "adm" || role === "coordenacao") return true;
+  if(role === "tecnico") return item.tecnico === tecnicoLogado.nome;
+  if(role === "recepcao") return permissoes[role].marcar;
+
+  return false;
+}
+
+function abrirModalEdicao(id){
+  const item = atendimentos.find(a => a.id === id);
+
+  if(!item){
+    mostrarErro("Atendimento não encontrado.");
+    return;
+  }
+
+  if(!podeEditarAtendimento(item)){
+    mostrarErro("Sem permissão para editar.");
+    return;
+  }
+
+  agendamentoEmEdicao = id;
+  gerarHorariosEdicao();
+  gerarTecnicosEdicao();
+
+  editPasta.value = item.pasta || "";
+  editNome.value = item.nome || "";
+  editTecnico.value = item.tecnico || "";
+  editData.value = item.data || "";
+  editHora.value = item.hora || "";
+  editDescricao.value = item.descricao || "";
+  editStatus.value = item.status || "agendado";
+
+  const podeEditarDados = tecnicoLogado.role === "tecnico" || tecnicoLogado.role === "adm" || tecnicoLogado.role === "coordenacao";
+  editPasta.disabled = !podeEditarDados;
+  editNome.disabled = !podeEditarDados;
+  editTecnico.disabled = !podeEditarDados;
+  editData.disabled = !podeEditarDados;
+  editHora.disabled = !podeEditarDados;
+  editDescricao.disabled = !podeEditarDados;
+
+  modalEditar.classList.add("show");
+}
+
+function fecharModalEdicao(){
+  agendamentoEmEdicao = null;
+  modalEditar.classList.remove("show");
+}
+
+function buscarNomeEdicao(){
+  const pastaDigitada = normalizarPasta(editPasta.value);
+  editPasta.value = pastaDigitada;
+
+  if(!pastaDigitada){
+    mostrarErro("Digite o número da pasta.");
+    return;
+  }
+
+  const encontrado = cadastros[pastaDigitada];
+
+  if(!encontrado){
+    mostrarErro("Pasta não encontrada no cadastro importado.");
+    return;
+  }
+
+  editNome.value = Array.isArray(encontrado) ? encontrado.join(" | ") : encontrado;
+  mostrarToast("Nome atualizado pela pasta.", "sucesso");
+}
+
+async function salvarEdicao(){
+  if(!agendamentoEmEdicao) return;
+
+  const item = atendimentos.find(a => a.id === agendamentoEmEdicao);
+
+  if(!item){
+    mostrarErro("Atendimento não encontrado.");
+    fecharModalEdicao();
+    return;
+  }
+
+  if(!podeEditarAtendimento(item)){
+    mostrarErro("Sem permissão para editar.");
+    return;
+  }
+
+  const podeEditarDados = tecnicoLogado.role === "tecnico" || tecnicoLogado.role === "adm" || tecnicoLogado.role === "coordenacao";
+
+  let novoStatus = String(editStatus.value || "agendado");
+  if(!["agendado", "compareceu", "faltou"].includes(novoStatus)){
+    mostrarErro("Status inválido.");
+    return;
+  }
+
+  let novaPasta = item.pasta;
+  let novoNome = item.nome;
+  let novoTecnico = item.tecnico;
+  let novaData = item.data;
+  let novaHora = item.hora;
+  let novaDescricao = item.descricao || "";
+
+  if(podeEditarDados){
+    novaPasta = normalizarPasta(editPasta.value);
+    novoNome = textoSeguro(editNome.value, 220);
+    novoTecnico = String(editTecnico.value || "");
+    novaData = String(editData.value || "");
+    novaHora = String(editHora.value || "");
+    novaDescricao = textoSeguro(editDescricao.value, 250);
+
+    if(!novaPasta || !novoNome || !novoTecnico || !novaData || !novaHora){
+      mostrarErro("Preencha pasta, nome, técnico, data e horário.");
+      return;
+    }
+
+    if(temConflitoAgendamento(novoTecnico, novaData, novaHora, item.id)){
+      mostrarToast("Esse agendamento já foi feito", "erro");
+      return;
+    }
+  }
+
+  item.pasta = novaPasta;
+  item.nome = novoNome;
+  item.tecnico = novoTecnico;
+  item.data = novaData;
+  item.hora = novaHora;
+  item.descricao = novaDescricao;
+  item.status = novoStatus;
+  item.atualizadoPor = tecnicoLogado.nome;
+  item.atualizadoEm = new Date().toISOString();
+
+  await salvarAtendimentosFirebase();
+  fecharModalEdicao();
+  render();
+  mostrarToast("Agendamento editado com sucesso.", "sucesso");
+}
+
 function excluir(id){
   if(!tecnicoLogado) return;
 
@@ -586,6 +826,10 @@ function render(){
         <p><b>Descrição:</b> ${escapeHTML(a.descricao || "")}</p>
         <p><b>Status:</b> ${escapeHTML(statusLabel)}</p>
         ${realizado ? `<span class="selo-realizado">JÁ REALIZADO</span>` : ""}
+
+        ${podeEditarAtendimento(a) ? `
+          <button class="editar" onclick="abrirModalEdicao('${a.id}')">✏ Editar</button>
+        ` : ""}
 
         ${permissoes[role].marcar && !realizado ? `
           <button class="compareceu" onclick="marcar('${a.id}','compareceu')">✔ Compareceu</button>
