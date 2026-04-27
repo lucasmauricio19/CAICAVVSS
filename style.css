@@ -98,3 +98,46 @@ aside i {
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
   border-left: 4px solid #1e293b;
 }
+/* ===== AJUSTE DE ESCALA (V11) ===== */
+
+.app-container{
+  max-width: 1100px !important;
+  padding: 16px 24px !important;
+}
+
+.card.atendimento-card{
+  padding: 14px 18px !important;
+  margin-top: 14px !important;
+}
+
+.info-valor{
+  font-size: 16px !important;
+}
+
+.info-valor.destaque{
+  font-size: 17px !important;
+}
+
+.info-valor.pasta{
+  font-size: 18px !important;
+}
+
+.atendimento-acoes button,
+.acoes-centro button{
+  height: 40px !important;
+  font-size: 14px !important;
+}
+
+.menu button{
+  height: 42px !important;
+  font-size: 15px !important;
+}
+
+.relatorio-card{
+  padding: 14px 18px !important;
+}
+
+.user-panel{
+  padding: 16px 20px !important;
+  font-size: 17px !important;
+}
