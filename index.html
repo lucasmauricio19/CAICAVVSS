@@ -126,6 +126,94 @@ option.livre{color:#166534;background:#dcfce7}
 /* ===== V8: menu lateral e relatórios ===== */
 .menu-lateral-fundo{position:fixed;inset:0;background:rgba(15,23,42,.42);display:none;z-index:9998}.menu-lateral-fundo.show{display:block}.menu-lateral{position:fixed;top:0;left:0;width:min(390px,92vw);height:100vh;background:#fff;z-index:9999;transform:translateX(-105%);transition:.22s ease;box-shadow:18px 0 40px rgba(15,23,42,.18);padding:22px;box-sizing:border-box;overflow:auto}.menu-lateral.show{transform:translateX(0)}.menu-lateral-topo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:18px}.menu-lateral-topo h3{margin:0;color:#081946;font-size:22px}.menu-lateral-fechar{width:44px!important;height:44px!important;border-radius:12px!important;background:#e2e8f0!important;color:#0f172a!important;font-size:22px!important;padding:0!important;margin:0!important}.menu-bloco{border:1px solid #e8edf7;border-radius:14px;padding:16px;margin-top:14px;background:#f8fafc}.menu-bloco h4{margin:0 0 10px;color:#081946;font-size:17px}.menu-bloco p{margin:6px 0 12px;color:#64748b;font-size:13px;line-height:1.4}.menu-bloco input,.menu-bloco select{height:46px;border:1px solid #d7dde8;border-radius:8px;background:#fff;color:#081946;font-size:15px;padding:0 12px!important;margin-top:8px!important}.menu-bloco button{height:44px;border-radius:8px!important;font-weight:800;margin-top:10px!important}.btn-relatorio{background:#2563eb!important}.btn-secundario{background:#0f766e!important}.resultado-pesquisa-menu{margin-top:12px;max-height:260px;overflow:auto}.resultado-pesquisa-menu .item{background:#fff;border:1px solid #e8edf7;border-radius:10px;padding:10px;margin-top:8px;color:#081946}.resultado-pesquisa-menu .muted{color:#64748b;font-size:13px}.badge-menu{display:inline-block;border-radius:999px;background:#eaf1ff;color:#2563eb;font-size:12px;font-weight:900;padding:4px 8px;margin-top:6px}.alerta-relatorio{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;margin-top:14px;font-size:14px;line-height:1.35}.relatorio-permissao{font-size:12px;color:#64748b;margin-top:8px}
 
+
+/* ===== V9: visual moderno + menu ⋮ nos atendimentos ===== */
+body.modo-app{background:#eef3f9!important}
+body.modo-app .app-container{max-width:1480px!important;width:calc(100% - 56px)!important;padding:22px 28px 38px!important}
+body.modo-app .app-card, body.modo-app .form-card, body.modo-app .user-panel, body.modo-app .relatorio-card{box-shadow:0 12px 34px rgba(15,23,42,.07)!important;border-color:#dde6f2!important}
+.card.atendimento-card{position:relative!important;padding:22px 24px!important;border-radius:16px!important;overflow:visible!important;transition:.16s ease;box-shadow:0 12px 32px rgba(15,23,42,.07)!important}
+.card.atendimento-card:hover{transform:translateY(-1px);box-shadow:0 18px 38px rgba(15,23,42,.10)!important}
+.atendimento-layout{display:block!important}
+.atendimento-info{display:grid!important;grid-template-columns:52px minmax(180px,1.1fr) 52px minmax(190px,1fr) 52px minmax(180px,.9fr)!important;gap:12px 14px!important;align-items:center!important;padding-right:58px!important}
+.info-bloco{border-bottom:0!important;min-height:auto!important;padding:0!important}
+.info-label{font-size:12px!important;text-transform:uppercase;letter-spacing:.04em;color:#738095!important}
+.info-valor{font-size:16px!important;line-height:1.25!important}
+.info-valor.destaque{font-size:18px!important}
+.info-valor.pasta{font-size:18px!important}
+.info-icone{width:42px!important;height:42px!important;border-radius:14px!important;margin:0!important}
+.atendimento-acoes{border-left:0!important;padding-left:0!important;margin-top:18px!important;display:flex!important;flex-direction:row!important;gap:10px!important;align-items:center!important;flex-wrap:wrap!important}
+.atendimento-acoes button{width:auto!important;min-width:132px!important;height:40px!important;padding:0 16px!important;font-size:14px!important;border-radius:999px!important}
+.atendimento-acoes .compareceu{background:#16a34a!important}
+.atendimento-acoes .faltou{background:#dc2626!important}
+.atendimento-menu-wrap{position:absolute;top:14px;right:14px;z-index:30}
+.btn-menu-atendimento{width:42px!important;min-width:42px!important;height:42px!important;border-radius:50%!important;background:#f1f5f9!important;color:#0f172a!important;border:1px solid #dbe3ee!important;margin:0!important;padding:0!important;font-size:24px!important;font-weight:900!important;line-height:1!important;display:flex!important;align-items:center!important;justify-content:center!important}
+.btn-menu-atendimento:hover{background:#e2e8f0!important}
+.menu-atendimento{position:absolute;top:48px;right:0;width:230px;background:#fff;border:1px solid #dbe3ee;border-radius:14px;box-shadow:0 20px 50px rgba(15,23,42,.18);padding:8px;display:none;z-index:99999}
+.menu-atendimento.show{display:block}
+.menu-atendimento button{width:100%!important;min-width:0!important;height:42px!important;border-radius:10px!important;background:transparent!important;color:#0f172a!important;border:0!important;margin:0!important;padding:0 12px!important;text-align:left!important;display:flex!important;align-items:center!important;justify-content:flex-start!important;gap:10px!important;font-size:14px!important;font-weight:800!important}
+.menu-atendimento button:hover{background:#f1f5f9!important}
+.menu-atendimento button.danger{color:#b91c1c!important}
+.menu-atendimento button.danger:hover{background:#fee2e2!important}
+.relatorio-export-note{font-size:13px;color:#64748b;margin-top:8px}
+@media(max-width:1100px){.atendimento-info{grid-template-columns:52px 1fr 52px 1fr!important}}
+@media(max-width:720px){body.modo-app .app-container{width:100%!important;padding:16px 12px 26px!important}.atendimento-info{grid-template-columns:44px 1fr!important;padding-right:52px!important}.atendimento-acoes button{width:100%!important}.menu-atendimento{right:-4px;width:220px}}
+
+
+
+/* ===== V10: visual profissional, cards limpos e filtros avançados ===== */
+:root{--azul-caicavv:#08204a;--azul-acao:#2563eb;--bg-sistema:#eef3fb;--borda:#dfe7f3;--texto:#071943;--muted:#64748b;--ok:#15803d;--falta:#b91c1c;--pendente:#1d4ed8;}
+body.modo-app{background:linear-gradient(180deg,#f5f8fd 0%,#eef3fb 100%)!important;}
+body.modo-app .topo-login{height:76px!important;background:linear-gradient(90deg,#061a3d,#082b63)!important;border-radius:0!important;box-shadow:0 10px 28px rgba(8,32,74,.16)!important;}
+body.modo-app .marca-caicavv{font-size:28px!important;letter-spacing:.8px!important;}
+body.modo-app .marca-caicavv::after{content:'Sistema de Agendamentos';font-size:13px;font-weight:600;opacity:.78;margin-left:14px;padding-left:14px;border-left:1px solid rgba(255,255,255,.28);letter-spacing:.2px;}
+.app-container{max-width:1440px!important;padding:24px 42px 40px!important;}
+.user-panel{border-radius:18px!important;padding:18px 26px!important;border:1px solid var(--borda)!important;box-shadow:0 12px 30px rgba(15,23,42,.06)!important;}
+.menu{border-radius:16px!important;box-shadow:0 12px 30px rgba(15,23,42,.05)!important;}
+#relatorio.relatorio-card{border-radius:18px!important;box-shadow:0 12px 30px rgba(37,99,235,.08)!important;}
+.filtros-v10{display:grid!important;grid-template-columns:minmax(260px,1.5fr) minmax(180px,.8fr) minmax(200px,.8fr) minmax(180px,.7fr) auto;gap:14px!important;align-items:end!important;padding:18px 22px!important;border-radius:18px!important;border:1px solid var(--borda)!important;background:#fff!important;box-shadow:0 12px 30px rgba(15,23,42,.05)!important;}
+.filtros-v10 .filtro-grupo label{font-size:12px!important;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)!important;font-weight:900!important;}
+.filtros-v10 input,.filtros-v10 select{height:46px!important;margin:0!important;border-radius:12px!important;border:1px solid #d7e0ee!important;background:#f8fafc!important;padding:0 12px!important;color:var(--texto)!important;font-size:14px!important;}
+.filtros-v10 .atalhos-v6{display:flex!important;gap:8px!important;}.filtros-v10 .atalhos-v6 button{height:46px!important;border-radius:12px!important;padding:0 14px!important;}
+.form-card{border-radius:18px!important;padding:18px 22px!important;border:1px solid var(--borda)!important;box-shadow:0 12px 30px rgba(15,23,42,.05)!important;}
+.card.atendimento-card.v10-card{position:relative;padding:0!important;overflow:visible!important;border-radius:18px!important;border:1px solid var(--borda)!important;border-left:0!important;box-shadow:0 12px 30px rgba(15,23,42,.06)!important;background:#fff!important;filter:none!important;opacity:1!important;}
+.card.atendimento-card.v10-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:7px;border-radius:18px 0 0 18px;background:var(--pendente);}.card.atendimento-card.v10-card.status-compareceu::before{background:var(--ok);}.card.atendimento-card.v10-card.status-faltou::before{background:var(--falta);}.card.atendimento-card.v10-card.realizado{background:#fff!important;}
+.v10-card-inner{padding:20px 22px 18px 28px;}.v10-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;padding-right:46px;}.v10-identidade{min-width:0;}.v10-nome{font-size:20px;font-weight:900;color:var(--texto);line-height:1.25;word-break:break-word;}.v10-sub{display:flex;flex-wrap:wrap;gap:8px 14px;margin-top:8px;color:var(--muted);font-size:14px;font-weight:700;}
+.v10-meta{display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:12px;margin-top:18px;}.v10-meta-item{background:#f8fafc;border:1px solid #edf2f7;border-radius:14px;padding:12px 14px;min-height:58px;}.v10-meta-label{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:900;margin-bottom:5px;}.v10-meta-value{font-size:15px;color:var(--texto);font-weight:800;}
+.status-chip{border-radius:999px!important;padding:7px 13px!important;font-size:13px!important;white-space:nowrap;}.status-chip.v10-pendente{background:#dbeafe!important;color:#1d4ed8!important;}.status-chip.ok{background:#dcfce7!important;color:#166534!important;}.status-chip.falta{background:#fee2e2!important;color:#991b1b!important;}
+.v10-actions{display:flex;gap:10px;justify-content:flex-end;align-items:center;margin-top:18px;border-top:1px solid #eef2f7;padding-top:14px;}.v10-actions button{width:auto!important;min-width:128px;height:42px!important;margin:0!important;border-radius:999px!important;padding:0 18px!important;font-size:14px!important;font-weight:900!important;}.v10-actions .compareceu{background:#16a34a!important;}.v10-actions .faltou{background:#dc2626!important;}
+.atendimento-menu-wrap{position:absolute!important;top:14px!important;right:14px!important;z-index:10!important;}.btn-menu-atendimento{width:38px!important;height:38px!important;border-radius:12px!important;background:#f1f5f9!important;color:#334155!important;border:1px solid #e2e8f0!important;font-size:24px!important;line-height:1!important;padding:0!important;margin:0!important;}.menu-atendimento{right:0!important;top:44px!important;border-radius:14px!important;border:1px solid #e2e8f0!important;box-shadow:0 18px 45px rgba(15,23,42,.18)!important;overflow:hidden!important;min-width:230px!important;}.menu-atendimento button{font-size:14px!important;padding:12px 14px!important;}
+.menu-lateral{background:#f8fafc!important;border-right:1px solid #dfe7f3!important;}.menu-lateral-topo{background:linear-gradient(90deg,#061a3d,#082b63);color:#fff;margin:-22px -22px 18px!important;padding:18px 22px!important;}.menu-lateral-topo h3{color:#fff!important;}.menu-bloco{background:#fff!important;border-radius:16px!important;box-shadow:0 8px 18px rgba(15,23,42,.04)!important;}
+@media(max-width:1050px){.filtros-v10{grid-template-columns:1fr 1fr}.filtros-v10 .atalhos-v6{grid-column:1/-1}.v10-meta{grid-template-columns:1fr 1fr}.app-container{padding:18px 16px 34px!important}}@media(max-width:650px){body.modo-app .marca-caicavv::after{display:none}.filtros-v10{grid-template-columns:1fr}.v10-meta{grid-template-columns:1fr}.v10-actions{justify-content:stretch}.v10-actions button{flex:1;min-width:0!important}.v10-card-top{padding-right:40px}.v10-nome{font-size:18px}}
+
+
+/* ===== Ajuste solicitado: busca limpa + botões de presença centralizados ===== */
+.filtros-v10.filtros-limpos{
+  grid-template-columns:minmax(320px,1fr) auto!important;
+  align-items:end!important;
+}
+.filtros-v10.filtros-limpos .busca-v6 input{
+  width:100%!important;
+}
+.filtros-v10.filtros-limpos .atalhos-v6{
+  justify-content:flex-end!important;
+  align-items:end!important;
+}
+.v10-actions{
+  justify-content:center!important;
+  border-top:1px solid #eef2f7!important;
+  padding-top:16px!important;
+}
+.v10-actions button{
+  min-width:190px!important;
+  height:44px!important;
+}
+@media(max-width:760px){
+  .filtros-v10.filtros-limpos{grid-template-columns:1fr!important;}
+  .filtros-v10.filtros-limpos .atalhos-v6{display:grid!important;grid-template-columns:repeat(3,1fr)!important;}
+  .v10-actions{display:grid!important;grid-template-columns:1fr 1fr!important;}
+  .v10-actions button{min-width:0!important;width:100%!important;}
+}
+
 </style>
 </head>
 
@@ -257,7 +345,7 @@ option.livre{color:#166534;background:#dcfce7}
     <button class="btn-login" onclick="login()">↪ Entrar</button>
     <p class="login-rodape">🛡️ Sistema restrito para técnicos autorizados</p>
   </div>
-  <div class="login-versao">CAICAVV&nbsp; • &nbsp;Sistema Interno<br><span>Versão 1.8.0</span></div>
+  <div class="login-versao">CAICAVV&nbsp; • &nbsp;Sistema Interno<br><span>Versão 1.10.0</span></div>
 </div>
 
 <div class="container app-container" id="app" style="display:none">
@@ -265,14 +353,10 @@ option.livre{color:#166534;background:#dcfce7}
   <div class="menu" id="menu"></div>
   <div id="relatorio" class="info"></div>
 
-  <div id="filtrosV6" class="filtros-v6 app-card">
+  <div id="filtrosV6" class="filtros-v6 filtros-v10 filtros-limpos app-card">
     <div class="filtro-grupo busca-v6">
       <label>Busca rápida</label>
       <input id="buscaAtendimento" type="search" placeholder="Buscar por nome, pasta ou descrição" oninput="render()">
-    </div>
-    <div class="filtro-grupo data-v6">
-      <label>Filtrar por data</label>
-      <input id="filtroData" type="date" onchange="definirFiltroData('personalizado')">
     </div>
     <div class="atalhos-v6">
       <button type="button" id="btnHoje" onclick="definirFiltroData('hoje')">Hoje</button>
@@ -434,6 +518,49 @@ function getTecnicosDisponiveis(){
   return [...new Set(nomes)];
 }
 
+function carregarFiltrosAvancados(){
+  const select = document.getElementById("filtroTecnicoAvancado");
+  if(!select || !tecnicoLogado) return;
+  const tecnicos = getTecnicosDisponiveis();
+  if(tecnicoLogado.role === "tecnico"){
+    select.innerHTML = `<option value="${escapeHTML(tecnicoLogado.nome)}">${escapeHTML(tecnicoLogado.nome)}</option>`;
+    select.value = tecnicoLogado.nome;
+    select.disabled = true;
+    filtroAtual = tecnicoLogado.nome;
+  } else {
+    select.disabled = false;
+    select.innerHTML = '<option value="">Todos os técnicos</option>' + tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("");
+    select.value = filtroAtual || "";
+  }
+}
+
+function sincronizarFiltroTecnico(){
+  const select = document.getElementById("filtroTecnicoAvancado");
+  if(select) filtroAtual = select.value;
+  document.querySelectorAll(".menu button").forEach(b=>{
+    const txt = (b.textContent || "").trim();
+    b.classList.toggle("ativo", !!filtroAtual && txt === filtroAtual);
+  });
+  gerarHorarios();
+  render();
+}
+
+function passaFiltroStatus(item){
+  const select = document.getElementById("filtroStatus");
+  const status = select ? select.value : "";
+  if(!status) return true;
+  return (item.status || "agendado") === status;
+}
+
+function passaFiltroTecnicoAvancado(item){
+  if(!tecnicoLogado) return false;
+  if(tecnicoLogado.role === "tecnico") return item.tecnico === tecnicoLogado.nome;
+  const select = document.getElementById("filtroTecnicoAvancado");
+  const tecnico = select ? select.value : filtroAtual;
+  if(!tecnico) return true;
+  return item.tecnico === tecnico;
+}
+
 function gerarHorariosEdicao(valorAtual=""){
   if(!editHora) return;
   const idAtual = agendamentoEmEdicao || null;
@@ -570,6 +697,7 @@ async function login(){
     document.body.classList.add("modo-app");
 
     montarMenu();
+    carregarFiltrosAvancados();
     aplicarPermissoesNaTela();
     await carregar();
   } else {
@@ -593,6 +721,7 @@ async function login(){
     document.body.classList.add("modo-app");
 
     montarMenu();
+    carregarFiltrosAvancados();
     aplicarPermissoesNaTela();
     await carregar();
   }
@@ -918,6 +1047,8 @@ async function confirmarExclusao(){
 
 function filtrar(t,btn){
   filtroAtual = t;
+  const selectTecnico = document.getElementById("filtroTecnicoAvancado");
+  if(selectTecnico) selectTecnico.value = t;
 
   document.querySelectorAll(".menu button")
     .forEach(b=>b.classList.remove("ativo"));
@@ -976,13 +1107,6 @@ function dataLocalISO(offsetDias = 0){
 
 function definirFiltroData(modo){
   filtroDataModo = modo;
-  const campo = document.getElementById("filtroData");
-
-  if(campo){
-    if(modo === "hoje") campo.value = dataLocalISO(0);
-    if(modo === "amanha") campo.value = dataLocalISO(1);
-    if(modo === "todos") campo.value = "";
-  }
 
   ["btnHoje", "btnAmanha", "btnTodos"].forEach(id=>{
     const btn = document.getElementById(id);
@@ -1074,10 +1198,9 @@ function passaBusca(item, termo){
 }
 
 function passaFiltroData(item){
-  const campo = document.getElementById("filtroData");
-  const dataFiltro = campo ? campo.value : "";
-  if(!dataFiltro) return true;
-  return item.data === dataFiltro;
+  if(filtroDataModo === "hoje") return item.data === dataLocalISO(0);
+  if(filtroDataModo === "amanha") return item.data === dataLocalISO(1);
+  return true;
 }
 
 function getStatusTempo(item){
@@ -1248,7 +1371,7 @@ function abrirRelatorioMensal(){
   if(!dados.periodo){ mostrarErro("Selecione um mês válido para gerar o relatório."); return; }
   const resumoTecnicos = Object.entries(dados.porTecnico).map(([tecnico,r])=>`<tr><td>${escapeHTML(tecnico)}</td><td>${r.total}</td><td>${r.presencas}</td><td>${r.faltas}</td><td>${r.pendentes}</td></tr>`).join("");
   const linhas = Object.entries(dados.porTecnico).map(([tecnico,r])=>`<tr class="tecnico"><td colspan="4">${escapeHTML(tecnico)} — ${r.total} agendamento(s), ${r.presencas} presença(s), ${r.faltas} falta(s)</td></tr>${r.itens.map(a=>`<tr><td>${escapeHTML(a.pasta || "")}</td><td>${escapeHTML(formatarDataBR(a.data))}</td><td>${escapeHTML(statusRelatorio(a.status))}</td><td>${escapeHTML(tecnico)}</td></tr>`).join("")}`).join("");
-  const conteudo = `${montarResumoCards(dados.resumo)}<div class="acoes"><button onclick="window.print()">Imprimir / salvar PDF</button><button class="sec" onclick="opener && opener.baixarCSVRelatorio('${escapeHTML(mes)}')">Exportar CSV</button></div><h2>Resumo por técnico</h2><table><thead><tr><th>Técnico</th><th>Agendamentos</th><th>Presenças</th><th>Faltas</th><th>Pendentes</th></tr></thead><tbody>${resumoTecnicos || '<tr><td colspan="5">Sem dados neste mês.</td></tr>'}</tbody></table><h2>Lista do mês</h2><table><thead><tr><th>Pasta</th><th>Dia</th><th>Veio ou não veio</th><th>Técnico</th></tr></thead><tbody>${linhas || '<tr><td colspan="4">Sem dados neste mês.</td></tr>'}</tbody></table><div class="aviso">Este relatório não mostra nome nem horário, apenas pasta, dia e status do atendimento.</div>`;
+  const conteudo = `${montarResumoCards(dados.resumo)}<div class="acoes"><button onclick="window.print()">Salvar PDF / imprimir</button><button class="sec" onclick="opener && opener.baixarCSVRelatorio('${escapeHTML(mes)}')">Exportar CSV (Excel)</button></div><div class="relatorio-export-note">O CSV abre no Excel/LibreOffice e o PDF pode ser salvo pela janela de impressão.</div><h2>Resumo por técnico</h2><table><thead><tr><th>Técnico</th><th>Agendamentos</th><th>Presenças</th><th>Faltas</th><th>Pendentes</th></tr></thead><tbody>${resumoTecnicos || '<tr><td colspan="5">Sem dados neste mês.</td></tr>'}</tbody></table><h2>Lista do mês</h2><table><thead><tr><th>Pasta</th><th>Dia</th><th>Veio ou não veio</th><th>Técnico</th></tr></thead><tbody>${linhas || '<tr><td colspan="4">Sem dados neste mês.</td></tr>'}</tbody></table><div class="aviso">Este relatório não mostra nome nem horário, apenas pasta, dia e status do atendimento.</div>`;
   abrirJanelaRelatorio(`Relatório mensal CAICAVV`, `Período: ${escapeHTML(dados.periodo.label)} • Responsável pelo relatório: Recepção`, conteudo);
 }
 
@@ -1314,9 +1437,28 @@ function verificarAvisoDia30(){
   }
 }
 
+
+
+function fecharMenusAtendimento(){
+  document.querySelectorAll('.menu-atendimento.show').forEach(menu=>menu.classList.remove('show'));
+}
+
+function toggleMenuAtendimento(event, id){
+  event.stopPropagation();
+  const menu = document.getElementById(`menuAtendimento-${id}`);
+  if(!menu) return;
+  const aberto = menu.classList.contains('show');
+  fecharMenusAtendimento();
+  if(!aberto) menu.classList.add('show');
+}
+
+document.addEventListener('click', (event)=>{
+  if(!event.target.closest('.atendimento-menu-wrap')) fecharMenusAtendimento();
+});
 function render(){
   if(!tecnicoLogado) return;
 
+  fecharMenusAtendimento();
   lista.innerHTML = "";
   rel();
 
@@ -1324,12 +1466,7 @@ function render(){
 
   const termo = textoBusca();
   let dados = atendimentos.filter(a=>{
-    let permitido = false;
-    if(role === "tecnico") permitido = a.tecnico === tecnicoLogado.nome;
-    if(role === "recepcao") permitido = !filtroAtual || a.tecnico === filtroAtual;
-    if(role === "adm") permitido = !filtroAtual || a.tecnico === filtroAtual;
-    if(role === "coordenacao") permitido = !filtroAtual || a.tecnico === filtroAtual;
-    return permitido && passaBusca(a, termo) && passaFiltroData(a);
+    return passaFiltroTecnicoAvancado(a) && passaBusca(a, termo) && passaFiltroData(a) && passaFiltroStatus(a);
   });
 
   dados.sort((a,b) => {
@@ -1355,54 +1492,48 @@ function render(){
     const classeTempo = statusTempo === "atrasado" ? "alerta-atrasado" : statusTempo === "proximo" ? "alerta-proximo" : "";
 
     const chipClass = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : "";
+    const podeEditar = podeEditarAtendimento(a);
+    const podeExcluir = permissoes[role].del;
+    const podeMarcar = permissoes[role].marcar;
+
     lista.innerHTML += `
-      <div class="card atendimento-card ${realizado ? 'realizado' : ''} ${classeTempo}">
-        <div class="atendimento-layout">
-          <div class="atendimento-info">
-            <div class="info-icone">▱</div>
-            <div class="info-bloco">
-              <div class="info-label">Pasta</div>
-              <div class="info-valor pasta">${escapeHTML(a.pasta)}</div>
-            </div>
+      <div class="card atendimento-card v10-card status-${a.status || 'agendado'} ${realizado ? 'realizado' : ''} ${classeTempo}" onclick="fecharMenusAtendimento()">
+        <div class="atendimento-menu-wrap" onclick="event.stopPropagation()">
+          <button type="button" class="btn-menu-atendimento" title="Mais opções" onclick="toggleMenuAtendimento(event,'${a.id}')">⋮</button>
+          <div id="menuAtendimento-${a.id}" class="menu-atendimento">
+            ${podeEditar ? `<button type="button" onclick="abrirModalEdicao('${a.id}'); fecharMenusAtendimento();">✎ Editar atendimento</button>` : ""}
+            ${podeEditar ? `<button type="button" onclick="abrirReagendamento('${a.id}'); fecharMenusAtendimento();">↻ Reagendar</button>` : ""}
+            <button type="button" onclick="abrirHistoricoPaciente('${a.id}'); fecharMenusAtendimento();">▤ Histórico do paciente</button>
+            <button type="button" onclick="abrirLogAtendimento('${a.id}'); fecharMenusAtendimento();">☰ Log de alterações</button>
+            ${podeExcluir ? `<button type="button" class="danger" onclick="excluir('${a.id}'); fecharMenusAtendimento();">▥ Excluir</button>` : ""}
+          </div>
+        </div>
 
-            <div class="info-icone nome">♙</div>
-            <div class="info-bloco">
-              <div class="info-label">Nome</div>
-              <div class="info-valor destaque">${escapeHTML(a.nome)}</div>
+        <div class="v10-card-inner">
+          <div class="v10-card-top">
+            <div class="v10-identidade">
+              <div class="v10-nome">${escapeHTML(a.nome)}</div>
+              <div class="v10-sub">
+                <span>📁 Pasta ${escapeHTML(a.pasta)}</span>
+                <span>👤 ${escapeHTML(a.tecnico)}</span>
+                <span>📅 ${escapeHTML(formatarDataBR(a.data))} às ${escapeHTML(a.hora)}</span>
+                ${labelAlertaTempo(statusTempo)}
+              </div>
             </div>
-
-            <div class="info-icone tecnico">♙</div>
-            <div class="info-bloco">
-              <div class="info-label">Técnico</div>
-              <div class="info-valor">${escapeHTML(a.tecnico)}</div>
-            </div>
-
-            <div class="info-icone data">▣</div>
-            <div class="info-bloco">
-              <div class="info-label">Data e horário</div>
-              <div class="info-valor">${escapeHTML(formatarDataBR(a.data))} às ${escapeHTML(a.hora)} ${labelAlertaTempo(statusTempo)}</div>
-            </div>
-
-            <div class="info-icone desc">▤</div>
-            <div class="info-bloco">
-              <div class="info-label">Descrição</div>
-              <div class="info-valor">${escapeHTML(a.descricao || "—")}</div>
-            </div>
-
-            <div class="info-icone status">◴</div>
-            <div class="info-bloco" style="border-bottom:0">
-              <div class="info-label">Status</div>
-              <span class="status-chip ${chipClass}">${escapeHTML(statusLabel)}</span>
-              ${realizado ? `<span class="selo-realizado">JÁ REALIZADO</span>` : ""}
-            </div>
+            <span class="status-chip ${chipClass || 'v10-pendente'}">${escapeHTML(statusLabel)}</span>
           </div>
 
-          <div class="atendimento-acoes">
-            <div class="v7-extra-acoes"><button class="v7-historico" onclick="abrirHistoricoPaciente('${a.id}')">▤ Histórico</button><button class="v7-log" onclick="abrirLogAtendimento('${a.id}')">☰ Log</button></div>
-            ${podeEditarAtendimento(a) ? `<button class="editar" onclick="abrirModalEdicao('${a.id}')">✎ &nbsp; Editar</button>` : ""}
-            ${podeEditarAtendimento(a) ? `<button class="reagendar" onclick="abrirReagendamento('${a.id}')">↻ &nbsp; Reagendar</button>` : ""}
-            ${permissoes[role].marcar && !realizado ? `<button class="compareceu" onclick="marcar('${a.id}','compareceu')">☑ &nbsp; Compareceu</button><button class="faltou" onclick="marcar('${a.id}','faltou')">☒ &nbsp; Faltou</button>` : ""}
-            ${permissoes[role].del ? `<button class="excluir" onclick="excluir('${a.id}')">▥ &nbsp; Excluir</button>` : ""}
+          <div class="v10-meta">
+            <div class="v10-meta-item"><div class="v10-meta-label">Pasta</div><div class="v10-meta-value">${escapeHTML(a.pasta)}</div></div>
+            <div class="v10-meta-item"><div class="v10-meta-label">Técnico</div><div class="v10-meta-value">${escapeHTML(a.tecnico)}</div></div>
+            <div class="v10-meta-item"><div class="v10-meta-label">Data e horário</div><div class="v10-meta-value">${escapeHTML(formatarDataBR(a.data))} • ${escapeHTML(a.hora)}</div></div>
+            <div class="v10-meta-item"><div class="v10-meta-label">Descrição</div><div class="v10-meta-value">${escapeHTML(a.descricao || "—")}</div></div>
+          </div>
+
+          ${realizado ? `<div style="margin-top:12px"><span class="selo-realizado">JÁ REALIZADO</span></div>` : ""}
+
+          <div class="v10-actions">
+            ${podeMarcar ? `<button class="compareceu" onclick="event.stopPropagation(); marcar('${a.id}','compareceu')">✔ Compareceu</button><button class="faltou" onclick="event.stopPropagation(); marcar('${a.id}','faltou')">✖ Faltou</button>` : ""}
           </div>
         </div>
       </div>
