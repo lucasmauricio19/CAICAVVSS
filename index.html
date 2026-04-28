@@ -20,7 +20,9 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-const DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos"); // caminho oficial dos agendamentos online
+const DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos"); // documento antigo/oficial
+const COL_ATENDIMENTOS = DOC_ATENDIMENTOS.collection("itens"); // salvamento definitivo: 1 atendimento por documento
+const FIRESTORE_DELETE = firebase.firestore.FieldValue.delete();
 </script>
 
 <style>
@@ -723,46 +725,157 @@ const cadastros = {"1": ["EMELLY GABRIELLY DA ANUNCIAÇÃO"], "2": ["LAURA RODRI
 let atendimentos = [];
 let logsAlteracoes = [];
 let unsubscribeAtendimentosFirebase = null;
+let idsColecaoFirebase = new Set();
+let carregamentoInicialConcluido = false;
 const horariosAtendimento = [
   "08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30",
   "13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30"
 ];
 let filtroDataModo = "todos";
 
-async function salvarAtendimentosFirebase(){
+function normalizarArrayAtendimentosFirebase(valor){
+  if(Array.isArray(valor)) return valor;
+  if(valor && typeof valor === "object"){
+    const valores = Object.values(valor);
+    if(valores.some(v => v && typeof v === "object" && ("nome" in v || "pasta" in v || "tecnico" in v || "data" in v))){
+      return valores;
+    }
+  }
+  return [];
+}
+
+function extrairAtendimentosFirebase(dados){
+  dados = dados || {};
+  const candidatos = [dados.itens, dados.lista, dados.atendimentos, dados.agendamentos, dados.dados, dados.items];
+  for(const candidato of candidatos){
+    const arr = normalizarArrayAtendimentosFirebase(candidato);
+    if(arr.length) return arr;
+  }
+  return normalizarArrayAtendimentosFirebase(dados);
+}
+
+function extrairLogsFirebase(dados){
+  dados = dados || {};
+  const candidatos = [dados.logs, dados.logsAlteracoes, dados.historicoLogs];
+  for(const candidato of candidatos){
+    const arr = normalizarArrayAtendimentosFirebase(candidato);
+    if(arr.length) return arr;
+  }
+  return [];
+}
+
+function prepararAtendimentosCarregados(lista){
+  return (Array.isArray(lista) ? lista : []).map((a, index) => ({
+    id: a.id || (Date.now() + "-" + index + "-" + Math.random().toString(16).slice(2)),
+    nome: a.nome || "",
+    pasta: String(a.pasta || ""),
+    tecnico: a.tecnico || "",
+    data: a.data || "",
+    hora: a.hora || "",
+    descricao: a.descricao || "",
+    status: a.status || "agendado",
+    criadoEm: a.criadoEm || new Date().toISOString(),
+    atualizadoEm: a.atualizadoEm || a.criadoEm || new Date().toISOString(),
+    observacaoRealizacao: a.observacaoRealizacao || a.observacao || ""
+  }));
+}
+
+async function buscarAtendimentosColecaoAntiga(){
   try{
-    // CAMINHO OFICIAL DO FIREBASE:
-    // Firestore > caicavv > atendimentos
-    // Campo principal: itens
-    // Campo lista mantido como espelho para compatibilidade com versões antigas.
+    const snap = await db.collection("atendimentos").get();
+    const encontrados = [];
+    snap.forEach(doc=>{
+      const a = doc.data() || {};
+      encontrados.push({ id: a.id || doc.id, ...a });
+    });
+    return encontrados;
+  }catch(e){
+    console.warn("Não foi possível buscar coleção antiga atendimentos.", e);
+    return [];
+  }
+}
+
+async function dividirEmLotes(lista, tamanho=450){
+  const lotes = [];
+  for(let i=0; i<lista.length; i+=tamanho) lotes.push(lista.slice(i, i+tamanho));
+  return lotes;
+}
+
+function limparObjetoFirebase(obj){
+  return JSON.parse(JSON.stringify(obj || {}));
+}
+
+async function salvarLogsFirebase(){
+  try{
+    const logsCompactos = Array.isArray(logsAlteracoes) ? logsAlteracoes.slice(-500) : [];
+    logsAlteracoes = logsCompactos;
     await DOC_ATENDIMENTOS.set({
-      itens: atendimentos,
-      lista: atendimentos,
-      logs: logsAlteracoes,
+      logs: logsCompactos,
       atualizadoPor: tecnicoLogado ? tecnicoLogado.nome : "Sistema",
-      atualizadoEm: new Date().toISOString()
+      atualizadoEm: new Date().toISOString(),
+      modoSalvamento: "subcolecao-itens-v20"
     }, { merge: true });
   }catch(e){
-    console.error(e);
-    mostrarErro("Erro ao salvar no Firebase. Verifique a conexão e as regras do Firestore.");
+    console.warn("Logs não foram salvos, mas os atendimentos podem ter sido salvos.", e);
+  }
+}
+
+async function salvarAtendimentosFirebase(){
+  try{
+    const listaAtual = Array.isArray(atendimentos) ? atendimentos.map(limparObjetoFirebase) : [];
+    const idsAtuais = new Set(listaAtual.map(a => String(a.id || "")).filter(Boolean));
+    const idsParaExcluir = [...idsColecaoFirebase].filter(id => !idsAtuais.has(id));
+
+    const operacoes = [];
+    idsParaExcluir.forEach(id => operacoes.push({ tipo: "delete", id }));
+    listaAtual.forEach((item, index) => {
+      if(!item.id) item.id = "id_" + Date.now() + "_" + index + "_" + Math.random().toString(36).slice(2, 9);
+      operacoes.push({ tipo: "set", id: String(item.id), item });
+    });
+
+    const lotes = await dividirEmLotes(operacoes, 450);
+    for(const lote of lotes){
+      const batch = db.batch();
+      lote.forEach(op => {
+        const ref = COL_ATENDIMENTOS.doc(op.id);
+        if(op.tipo === "delete") batch.delete(ref);
+        else batch.set(ref, { ...op.item, sincronizadoEm: new Date().toISOString() }, { merge: true });
+      });
+      await batch.commit();
+    }
+
+    idsColecaoFirebase = new Set(idsAtuais);
+    localStorage.setItem("caicavv_backup_atendimentos", JSON.stringify(listaAtual));
+    await salvarLogsFirebase();
+    mostrarToast("Salvo online com sucesso.", "sucesso");
+  }catch(e){
+    console.error("Erro ao salvar no Firebase:", e);
+    const detalhe = e && e.message ? " Detalhe: " + e.message : "";
+    try{ localStorage.setItem("caicavv_backup_atendimentos", JSON.stringify(atendimentos || [])); }catch(_e){}
+    mostrarErro("Erro ao salvar online." + detalhe);
     throw e;
   }
 }
 
 function iniciarEscutaFirebase(){
   if(unsubscribeAtendimentosFirebase) return;
-  unsubscribeAtendimentosFirebase = DOC_ATENDIMENTOS.onSnapshot((snap)=>{
-    if(!snap.exists) return;
-    const dados = snap.data() || {};
-    // Lê o campo oficial "itens" e também aceita "lista" de versões antigas.
-    atendimentos = Array.isArray(dados.itens) ? dados.itens : (Array.isArray(dados.lista) ? dados.lista : []);
-    logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
-    if(document.body.classList.contains("modo-app")){
-      render();
+  unsubscribeAtendimentosFirebase = COL_ATENDIMENTOS.onSnapshot((snap)=>{
+    const vindosColecao = [];
+    const ids = new Set();
+    snap.forEach(doc=>{
+      ids.add(doc.id);
+      vindosColecao.push({ id: doc.id, ...(doc.data() || {}) });
+    });
+    idsColecaoFirebase = ids;
+
+    if(vindosColecao.length || carregamentoInicialConcluido){
+      atendimentos = prepararAtendimentosCarregados(vindosColecao);
+      carregamentoInicialConcluido = true;
+      if(document.body.classList.contains("modo-app")) render();
     }
   }, (erro)=>{
     console.error(erro);
-    mostrarErro("Não foi possível sincronizar com o Firebase.");
+    mostrarErro("Não foi possível sincronizar com o Firebase. Verifique as regras do Firestore.");
   });
 }
 
@@ -773,25 +886,55 @@ function pararEscutaFirebase(){
   }
 }
 
+async function carregarColecaoAtendimentos(){
+  const snap = await COL_ATENDIMENTOS.get();
+  const lista = [];
+  const ids = new Set();
+  snap.forEach(doc=>{
+    ids.add(doc.id);
+    lista.push({ id: doc.id, ...(doc.data() || {}) });
+  });
+  idsColecaoFirebase = ids;
+  return lista;
+}
+
 async function carregarAtendimentosFirebase(){
   try{
-    const snap = await DOC_ATENDIMENTOS.get();
-    if(snap.exists){
-      const dados = snap.data() || {};
-      // Caminho correto: Firestore > caicavv > atendimentos
-      // Campo atual: itens | Campo antigo aceito: lista
-      atendimentos = Array.isArray(dados.itens) ? dados.itens : (Array.isArray(dados.lista) ? dados.lista : []);
-      logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
-    } else {
-      atendimentos = [];
-      logsAlteracoes = [];
-      await DOC_ATENDIMENTOS.set({ itens: [], lista: [], logs: [], criadoEm: new Date().toISOString() }, { merge: true });
+    const snapDoc = await DOC_ATENDIMENTOS.get().catch(()=>null);
+    let legacy = [];
+    let logs = [];
+
+    if(snapDoc && snapDoc.exists){
+      const dados = snapDoc.data() || {};
+      legacy = extrairAtendimentosFirebase(dados);
+      logs = extrairLogsFirebase(dados);
     }
+
+    let colecao = [];
+    try{ colecao = await carregarColecaoAtendimentos(); }catch(e){ console.warn("Coleção de atendimentos não carregou.", e); }
+
+    if(colecao.length){
+      atendimentos = prepararAtendimentosCarregados(colecao);
+    } else if(legacy.length){
+      atendimentos = prepararAtendimentosCarregados(legacy);
+      await salvarAtendimentosFirebase();
+    } else {
+      const antigos = await buscarAtendimentosColecaoAntiga();
+      atendimentos = prepararAtendimentosCarregados(antigos);
+      if(atendimentos.length) await salvarAtendimentosFirebase();
+    }
+
+    logsAlteracoes = Array.isArray(logs) ? logs : [];
+    carregamentoInicialConcluido = true;
+    if(document.body.classList.contains("modo-app")) render();
   }catch(e){
     console.error(e);
-    atendimentos = [];
+    try{
+      const backup = JSON.parse(localStorage.getItem("caicavv_backup_atendimentos") || "[]");
+      atendimentos = prepararAtendimentosCarregados(backup);
+    }catch(_e){ atendimentos = []; }
     logsAlteracoes = [];
-    mostrarErro("Não foi possível carregar os dados do Firebase.");
+    mostrarErro("Não foi possível carregar/salvar no Firebase. Veja o Console (F12) e as regras do Firestore.");
   }
 }
 
@@ -1240,6 +1383,8 @@ async function add(){
   try{
     await salvarAtendimentosFirebase();
   } catch(e){
+    atendimentos = atendimentos.filter(a => a.id !== obj.id);
+    render();
     btnAdicionar.disabled = false;
     return;
   }
