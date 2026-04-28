@@ -21,6 +21,163 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos");
+
+/* ===== V13: lógica corrigida por login, abas e configurações ===== */
+const nomesTemasCaicavv = {
+  "azul":"Azul",
+  "azul-claro":"Azul claro",
+  "vermelho":"Vermelho",
+  "rosa":"Rosa",
+  "roxo":"Roxo",
+  "verde":"Verde",
+  "amarelo":"Amarelo",
+  "laranja":"Laranja"
+};
+function idUsuarioTemaCaicavv(){
+  if(!tecnicoLogado) return "geral";
+  const chave = Object.keys(usuarios).find(k => usuarios[k] === tecnicoLogado || usuarios[k].nome === tecnicoLogado.nome && usuarios[k].role === tecnicoLogado.role);
+  return chave || String(tecnicoLogado.nome || "geral").toLowerCase().replace(/\s+/g,"_");
+}
+function chaveTemaCaicavv(){ return "caicavv_tema_" + idUsuarioTemaCaicavv(); }
+function chaveLembreteCaicavv(){ return "caicavv_lembrete_" + idUsuarioTemaCaicavv(); }
+function temaAtualCaicavv(){ return localStorage.getItem(chaveTemaCaicavv()) || "azul"; }
+function nomeTemaCaicavv(tema){ return nomesTemasCaicavv[tema] || "Azul"; }
+
+aplicarTemaSalvo = function(){
+  const tema = temaAtualCaicavv();
+  document.body.classList.remove("tema-azul","tema-azul-claro","tema-vermelho","tema-rosa","tema-roxo","tema-verde","tema-amarelo","tema-laranja");
+  document.body.classList.add("tema-" + tema);
+  const txt = document.getElementById("temaAtualTxt");
+  if(txt) txt.textContent = nomeTemaCaicavv(tema);
+};
+
+lembreteAtivo = function(){
+  return localStorage.getItem(chaveLembreteCaicavv()) !== "off";
+};
+
+definirTema = function(tema){
+  localStorage.setItem(chaveTemaCaicavv(), tema);
+  aplicarTemaSalvo();
+  const txt = document.getElementById("temaAtualTxt");
+  if(txt) txt.textContent = nomeTemaCaicavv(tema);
+  mostrarSucesso("Cor padrão alterada para " + nomeTemaCaicavv(tema) + ".");
+};
+
+definirLembrete = function(ativo){
+  localStorage.setItem(chaveLembreteCaicavv(), ativo ? "on" : "off");
+  mostrarSucesso(ativo ? "Lembrete ativado para este login." : "Lembrete desativado para este login.");
+  if(telaAtualCaicavv === "agendamentos" && renderOriginalCaicavv) renderOriginalCaicavv();
+};
+
+montarMenu = function(){
+  let html = "";
+  const role = tecnicoLogado.role;
+  if(role === "recepcao" || role === "adm" || role === "coordenacao"){
+    const tecnicos = Object.values(usuarios).filter(u => u.role === "tecnico").map(u => u.nome);
+    if(tecnicos.length > 0 && !filtroAtual) filtroAtual = tecnicos[0];
+    tecnicos.forEach((t)=>{
+      html += `<button class="${t === filtroAtual ? 'ativo' : ''}" onclick="filtrar('${escapeHTML(t)}',this)">${escapeHTML(t)}</button>`;
+    });
+  } else {
+    filtroAtual = tecnicoLogado.nome;
+    html = `<button class="ativo">${escapeHTML(tecnicoLogado.nome)}</button>`;
+  }
+  menu.innerHTML = html;
+  boasVindas.className = "info user-panel";
+  boasVindas.innerHTML = `<span class="avatar">♙</span><span><b>Usuário:</b> ${escapeHTML(tecnicoLogado.nome)} <span class="divisor">|</span> <b>Perfil:</b> ${escapeHTML(tecnicoLogado.role)}</span>`;
+};
+
+abrirTelaPacientes = function(){
+  setTelaAtiva("pacientes");
+  mostrarBlocosAgendamento(false);
+  const totalPastas = Object.keys(cadastros).length;
+  const totalNomes = Object.values(cadastros).reduce((s, nomes)=>s + nomes.length, 0);
+  let cards = "";
+  Object.entries(cadastros).forEach(([pasta, nomes])=>{
+    nomes.forEach(nome=>{
+      cards += `<div class="paciente-card"><strong>${escapeHTML(nome)}</strong><span>📁 Pasta ${escapeHTML(pasta)}</span></div>`;
+    });
+  });
+  lista.innerHTML = `
+    <div class="pagina-titulo-solo">
+      <div class="pagina-titulo">Pastas</div>
+      <div class="pagina-sub">Busca rápida por nome ou nº da pasta.</div>
+    </div>
+    <div class="search-card" style="margin-bottom:14px">
+      <div class="search-box"><span>🔍</span><input id="buscaPacientes" placeholder="Buscar por nome ou nº" oninput="filtrarPacientes()"></div>
+    </div>
+    <div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div>
+    <div id="listaPacientes" class="pacientes-grid">${cards}</div>`;
+};
+
+abrirTelaTecnicos = function(){
+  setTelaAtiva("tecnicos");
+  mostrarBlocosAgendamento(false);
+  const tecnicos = Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);
+  const mesAtual = new Date().toISOString().slice(0,7);
+  lista.innerHTML = `
+    <div class="pagina-titulo-solo">
+      <div class="pagina-titulo">Relatório por técnico</div>
+      <div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div>
+    </div>
+    <div class="tecnico-relatorio-box">
+      <label><b>Técnico</b></label>
+      <select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select>
+      <label><b>Mês</b></label>
+      <input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}">
+      <button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button>
+    </div>
+    <div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;
+};
+
+abrirTelaConfiguracoes = function(){
+  setTelaAtiva("configuracoes");
+  mostrarBlocosAgendamento(false);
+  const temaAtual = temaAtualCaicavv();
+  const lembrete = lembreteAtivo();
+  const botaoTema = (id, classe)=>`<button class="${classe}" onclick="definirTema('${id}')">${nomeTemaCaicavv(id)}</button>`;
+  lista.innerHTML = `
+    <div class="pagina-titulo-solo">
+      <div class="pagina-titulo">Configurações</div>
+      <div class="pagina-sub">Essas preferências valem somente para este login.</div>
+    </div>
+    <div class="config-grid">
+      <div class="config-card">
+        <h3>Cor padrão do site</h3>
+        <p class="pagina-sub">Tema atual: <span class="tema-atual-nome" id="temaAtualTxt">${nomeTemaCaicavv(temaAtual)}</span></p>
+        <div class="theme-options">
+          ${botaoTema("azul","tema-btn-azul")}
+          ${botaoTema("azul-claro","tema-btn-azul-claro")}
+          ${botaoTema("vermelho","tema-btn-vermelho")}
+          ${botaoTema("rosa","tema-btn-rosa")}
+          ${botaoTema("roxo","tema-btn-roxo")}
+          ${botaoTema("verde","tema-btn-verde")}
+          ${botaoTema("amarelo","tema-btn-amarelo")}
+          ${botaoTema("laranja","tema-btn-laranja")}
+        </div>
+      </div>
+      <div class="config-card switch-row">
+        <div>
+          <h3>Lembrete de consulta próxima</h3>
+          <p class="pagina-sub">Quando ligado, o sistema destaca atendimentos próximos do horário. Essa opção também fica só para este login.</p>
+        </div>
+        <input type="checkbox" id="checkLembrete" ${lembrete ? "checked" : ""} onchange="definirLembrete(this.checked)">
+      </div>
+    </div>`;
+};
+
+const loginOriginalV13 = login;
+login = async function(){
+  await loginOriginalV13();
+  aplicarTemaSalvo();
+};
+
+const restaurarTemaAposLoadV13 = () => {
+  aplicarTemaSalvo();
+  if(typeof montarMenu === "function" && tecnicoLogado && document.getElementById("menu")) montarMenu();
+};
+window.addEventListener("DOMContentLoaded", restaurarTemaAposLoadV13);
+
 </script>
 
 <style>
@@ -348,6 +505,133 @@ body.modo-app::before,body.modo-app::after{display:none!important}
 body.recepcao-restrita #formAtendimento{display:none!important}
 @media(max-width:950px){.app-shell .sidebar{width:90px}.app-shell .main{margin-left:90px;width:calc(100% - 90px)}.app-shell .nav span,.app-shell .logout span,.brand p,.divider{display:none}.search-row,.v10-meta{grid-template-columns:1fr!important}.app-shell #menu{grid-template-columns:repeat(2,1fr)!important;height:auto!important}.app-shell #menu button{height:60px!important}}
 
+
+/* ===== AJUSTE FINAL PEDIDO: escala menor, temas e páginas internas ===== */
+:root{--tema:#005bff;--tema-escuro:#003ec8;--tema-claro:#edf3ff;}
+body.tema-azul{--tema:#005bff;--tema-escuro:#003ec8;--tema-claro:#edf3ff;}body.tema-azul-claro{--tema:#0ea5e9;--tema-escuro:#0284c7;--tema-claro:#e0f2fe;}body.tema-vermelho{--tema:#dc2626;--tema-escuro:#991b1b;--tema-claro:#fee2e2;}body.tema-rosa{--tema:#ec4899;--tema-escuro:#be185d;--tema-claro:#fce7f3;}body.tema-roxo{--tema:#7c3aed;--tema-escuro:#5b21b6;--tema-claro:#ede9fe;}body.tema-verde{--tema:#16a34a;--tema-escuro:#166534;--tema-claro:#dcfce7;}body.tema-amarelo{--tema:#eab308;--tema-escuro:#a16207;--tema-claro:#fef9c3;}body.tema-laranja{--tema:#f97316;--tema-escuro:#c2410c;--tema-claro:#ffedd5;}
+.login-card{width:430px!important;padding:28px 34px 26px!important;border-radius:24px!important}.flower-logo{width:60px!important;height:60px!important;margin-bottom:8px!important;transform:scale(.82)}.login-card h1{font-size:39px!important}.system-row{display:none!important}.login-card h2{font-size:22px!important;margin-top:8px!important}.description{font-size:14px!important;margin-bottom:20px!important}.input-group{height:48px!important;margin-bottom:12px!important;border-radius:12px!important}.icon-box{width:38px!important;height:38px!important;font-size:17px!important}.side-icon{display:none!important}.input-group input{font-size:15px!important}.login-button{height:50px!important;font-size:17px!important;border-radius:12px!important}.secure{font-size:13px!important;margin-top:16px!important}.footer{font-size:12px!important;margin-top:18px!important;padding-top:12px!important}
+.app-shell .sidebar{width:118px!important;padding:20px 10px!important}.app-shell .main{margin-left:118px!important;width:calc(100% - 118px)!important}.menu-icon{width:46px!important;height:46px!important;font-size:25px!important;margin-bottom:30px!important;cursor:pointer}.app-shell .nav{height:82px!important;margin-bottom:12px!important;font-size:12px!important;border-radius:12px!important}.app-shell .nav-icon{font-size:24px!important}.app-shell .topbar{height:86px!important;padding:0 34px!important;background:linear-gradient(135deg,var(--tema-escuro),var(--tema) 72%,var(--tema-escuro))!important}.app-shell .brand h1{font-size:32px!important}.app-shell .brand p{font-size:14px!important}.flower{transform:scale(.78)}.content{padding:18px 24px 32px!important}.app-shell .user-panel{height:70px!important;font-size:15px!important;padding:0 18px!important;gap:14px!important}.app-shell .user-panel .avatar{width:46px!important;height:46px!important;font-size:22px!important;background:var(--tema-claro)!important;color:var(--tema)!important}.app-shell #menu{height:50px!important;margin-bottom:10px!important}.app-shell #menu button{height:50px!important;font-size:14px!important}.app-shell #menu button.ativo,.app-shell .nav.active,.search-row .active-filter,.search-row .ativo{background:linear-gradient(135deg,var(--tema),var(--tema-escuro))!important;color:#fff!important}.app-shell .relatorio-card{min-height:86px!important;padding:14px 18px!important;margin-bottom:12px!important}.relatorio-card .rel-icone{width:42px!important;height:42px!important;font-size:22px!important;background:var(--tema-claro)!important;color:var(--tema)!important}.relatorio-card .rel-nome{font-size:18px!important}.relatorio-card .rel-metrica{font-size:15px!important}.app-shell .search-card{padding:16px 18px!important;margin-bottom:14px!important}.search-card h3{font-size:13px!important;margin-bottom:10px!important}.search-row{grid-template-columns:1fr 96px 110px 96px!important;gap:10px!important}.search-box,.search-row button{height:44px!important;font-size:13px!important;border-radius:10px!important}.app-shell .form-card{padding:14px 16px!important;margin-bottom:14px!important}.app-shell .form-card input,.app-shell .form-card select{height:38px!important;font-size:13px!important;border-radius:9px!important;margin-top:7px!important}.linha-pasta button,#btnAdicionar{height:38px!important;font-size:13px!important;border-radius:9px!important;background:var(--tema)!important}.cards{gap:12px!important}.app-shell .v10-card{padding:16px 16px!important;border-left-color:var(--tema)!important}.v10-nome{font-size:20px!important;margin-top:12px!important}.v10-sub{font-size:12px!important;gap:8px 14px!important}.v10-meta{grid-template-columns:repeat(4,1fr)!important;gap:8px!important;margin-top:12px!important}.v10-meta-item{min-height:56px!important;padding:10px 12px!important;border-radius:10px!important}.v10-meta-label{font-size:10px!important}.v10-meta-value{font-size:13px!important}.status-chip{padding:7px 12px!important;font-size:12px!important;background:var(--tema-claro)!important;color:var(--tema)!important}.v10-actions{margin-top:12px!important;padding-top:10px!important}.v10-actions button{height:36px!important;min-width:150px!important;font-size:13px!important}
+#menuLateral .menu-bloco:nth-of-type(4),#menuLateral .menu-bloco:nth-of-type(5){display:none!important}.config-grid,.pacientes-grid,.tecnico-relatorio-box{display:grid;gap:12px}.pacientes-grid{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}.paciente-card,.config-card,.tecnico-relatorio-box{background:#fff;border:1px solid #d8e4fa;border-radius:14px;padding:14px;box-shadow:0 10px 24px rgba(23,70,150,.10);color:#071957}.paciente-card strong{display:block;font-size:14px;margin-bottom:6px}.paciente-card span{color:#52699d;font-weight:800;font-size:12px}.theme-options{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}.theme-options button{height:38px;border:0;border-radius:10px;color:#fff;font-weight:900;cursor:pointer}.tema-btn-azul{background:#005bff}.tema-btn-azul-claro{background:#0ea5e9}.tema-btn-vermelho{background:#dc2626}.tema-btn-rosa{background:#ec4899}.tema-btn-roxo{background:#7c3aed}.tema-btn-verde{background:#16a34a}.tema-btn-amarelo{background:#eab308;color:#1f2937!important}.tema-btn-laranja{background:#f97316}.switch-row{display:flex;align-items:center;justify-content:space-between;gap:18px}.switch-row input{width:22px;height:22px}.pagina-titulo{font-size:22px;font-weight:900;color:#061852;margin-bottom:8px}.pagina-sub{font-size:14px;color:#52699d;margin-bottom:14px}.config-card select,.tecnico-relatorio-box select,.tecnico-relatorio-box input{height:40px;border:1px solid #ccd9f5;border-radius:10px;padding:0 12px;font-size:14px;margin-top:8px;width:100%;box-sizing:border-box}.tecnico-relatorio-box button{height:40px;border:0;border-radius:10px;background:var(--tema);color:white;font-weight:900;margin-top:10px;width:100%}
+@media(max-width:950px){.app-shell .sidebar{width:82px!important}.app-shell .main{margin-left:82px!important;width:calc(100% - 82px)!important}.search-row,.v10-meta{grid-template-columns:1fr!important}.theme-options{grid-template-columns:1fr 1fr}.login-card{width:calc(100% - 30px)!important}}
+
+
+
+/* ===== CORREÇÕES SOLICITADAS - V12 ===== */
+.app-shell .sidebar{background:linear-gradient(180deg,var(--tema),var(--tema-escuro))!important;box-shadow:12px 0 35px rgba(0,0,0,.22)!important;}
+.menu-icon{border-color:rgba(255,255,255,.38)!important;background:rgba(255,255,255,.12)!important;}
+.app-shell .nav.active{box-shadow:inset 0 0 0 2px rgba(255,255,255,.55),0 12px 25px rgba(0,0,0,.18)!important;}
+body.recepcao-restrita .atendimento-menu-wrap{display:block!important;}
+body.recepcao-restrita #formAtendimento{display:none!important;}
+#menuLateral .menu-bloco:nth-of-type(3),#menuLateral .menu-bloco:nth-of-type(4){display:none!important;}
+.pagina-titulo{font-size:26px!important;font-weight:900!important;color:#061852!important;margin-bottom:8px!important;}
+.pagina-sub{font-size:14px!important;color:#64748b!important;margin-bottom:14px!important;}
+.pacientes-grid{display:grid!important;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))!important;gap:12px!important;}
+.paciente-card{background:#fff!important;border:1px solid #dfe7f3!important;border-left:5px solid var(--tema)!important;border-radius:14px!important;padding:14px 16px!important;box-shadow:0 10px 24px rgba(15,23,42,.06)!important;}
+.paciente-card strong{display:block!important;font-size:14px!important;color:#071943!important;line-height:1.3!important;}
+.paciente-card span{display:block!important;margin-top:7px!important;color:#64748b!important;font-size:13px!important;font-weight:800!important;}
+.tecnico-relatorio-box,.config-card{background:#fff!important;border:1px solid #dfe7f3!important;border-radius:16px!important;padding:18px!important;box-shadow:0 12px 30px rgba(15,23,42,.06)!important;}
+.tecnico-relatorio-box select,.tecnico-relatorio-box input{height:42px!important;border:1px solid #d7e0ee!important;border-radius:10px!important;margin:8px 0 12px!important;padding:0 12px!important;}
+.tecnico-relatorio-box button,.config-card button{height:42px!important;border-radius:10px!important;background:var(--tema)!important;color:#fff!important;font-weight:900!important;}
+.v10-card-top{align-items:flex-start!important;padding-right:105px!important;position:relative!important;}
+.v10-card-top .status-chip{position:absolute!important;right:0!important;top:0!important;max-width:98px!important;text-align:center!important;}
+.atendimento-menu-wrap{z-index:50!important;}
+.v10-actions{justify-content:center!important;gap:12px!important;display:flex!important;flex-wrap:wrap!important;}
+.v10-actions button{min-width:170px!important;height:38px!important;}
+.card.atendimento-card.v10-card{padding:0!important;}
+.v10-card-inner{padding:16px 18px 16px 22px!important;}
+.v10-nome{margin-top:0!important;}
+.modal-observacao textarea{width:100%;min-height:105px;resize:vertical;border:1px solid #d7dde8;border-radius:10px;padding:12px;font-family:Arial,sans-serif;font-size:14px;box-sizing:border-box;margin-top:8px;}
+.animacao-realizado{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(6,18,55,.42);z-index:12000;backdrop-filter:blur(5px)}
+.animacao-realizado.show{display:flex;}
+.animacao-realizado-card{background:#fff;border-radius:24px;padding:34px 42px;text-align:center;color:#071943;box-shadow:0 30px 90px rgba(0,0,0,.26);animation:popRealizado .5s ease both;}
+.animacao-check{width:74px;height:74px;border-radius:50%;display:grid;place-items:center;margin:0 auto 16px;background:#dcfce7;color:#16a34a;font-size:42px;font-weight:900;animation:pulseRealizado 1s ease infinite alternate;}
+.animacao-realizado-card h2{font-size:26px;margin:0;font-weight:900;}
+@keyframes popRealizado{from{transform:scale(.82);opacity:0}to{transform:scale(1);opacity:1}}
+@keyframes pulseRealizado{from{transform:scale(1)}to{transform:scale(1.08)}}
+@media(max-width:720px){.v10-card-top{padding-right:0!important;padding-top:42px!important}.v10-card-top .status-chip{left:0!important;right:auto!important;top:0!important}.pacientes-grid{grid-template-columns:1fr!important}.v10-actions{display:grid!important;grid-template-columns:1fr 1fr!important}.v10-actions button{min-width:0!important;width:100%!important}}
+
+
+/* ===== V13: ajustes finais solicitados ===== */
+.app-shell .sidebar{
+  background:linear-gradient(180deg,var(--tema),var(--tema-escuro))!important;
+}
+.app-shell .topbar{
+  background:linear-gradient(135deg,var(--tema-escuro),var(--tema) 72%,var(--tema-escuro))!important;
+}
+.app-shell #menu button.ativo,
+.app-shell .nav.active,
+.search-row .active-filter,
+.search-row .ativo{
+  background:linear-gradient(135deg,var(--tema),var(--tema-escuro))!important;
+  color:#fff!important;
+}
+.app-shell #menu button:not(.ativo){
+  background:#fff!important;
+  color:#172b66!important;
+}
+.app-shell #menu button:not(.ativo)::before{color:#7b8495!important;}
+.app-shell .v10-card.realizado,
+.card.realizado,
+.card.atendimento-card.v10-card.realizado{
+  background:#eef2f7!important;
+  border-color:#cbd5e1!important;
+  border-left-color:#94a3b8!important;
+  filter:grayscale(.9)!important;
+  opacity:.72!important;
+}
+.app-shell .v10-card.realizado .v10-meta-item{
+  background:#f1f5f9!important;
+}
+.app-shell .v10-card.realizado .v10-actions{
+  display:none!important;
+}
+.app-shell .v10-card.realizado .status-chip{
+  background:#e2e8f0!important;
+  color:#475569!important;
+}
+.theme-options button{
+  position:relative!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:8px!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.25)!important;
+}
+.theme-options button::before{
+  content:'';
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  background:currentColor;
+  border:2px solid rgba(255,255,255,.8);
+  box-shadow:0 0 0 1px rgba(0,0,0,.12);
+}
+.tema-btn-amarelo{text-shadow:none!important;color:#1f2937!important;}
+.tema-btn-amarelo::before{border-color:rgba(31,41,55,.45)!important;}
+.config-card .tema-atual-nome{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:6px 10px;
+  border-radius:999px;
+  background:var(--tema-claro);
+  color:var(--tema);
+  font-weight:900;
+}
+.pagina-titulo-solo{
+  background:#fff;
+  border:1px solid #dfe7f3;
+  border-left:6px solid var(--tema);
+  border-radius:14px;
+  padding:16px 18px;
+  box-shadow:0 10px 24px rgba(15,23,42,.06);
+  margin-bottom:14px;
+}
+.pagina-titulo-solo .pagina-titulo{margin-bottom:4px!important;}
+@media(max-width:760px){
+  .theme-options{grid-template-columns:1fr 1fr!important;}
+}
+
 </style>
 </head>
 
@@ -435,6 +719,26 @@ body.recepcao-restrita #formAtendimento{display:none!important}
   </div>
 </div>
 
+
+<div id="modalObservacaoRealizado" class="modal-fundo">
+  <div class="modal-box modal-observacao">
+    <h3>Deseja adicionar alguma observação?</h3>
+    <p>Essa observação ficará salva no atendimento realizado. Você pode deixar em branco.</p>
+    <textarea id="observacaoRealizado" placeholder="Digite uma observação opcional..."></textarea>
+    <div class="modal-acoes" style="margin-top:12px">
+      <button type="button" class="modal-cancelar" onclick="cancelarObservacaoRealizado()">Cancelar</button>
+      <button type="button" class="salvar" onclick="confirmarObservacaoRealizado()">Concluir</button>
+    </div>
+  </div>
+</div>
+
+<div id="animacaoAtendimentoRealizado" class="animacao-realizado">
+  <div class="animacao-realizado-card">
+    <div class="animacao-check">✓</div>
+    <h2>Atendimento realizado</h2>
+  </div>
+</div>
+
 <div id="modalHistorico" class="modal-fundo">
   <div class="modal-box">
     <h3>Histórico do paciente</h3>
@@ -497,13 +801,13 @@ body.recepcao-restrita #formAtendimento{display:none!important}
 
       <div class="input-group">
         <div class="icon-box">👤</div>
-        <input id="user" type="text" placeholder="recepcao.caicavv" autocomplete="username">
+        <input id="user" type="text" placeholder="Usuário" autocomplete="username">
         <span class="side-icon">♙</span>
       </div>
 
       <div class="input-group">
         <div class="icon-box">🔒</div>
-        <input id="pass" type="password" placeholder="••••••••" autocomplete="current-password">
+        <input id="pass" type="password" placeholder="Senha" autocomplete="current-password">
         <button type="button" class="btn-olho login-eye" onclick="alternarSenha()" aria-label="Mostrar ou esconder senha">◉</button>
       </div>
 
@@ -525,24 +829,24 @@ body.recepcao-restrita #formAtendimento{display:none!important}
 
 <div id="app" class="app-shell" style="display:none">
   <aside class="sidebar">
-    <div class="menu-icon">☰</div>
+    <div class="menu-icon" onclick="toggleMenuLateral()">☰</div>
 
-    <div class="nav active">
+    <div class="nav active" data-tela="agendamentos" onclick="abrirTelaAgendamentos()">
       <div class="nav-icon">📅</div>
       <span>Agendamentos</span>
     </div>
 
-    <div class="nav">
+    <div class="nav" data-tela="pacientes" onclick="abrirTelaPacientes()">
       <div class="nav-icon">👤</div>
       <span>Pacientes</span>
     </div>
 
-    <div class="nav">
+    <div class="nav" data-tela="tecnicos" onclick="abrirTelaTecnicos()">
       <div class="nav-icon">👥</div>
       <span>Técnicos</span>
     </div>
 
-    <div class="nav" onclick="toggleMenuLateral()">
+    <div class="nav" data-tela="configuracoes" onclick="abrirTelaConfiguracoes()">
       <div class="nav-icon">⚙️</div>
       <span>Configurações</span>
     </div>
@@ -612,6 +916,163 @@ body.recepcao-restrita #formAtendimento{display:none!important}
 
 <script>
 const cadastros = {"1": ["EMELLY GABRIELLY DA ANUNCIAÇÃO"], "2": ["LAURA RODRIGUES DE FREITAS"], "3": ["GABRIEL HENRIQUE DE SOUZA CHAGAS"], "4": ["GIULIA VALENTINE CARVALHO MALAQUIAS"], "5": ["YURY DE SOUZA DOS SANTOS LIMA"], "6": ["ISADORA VITORIA OLIVEIRA VEIGA"], "7": ["KARIELLY DOS ANJOS CANDIDO"], "8": ["OLIVER DA SILVA FRANCA"], "9": ["KAUANNY MIRANDA DOS SANTOS", "KAWE VINICIUS MIRANDA DOS SANTOS"], "10": ["YASMIM DE OLIVEIRA FRANÇA"], "11": ["HELLOYSA MACIELLY REIS COSTA"], "12": ["CAMILA SIMONI ANTOSKA"], "13": ["RAISSA DE OLIVEIRA PEREIRA", "GABRIEL DE OLIVEIRA PEREIRA DA SILVA", "VINICIUS DE OLIVEIRA PEREIRA"], "14": ["ANNA VALENTHYNA CRUZ SVIDNITZKI", "ARTHUR CRUZ SVIDNITZKI", "NYCOLLAS DANIEL CRUZ SVIDNITZKI", "NICOLLY CRUZ SVIDNITZKI"], "15": ["NICOLAS KAUÃ DE MORAIS MACHADO"], "16": ["VITÓRIA RODRIGUES VIDAL CAVALHEIRO DE ARAÚJO"], "17": ["ANDRÉ TRAMUJAS", "HUGO NASCIMENTO TRAMUJAS"], "18": ["PETERSON ALBERTO GONÇALVES JUNIOR"], "19": ["LARIANE RHILLARY DE OLIVEIRA ROSA"], "20": ["EMANUELLE ROSÁRIO DE AGUIAR"], "21": ["ADRIANO ARTHUR MACHADO WIRTH"], "22": ["VALENTINA DE OLIVEIRA SOUZA"], "23": ["ARIANE DE ARAÚJO DE PAULA", "ANA GABRIELA DE ARAUJO CARNEIRO", "EDISON FELIPE DE ARAUJO CARNEIRO", "GAEL HENRIQUE DE ARAUJO CARNEIRO", "KALYANE DE ARAUJO CARNEIRO"], "24": ["FREDERICO MACEDO ARAÚJO GONÇALVES"], "25": ["DANIELA SIMÃO FERREIRA MELO"], "26": ["MARIA REGINA DOMIT GOMES"], "27": ["KAUAN ARASHIRO DA SILVA"], "28": ["YUKI GIOVANNA AIDIA DOS SANTOS CHEDID"], "29": ["GABRIEL DE SOUZA LOPES"], "30": ["ÁGATA PISSININI LOPES"], "31": ["AGHATA CRISTINA DE OLIVEIRA ABRANTES"], "32": ["FLÁVIA PEREIRA MACHADO"], "33": ["ARTHUR FERNANDES ALVES DA SILVA"], "34": ["PAULA DANIELA SANTOS RAMOS"], "35": ["RILLARY FERREIRA E FERREIRA"], "36": ["SARAH CRISTINE RODRIGUES DE PAULA"], "37": ["THAYSSA JAISLAINE DIAS DE ARAÚJO"], "38": ["FERNANDO DE OLIVEIRA DOS REIS"], "39": ["VICTOR HENRIQUE NASCIMENTO COCKER"], "40": ["ISIS DE OLIVEIRA"], "41": ["JAMILE DA SILVA SOUZA", "ESTER DA SILVA COUTO DE LIMA"], "42": ["PABLO HENRIQUE SIQUEIRA RODRIGUES DA COSTA"], "43": ["KAUANE GABRIELE RIBEIRO ALVES"], "44": ["ANA HELOYSA GONÇALVES PIVATTO"], "45": ["EVELYN CRISTINE COSTA DE MOURA"], "46": ["OTÁVIO MIGUEL OLIVEIRA GONÇALVES"], "47": ["MARCELLY DAS ALMAS DOS SANTOS"], "48": ["RAPHAELLA VITÓRIA MENDES SCISLOVSKI DO CARMO", "VICTOR RAFAEL MENDES SCISLOVSKI DO CARMO"], "49": ["EMANUELLY RABELLO PAULON MONTEIRO"], "50": ["KAMILLY VICTÓRIA FERREIRA ARAÚJO"], "51": ["KYARA MARIA MARTINS FERREIRA PRESTES"], "52": ["SAMUEL RODRIGUES LIMA"], "53": ["ANA CLARA AMORIM DOS SANTOS", "ARIOSVALDO AGOSTINHO CORDEIRO JUNIOR", "BENJAMIM AMORIM FERREIRA"], "54": ["LEAN TIAGO MENEZES ALEXANDRE"], "55": ["ANA CLARA CAMARGO GARCEZ DINA", "GEOVANA CAMARGO GARCEZ DINA", "KAMILLY VICTÓRIA CAMARGO CORREA DINA", "RHYAN GABRIEL CAMARGO GARCEZ DINA"], "56": ["SABRYNA VITÓRIA SILVA CAETANO"], "57": ["NICKOLY NATEL CAVALCANTI"], "58": ["GABRIEL ELIAS RIBEIRO"], "59": ["RAEL MIGUEL DE CASTRO SILVA"], "60": ["NICOLY CRISTINY GONÇALVES RAMOS", "RAYSSA GONÇALVES RAMOS", "RHADASSA DE OLIVEIRA GONÇALVES", "YORHANA DE OLIVEIRA CORREIA"], "61": ["RAYSSA BOZI NICOMEDES"], "62": ["ANELIZE GABRIELY SANTOS DOS REIS"], "63": ["SOPHIA EVANGELISTA MARQUES MOREIRA"], "64": ["HILLARY SOUZA ROCHA", "YAGO SOUZA ROCHA"], "65": ["EMANUELLE TUANY CORDEIRO DA SILVA"], "66": ["REBECA VITÓRIA GUIMARÃES PAES LEME", "ANNA VICTORYA GUIMARÃES PAES LEME"], "67": ["YASMIN RIBEIRO ANDRADE", "LOUISE RIBEIRO ANDRADE"], "68": ["AMANDA RODRIGUES MIRANDA"], "69": ["MARINA ALICE VEIGA DA SILVA", "GUSTAVO VEIGA DA SILVA"], "70": ["HERICK TEIXEIRA COELHO"], "71": ["KHÉROLLYN CEZARINO DA SILVA", "LEONARDO CEZARINO DA SILVA"], "72": ["CAROLINA ONÓRIO DE OLIVEIRA"], "73": ["NIKOLY FRANCO RICARDO", "EMANUEL PARADORI RICARDO"], "74": ["LAURIELLE GONÇALVES DA COSTA"], "75": ["ANA CLARA RODRIGUES DE CASTRO"], "76": ["ANDRESSA SANTOS DA SILVA", "DAYANA DOS SANTOS DA SILVA", "KALLEL SANTOS DA SILVA", "PAOLA DOS SANTOS DA SILVA", "PRISCILA DOS SANTOS DA SILVA", "RAYSSA DOS SANTOS SILVA"], "77": ["YURI MATHEUS JOAQUIM COSTA"], "78": ["AMANDA VITÓRIA CORDEIRO DE OLIVEIRA"], "79": ["JOÃO VICTOR CONGENCA AGOSTINHO"], "80": ["VITÓRIA CAROLINE DE MOURA IANCHESKI"], "81": ["DAVI RAFAEL FLORIDO RICARDO", "EDUARDO FLORIDO RICARDO"], "82": ["PEDRO RIBEIRO SANTOS", "JULIA RIBEIRO SANTOS", "RENATA RIBEIRO SANTOS"], "83": ["NATHAN GABRIEL MOREIRA DOS SANTOS"], "84": ["BEATRIZ BEMBEM", "ALEXANDRE BEMBEM"], "85": ["ADRIANO FELIPE MUZA FOGAÇA"], "86": ["ALICE NOGUEIRA ALVES BATISTA", "ISABELA CRISTINA NOGUEIRA ALVES BATISTA", "KELLY CAROLINE NOGUEIRA ALVES BATISTA", "MARCOS VINICIUS NOGUEIRA ALVES BATISTA", "BIATRIZ NOGUEIRA FERNANDES"], "87": ["MARIA ESTELA CORDEIRO MAURÍCIO"], "88": ["ERICK GABRIEL MENDES SILVA"], "89": ["JULIA RODRIGUES DE FREITAS"], "90": ["LORENA LEITE LARSEN"], "91": ["ELIZA CRISTINE BREDA"], "92": ["EDUARDA CONSTANTINO DOS ANJOS"], "93": ["MARINA VAZ NASCIMENTO", "MARIANA VAZ NASCIMENTO"], "94": ["SOPHYA GABRIELE DE LIMA HACKBARTH"], "95": ["YASMIM VITORIA DOS SANTOS FERNANDES"], "96": ["ANTONELLA DE MATOS MINGOTT"], "97": ["IZABEL MARA LABRES DA SILVA", "MIGUEL ALEXANDRE DA SILVA"], "98": ["ANA LÍVIA SOUZA ROCHA"], "99": ["DUARDA FERREIRA DE SOUZA"], "100": ["CLARICE BIANKY DE OLIVEIRA XAVIER"], "101": ["NEANDER DA ROCHA VIDAL"], "102": ["GUILHERME NASCIMENTO DE ALMEIDA"], "103": ["DARLAN ALIFE MUNIZ MARIANO", "VITÓRIA CRISTINA MARIANO"], "104": ["CARLOS SAMUEL ARAÚJO DA SILVA"], "105": ["REBECA ALEXANDRE DE ARAÚJO"], "106": ["ENZO GABRIEL S. DA SILVA", "HENRY MIGUEL SANTANA PEREIRA"], "107": ["FERNANDO HENRIQUE SALVADOR PEREIRA"], "108": ["MYLLENA VICTÓRIA ARAÚJO ALVES"], "109": ["VITOR DA SILVA DUTRA", "KAUAN DA SILVA DUTRA"], "110": ["MARLON YURI REIS"], "111": ["MIRELLA KELLY DIAS DE PAULO"], "112": ["SOPHIE ANANDA PINHEIRO CLOSS"], "113": ["ESTER NUNES RODRIGUES"], "114": ["ALINNE FERNANDA ZACARIAS ZADRA"], "115": ["ELOAH CECILIA PRANDO STUBBS"], "116": ["GUILHERME HENRIQUE DIAS PEREIRA CAMPOS"], "117": ["ITALO FRANCO ALVES"], "118": ["NICOLLAS ENZO RODRIGUES DAS DORES"], "119": ["PEDRO HENRIQUE DE LIMA BRANCO"], "120": ["HYCARO MIGUEL BAHIA JAQUES"], "121": ["MATHEUS ALBAN MARQUES"], "122": ["MARIA LAURA ALVES DE SOUZA FERREIRA"], "123": ["GABRIELA RIBEIRO ARANTES"], "124": ["ISABELLY VITÓRIA ROSÁRIO DA SILVA"], "125": ["ISAAC DOS SANTOS BERLIM"], "126": ["ALANA MARCELINO DO ROSÁRIO"], "127": ["IZABELLE FORTUNATO DO COUTO"], "128": ["LAUANE VITÓRIA DE FREITAS HENRIQUE"], "129": ["MARIA HELOISA SANTOS DA SILVA"], "130": ["GRAZIELE SANTOS DA SILVA"], "131": ["SOPHIA SCHULTZ PRESTES"], "132": ["JÚLIA RAFAELA DIAS CORREA"], "133": ["VICTOR TAVARES DA SILVA"], "134": ["EMELY GEOVANA MARTINS CORDEIRO"], "135": ["SOFIA VITÓRIA PEREIRA VASSÃO"], "136": ["EMANUELLY MENIKA MACHADO ALVES"], "137": ["ALLANA TAMARA FERREIRA DOS SANTOS", "ALEXIA FERREIRA DOS SANTOS"], "138": ["BRUNA MARCELLI DOS SANTOS PEREIRA CARVALHO"], "139": ["MYRYAN EMANUELY ALVES SATURNINO"], "140": ["GAEL DA SILVA"], "141": ["LAVIGNE CARDOSO SILVA"], "142": ["ANA KAROLINA SOARES DOS SANTOS"], "143": ["SARAH HADASSA DO CARMO RIBEIRO"], "144": ["NATHÁLIA DOS SANTOS PONTES"], "145": ["KEVIN OLIVEIRA PIRES"], "146": ["HELLOA VICTÓRIA DE CASTRO", "ISADORA VALLENTINA DE CASTRO CORREA", "KEMELLY CRISTINE DE CASTRO VEIGA", "LUANE EDUARDA DE CASTRO DOS REIS", "PYETRA LUIZA DE CASTRO LEARDINE"], "147": ["JOSÉ LUCAS DOS SANTOS", "EVELYN SANTANA S. DA SILVA"], "148": ["LUANYFER DE SOUZA AMORIM"], "149": ["MARIA GABRIELLA XAVIER MASSAMBINI"], "150": ["ISABELE VITÓRIA RIBEIRO MARQUES"], "151": ["KEVELLYN MONTEIRO DOS SANTOS"], "152": ["THAYSA KLETEMBERG SILVA"], "153": ["JAMILE ALVES LEITE"], "154": ["EMELLY VICTÓRIA BARBOSA NEVES"], "155": ["AURORA MARYA PIGATTO DOS SANTOS", "MARCO ANTONYO PIGATTO DOS SANTOS"], "156": ["ISMAEL RODRIGUES RIBEIRO"], "157": ["ALEXIA DA SILVA DINO"], "158": ["NATHAN LIMA DA SILVA PEREIRA"], "159": ["MARIA VICTÓRIA JAKYBALIS SANTOS WIER"], "160": ["RAFAEL ENZO SCALABRIN", "THIAGO EMANUEL SCALABRIN"], "161": ["LIA AMABILE BREGEIRON"], "162": ["LUIZ FELIPE SANTOS DA CUNHA"], "163": ["VALENTINA DUTRA ASSUNÇÃO"], "164": ["JOAQUIM GUILHERME BOINOSKI SALVADOR"], "165": ["VICTOR HUGO SILVA BATISTEL"], "166": ["KETHELLYN DOS SANTOS SALDANHA"], "167": ["LAURA FERREIRA BASTOS"], "168": ["LUCAS TEIXEIRA MACHADO"], "169": ["DEBORA KAUANY DE FREITAS", "SAMUEL DE FREITAS SONSIN", "MATHEUS DE FREITAS SONSIN"], "170": ["DIANA PIRES ARISTOTELES MEDEIROS"], "171": ["EVELYN PEREIRA RODRIGUES", "EMELY PEREIRA RODRIGUES"], "172": ["MIKAELE FERREIRA BORBA"], "173": ["BENJAMIN EBRES FREITAS"], "174": ["SAMUEL PATRICK ALVES DE SOUZA"], "175": ["ANA LUIZA MONTEIRO BORBA"], "176": ["ISABELA BALSALOBRE ISAÍAS"], "177": ["MARCELA APARECIDA DE OLIVEIRA SILVA"], "178": ["KAUANE DA SILVA LUIZ"], "179": ["JOÃO MIGUEL COSTA MARTINS", "PEDRO HENRIQUE COSTA FERREIRA"], "180": ["MIGUEL HONÓRIO DE ARAÚJO"], "181": ["GABRIEL FERRARI VALÉRIO"], "182": ["KAUAN RIBEIRO ALVES SILVA"], "183": ["RAFAEL WOSNIAK"], "184": ["LUIZ MIGUEL OLIVEIRA DO PRADO"], "185": ["NIKOLLAS BARBOSA DE SOUZA SILVA"], "186": ["KAROLAYNE CRISTINA SANTOS DE FRANÇA", "HANYEL SANTOS DE FRANÇA"], "187": ["ANNY ELLEN PEREIRA FILADELFO"], "188": ["PEDRO LUCAS SANTOS BEZERRA"], "189": ["RAFAELA ROCHA HILDEBRANDO DOS SANTOS"], "190": ["GABRIELY ROST PORPETA"], "191": ["ALYSSON FELLIP VIEIRA"], "192": ["MARIA LUIZA TAVARES HIRT"], "193": ["SUELLEN ALVES LEITE"], "194": ["GIOVANA DOS SANTOS COSTA"], "195": ["MICKAELLY MURARO RIBEIRO TRIAQUIM"], "196": ["MIRIAM DA SILVA COSTA"], "197": ["EMANUELA PADOVANY NUNES DA SILVA"], "198": ["HEMANUELE ARMEDE GODOY"], "199": ["KLARA MARIÁH SILVA TEIXEIRA", "HENRY DAVI CANDIDO DA SILVA", "ANA JULIA CÂNDIDO SCHWENDTNER", "LUCCA SANTIAGO CANDIDO DOS REIS", "BARBARA CANDIDO DOS REIS"], "200": ["GIULIA PEREIRA DA CRUZ", "PIETRO PEREIRA DA CRUZ"], "201": ["LARA CRISTINA GONÇALVES CORREIA DE PAULA", "MYLENA BEATRIZ GONÇALVES CORREIA DE PAULA"], "202": ["THAMYRES KAROLAYNE DA SILVA"], "203": ["JHENIFER K. MACHADO GOMES COSTA"], "204": ["LÍVIA BATISTA SIMONATO"], "205": ["VINICIUS GONÇALVES MENDES"], "206": ["LARYSSA MARTINS GOMES DA SILVA", "MARIA VITÓRIA MARTINS CORRÊA DA SILVA"], "207": ["ANNE HEMILY KAMINSKI"], "208": ["MARIA LUYZA DA SILVA NASCIMENTO"], "209": ["SALISSA AISA M. DA SILVA"], "210": ["SUZIELLY MACZUSEKI HOLFFMANN DA SILVA"], "211": ["NATAN RAFAEL PAES LEME DA SILVA", "ICARO HENRIQUE PAES LEME"], "212": ["MEL SCHMIDT JACINTO"], "213": ["HIVILLEY FENANDA CORDEIRO DOS SANTOS"], "214": ["NIKOLLY DE PAULA DE CASTRO", "BRYAN RIAN DE PAULA DE CASTRO", "a"], "215": ["ISABELLA ALVES DE SOUZA", "MARCOS VINICIUS ALVES DE SOUZA"], "216": ["EMANUELLYN VICTÓRIA ROMÃO DAS DORES"], "217": ["LAÍS LOPES PEREIRA MENDES"], "218": ["LAURA VITÓRIA ARAÚJO DUARTE", "ANA LÍVIA ARAUJO DUARTE"], "219": ["JOSÉ HENRIQUE JULIO DE OLIVEIRA"], "220": ["PEDRO HENRIQUE PEREIRA LIMA", "EMILY VITÓRIA PEREIRA"], "221": ["FABRÍCIO DOS SANTOS KAMINSKI", "DAPHINY DOS SANTOS KAMINSKI"], "222": ["LARYSSA DA SILVA GONÇALVES DELCIDIO"], "223": ["GUSTAVO HENRIQUE DA SILVA BAHIA", "NATALLY SOPHIA DA SILVA BAHIA"], "224": ["STHEFANY JULIA MACIEL DE CASTRO"], "225": ["WAGNER FRANCISCO DA COSTA", "HELOÍSA FRANCISCO CORREIA", "Miqueyas Henrique Francisco da Costa"], "226": ["KAIO MURILO PEREIRA", "MARIANE POLIANA PEREIRA", "Rebeka Rayane Pereira"], "227": ["a"], "228": ["KAROLYN GABRIELLY VIEIRA AGUIAR"], "229": ["LAYANE MARQUES REINEHR"], "230": ["GUSTAVO HENRIQUE MENEZES"], "231": ["NAIANI NASCIMENTO DE SOUZA"], "232": ["PEDRO LUCAS CARDOSO NEVES"], "233": ["EMANUELE DA SILVA LEOPOLDINO"], "234": ["MELLANY VICTÓRIA CAMARINHO DE OLIVEIRA"], "235": ["MANUELLY VITÓRIA VATRIN DA SILVA"], "236": ["FABIANE ALESSANDRA DA SILVA PEREIRA"], "237": ["VALENTINA DA SILVA BASTOS"], "238": ["ISIS SOUZA RIBEIRO PAEZ"], "239": ["THAMYRES CRISTINA FRANÇA DOS SANTOS"], "240": ["KAYO ALVES CORDEIRO CHRISANTO"], "241": ["NATHALY BERTHIS CUSTÓDIO"], "242": ["MURILLO DE OLIVEIRA MENDES"], "243": ["ALISSON ROSSI SIQUEIRA"], "244": ["KEVYN ANTONIO DE PAULA VIEIRA DA ROSA"], "245": ["ABNER LUIZ DO CARMO MORAIS"], "246": ["DAVI RAFAEL COSTA DA SILVA"], "247": ["JAINE CANDIDO"], "248": ["AMANDA GABRIELLY LISCOSQUI DA SILVA"], "249": ["ANA CAROLINA RODRIGUES PALMAS"], "250": ["NICOLLE LEITE MARTINS"], "251": ["ALICE COSTA DE FREITAS"], "252": ["a"], "253": ["RHÚBIA CARVALHO DA SILVA"], "254": ["OLÍVIA MANUELLA GONÇALVES LIMA"], "255": ["BEATRIZ GONÇALVES CAMPOS"], "256": ["KALVYN MATHEUS DA SILVA BARCA", "KETHELLYN VITÓRIA DA SILVA BARCA", "KRISTOFFER AUGUSTO DA SILVA BARCA"], "257": ["YSABELLA DA ROCHA ROSA"], "258": ["KIMBERLLY APARECIDA SILVA BORGES", "REBECA LUANA SILVA MARTINS", "SOPHIA VITÓRIA SILVA MARTINS"], "259": ["DAVI MADONA DE ASSIS"], "260": ["LUCAS PEREIRA SOARES"], "261": ["MARJORIE MAITÊ NOVAES PADILHA"], "262": ["ISIS OLIVEIRA JULIÃO"], "263": ["MEYRILIS VITÓRIA DA SILVA FERNANDES"], "264": ["ADRIANA GALDINO DO AMARAL", "LORRANY GALDINO"], "265": ["JOÃO MIGUEL PADORIM FIATDOSKI", "JOÃO GUILHERME PADOIM FIATKOSKI"], "266": ["MARIA LAURA MESKITA DA SILVA"], "267": ["MYLLENA EDUARDA MENDES NOVAIS GALDINO"], "268": ["ADALTO ASSUNÇÃO CARDOSO DE MATOS", "ARTHUR DA COSTA MATOS", "ISIS DA COSTA MATOS", "PAMELA DA COSTA MATOS", "ÍCARO DA COSTA MATOS"], "269": ["MATHEUS GABRIEL SOARES DOS SANTOS"], "270": ["VIVIAN GABRIELA MARTINS PAIANO BATISTA", "PRISCILA LORRAINE MARTINS PAIANO BATISTA"], "271": ["WELLINGTON DOS SANTOS BOZI JUNIOR"], "272": ["MURILO GAMA DOS SANTOS"], "273": ["RYAN LUCAS CARDOSO SALLES"], "274": ["KAUANE GABRIELLE CARMEN SANTOS DA SILVA ALVES"], "275": ["NICOLAS BRYAN SANTOS FERREIRA"], "276": ["ALICE GARCIA DE LIMA", "DAVI LIMA FERMINO", "RAFAEL LIMA MIRANDA"], "277": ["EMANUELLE SILVA DE OIVEIRA"], "278": ["a"], "279": ["WESLLEY JUACIR DO CARMO"], "280": ["PALOMA APARECIDA GONÇALVES"], "281": ["ANA JÚLIA ROCHA CANTIE ARGUELLO"], "282": ["GISELLY RODRIGUES CORDEIRO"], "283": ["ELOAH COSTA E SILVA"], "284": ["MARIANA MHONDESSA SANTOS", "LAURA CAMILLY SANTOS FERREIRA BUENO", "ENZO GABRIEL FERREIRA BUENO SANTOS", "JOSE MIGUEL SANTOS", "JOAQUIM MANUEL SANTOS"], "285": ["VIVIAN GABRIELA MARTINS PAIANO BATISTA"], "286": ["IZABELLA VITÓRIA OLIVEIRA DE SOUZA"], "287": ["NICOLLY ROCHA CORREA"], "288": ["HELLEN VITÓRIA PEREIRA MENDES", "LAÍS LOPES PEREIRA MENDES"], "289": ["MONIQUE RODRIGUES SANTOS"], "290": ["NICOLLE RIBEIRO FERNANDES"], "291": ["TALITA SOUZA RODRIGUES"], "292": ["ISABELA SALVADOR NUNES"], "293": ["DAYROUM GALDINO ASSUNÇÃO PARISOTTO"], "294": ["a"], "295": ["LARISSA DA SILVA LOPES"], "296": ["LAVINIA VICTÓRIA ANTOSKO"], "297": ["ANNA CRISTHINY DE SOUZA BATISTA"], "298": ["ESTHER VICTÓRIA DOS SANTOS NASCIMENTO"], "299": ["JOSÉ AUGUSTO DA SILVA MOMOLI"], "300": ["MARIA EDUARDA DA SILVA CORDEIRO"], "301": ["LAURA BEATRIZ COLAÇO DE OLIVEIRA", "MIGUEL FERNANDO DE OLIVEIRA"], "302": ["MELANIE ANTONELLY MENDONÇA DOS SANTOS"], "303": ["ALICE NATSUMI UYETAKI MARINS"], "304": ["MICHEL MARQUES ALVES"], "305": ["RAVI MENDONÇA GUNSCH", "ANTHONY GUNSCH"], "306": ["DYLLAN OLIVEIRA LARA"], "307": ["EMANUELLA SANTOS MODESTO"], "308": ["MARIA EDUARDA SANTANA CELESTINO"], "309": ["PEDRO RODRIGUES MOREIRA"], "310": ["RAYANY VITÓRIA SOUZA"], "311": ["ANTHONY ALVES ANDRÉ", "EDUARDA KAROLLINY MURARO HONORATO", "MIRELLA ALVES ANDRÉ MORATO"], "312": ["KALLYNE DOS SANTOS MACHADO"], "313": ["MELISSA FERNANDA DOS SANTOS BARBOZA"], "314": ["MARIA LUIZA DA SILVA NUNES"], "315": ["RAYSSE NICOLLY MACHADO DOS SANTOS"], "316": ["HAGATA SILVA DA CONCEIÇÃO", "MARIA CLARA DE OLIVEIRA PEREIRA"], "317": ["MAYARAH MACHADO CHARAVA"], "318": ["MAITÊ ARAÚJO GONÇALVES", "JOSÉ LUIZ ARAÚJO VALOMIN"], "319": ["ANA CLARA ALVES BALDUINA"], "320": ["GABRIEL DEMETRIO MARQUES"], "321": ["KAUÃ EDUARDO SOARES DE LIMA"], "322": ["VALENTINA RAFAELLA PONTES DE SOUZA"], "323": ["EVILLYN CRISTINA FERNANDES DA SILVA"], "324": ["BEATRIZ DOS ANJOS GOUVEA"], "325": ["MURILO MENDES MARTINS", "YASMIN MENDES MARTINS"], "326": ["MARIA EDUARDA MIGUEL DA SILVA"], "327": ["MARIANA LUIZA MARTINS DOS SANTOS", "ANA VITÓRIA MARTINS PINTO"], "328": ["RYAN OLIVEIRA DAS NEVES"], "329": ["MELLANY CRISTINE LARA MACEDO"], "330": ["LUCAS PETZOLD DE SOUZA"], "331": ["EVERTON NUNES GONÇALVES DE OLIVEIRA"], "332": ["EMELY RIBEIRO DE LIMA"], "333": ["THIFANY NICOLY RODRIGUES DA SILVA"], "334": ["MYLLENA VICTÓRIA DE PAULA CARVALHO"], "335": ["AGATHA RIHANA PEREIRA DOS SANTOS"], "336": ["FELIPE DOS SANTOS OLIVERIO"], "337": ["IZAQUE VELOMI DE ASSIS HONORATO"], "338": ["SAMUEL HENRIQUE BRITES PEREIRA"], "339": ["RAFAELA KIRCHOF"], "340": ["MELLANY YASMIN RESE CORDEIRO DA SILVA"], "341": ["ALICE EMANUELE SANTOS CEZINANDO", "AURORA CATARINA SANTOS", "HELENA FLOR SANTOS TOZZO", "a"], "342": ["SARAH ELIZABETH DA SILVA"], "343": ["RAFAEL DO NASCIMENTO RIBEIRO FERREIRA", "THAIS CRISTINA DO NASCIMENTO RIBEIRO", "YASMIN JULIA RIBEIRO SANTOS"], "344": ["KATTELYN FREITAS DE SOUZA GONÇALVES"], "345": ["JOELCIA RODRIGUES GOLTZ"], "346": ["YHASMIN VITÓRIA RODRIGUES XAVIER", "LAURA VALENTINA RODRIGUES DA SILVA", "Alexia Roberta Rodrigues Xavier"], "347": ["ANNA KAROLINE BORBA RODRIGUES"], "348": ["MATEUS VINÍCIUS GOMES SANTANA"], "349": ["MARIA EDUARDA FERREIRA DUARTE"], "350": ["INGRID CAUANE CRUZ DE LIMA"], "351": ["NYCOLAS CONRADO MARTINS DE CASTRO"], "352": ["LIVIA VELOSO DE SOUZA MENDES"], "353": ["IZADORA LAUFER DA COSTA", "CARLOS EDUARDO LAUFER DA COSTA"], "354": ["MARIELLE HELOISA NADIR CLAUDINO", "MARCIELE NADIR SOUZA"], "355": ["LUIZA EMANOELLY MACIEL DE LIMA DA SILVA"], "356": ["GLÓRIA MONIQUE MARIANO CORDEIRO BERNARDO", "WALLESKA RODRIGUES SANTANA", "POLLYANA VITORIA RODRIGUES FERNANDES"], "357": ["NATHALIA KAUANY COSTA RIOS"], "358": ["YAN CATINE YLHERLM DOS SANTOS", "YASMIN CATINE YLHERLM DOS SANTOS"], "359": ["YOHANA MYCKAELLA SAMPAIO DOS SANTOS"], "360": ["ANA KÉSIA ANTUNE DE LEÃO"], "361": ["ANDRÉ FELIPE RIBEIRO COLLAÇO", "JAIRO FELIPE RIBEIRO COLLAÇO"], "362": ["ROBERT LUIZ ARAÚJO DOS SANTOS", "ALYSSON AUGUSTO FRANÇA DE ARAÚJO", "ALICE VITÓRIA FRANÇA DE ARAÚJO"], "363": ["ENDREW NATANAEL GAVIOLI DA VEIGA"], "364": ["ELIZABETH FRANCISCA MACEDO DA SILVA"], "365": ["ANA VITÓRIA MARTINS PINTO"], "366": ["PALOMA RAÍSSA RIBEIRO DA COSTA"], "367": ["ARTHUR CHAVES PEREIRA"], "368": ["LUCIANA LOPES BORBA"], "369": ["MICAEL MEIRA PEREIRA MIRANDA"], "370": ["STHEFANY NAOMI POLETI NUNES"], "371": ["ANGELINE DOS SANTOS GONZAGA SILVA"], "372": ["EDUARDA LINS FREITAS"], "373": ["ANA LUIZA DOS SANTOS CORREA"], "374": ["SANDRA MARA SOARES"], "375": ["ISABELLA CORDEIRO DE CASTRO"], "376": ["BRUNA FELICIANO DOS SANTOS"], "377": ["ROSANA CAMPOS MANOEL"], "378": ["BERNARDO BOEGRSHAUSEN ALVES"], "379": ["NYCOLAS VEIGA EUZÉBIO DE FREITAS"], "380": ["MARIANA CANDIDO DA SILVA"], "381": ["ANA CAROLINA VIEIRA DOS SANTOS"], "382": ["TAYNARA SILVA DE OLIVEIRA"], "383": ["MILCKA VITÓRIA FREITAS DA SILVA"], "384": ["KESSILYN CRISTINA FERREIRA SANTOS"], "385": ["NIKOLAS VIDAL BARBOSA"], "386": ["ANA PAULA PEREIRA MARTINS HONORATO", "ESTHER CRISTINA PEREIRA HONORATO"], "387": ["GIOVANNA COUTINHO DE FELIX"], "388": ["MARINA BERLIM PINTO ARAÚJO"], "389": ["LÍVIA SARA FRANÇA AMORIM"], "390": ["GABRIEL MODESTO DO NASCIMENTO BARCELOS", "NICOLE MODESTO BARCELOS DO NASCIMENTO"], "391": ["SHOFIA GOMES PEREIRA"], "392": ["GABRIELA PINHEIRO DE LIMA"], "393": ["ANTONY HENRIQUE INÁCIO ALVES DOS SANTOS", "BIANCA FLOR INÁCIO DOS SANTOS"], "394": ["JULIA JACYNTHO MENDES"], "395": ["PATRÍCIA CORREIA FREITAS PEREIRA"], "396": ["CRISTINY VITÓRIA DOS SANTOS"], "397": ["ANA FLÁVIA MATOSO BORBA"], "398": ["ISAAC PEREIRA DE OLIVEIRA VALLES"], "399": ["ANTHONI NARCISO FAGUNDES", "ARTHUR NARCISO FAGUNDES"], "400": ["RHILARY NICOLY VIEIRA"], "401": ["DIEGO RICARDO BARCELOS DOS SANTOS"], "402": ["EMANUELLY MODESTO DA LUZ"], "403": ["OLÍVIA GALDINO NUNES"], "404": ["FÁBIO EDUARDO DE OLIVEIRA"], "405": ["LIVIA LOHAINE DA COSTA PINHEIRO"], "406": ["JHONATAN NUNES LOURENÇO JUNIOR"], "407": ["HELOA CRISTAL OLIVEIRA CORREIA", "RHYANNA DE OLIVEIRA CORREIA", "SARA DE OLIVEIRA CORREIA SERAFIM"], "408": ["LOHAN CORDEIRO DOS SANTOS MACHADO"], "409": ["GABRIELY CAROLINE GONÇALVES NUNES"], "410": ["ANA CAROLINA VIEIRA DOS SANTOS"], "411": ["ISADORA VITÓRIA OLIVEIRA VEIGA"], "412": ["KAUAN VIDA DO NASCIMENTO"], "413": ["VITÓRIA ALVES MARTINS3"], "414": ["PAOLA MARCONDES KIENTEKA"], "415": ["ALEXIA VEGENER COLAÇO CARNEIRO"], "416": ["KAUANE MEDUNA BATASAR"], "417": ["DEIVIELY MATOZO ALVES"], "418": ["VITÓRIA NEVES PEREIRA"], "419": ["EDUARDA THALIA CARDENAZ KUBA"], "420": ["a"], "421": ["DOUGLAS GONÇALVES LIMA", "VICTOR GUSTAVO GONÇALVES DOS REIS"], "422": ["LUIZ HENRIQUE DA SILVA GHENO", "IGOR FELIPE DA SILVA GHENO"], "423": ["ANA LIVIA GALDINO ASSUNÇÃO PARISOTTO"], "424": ["GLAUCO CILDO NIERI MAGALHÃES FILHO", "GABRIELLA MIRANDA OLIVEIRA"], "425": ["MICHAEL RICHARD COLAÇO CARNEIRO", "YORHAN YURY COLAÇO CARNEIRO"], "426": ["LEIDIANY GABRIELE BEIRA ALEXANDRE"], "427": ["HELENA REINBOLD"], "428": ["MARIA EDUARDA FERNANDES"], "429": ["MARIA VITÓRIA MARTINS CORREIA DA SILVA"], "430": ["GEOVANA MIRANDA FARIAS"], "431": ["NATHALLY FERNANDES MENDES"], "432": ["ALIA WANZER CARVALHO FORHENATO RAMOS DA SILVA"], "433": ["SELMA LUIZA NUNES CALDAS"], "434": ["a", "SOPHIA MEDEIROS FIGUEIREDO DUTRA"], "435": ["VICTOR HENRIQUE SANTOS DO CARMO"], "436": ["LAURA BANQUES DOS SANTOS MENDES"], "437": ["KIMBERLlY PIRES SCHARMANN GODOI"], "438": ["KIMBERLY LORENA RODRIGUES"], "439": ["BRUNA GABRIELLY RODRIGUES MARTINS"], "440": ["LUAN FELIPE FERNANDES ALEXANDRE ALVES"], "441": ["JAMILLI DUARTE SANTOS", "VITÓRIA DUARTE SANTOS"], "442": ["LARA MENDES"], "443": ["RAYANA AGOSTINHO CORDEIRO"], "444": ["GUILHERME PINHEIRO SALGADO"], "445": ["YASMIN VIEIRA DOS SANTOS"], "446": ["ANDRESSA ALVES LOURENÇO BORBA"], "447": ["ALANNA VITÓRIA DE CASTRO CRUZ"], "448": ["MAYKE DOUGLAS ROSENDO ROSA"], "449": ["THALYTA VERNES CARVALHO"], "450": ["ALINE REBECA PAULI"], "451": ["VINICIUS AGUIAR RAMOS"], "452": ["MIGUEL RAMBO DAPPER DOS SANTOS"], "453": ["LAURA CAROLINA LEME MENDES"], "454": ["JHENIFFER CORDEIRO OSÓRIO", "BEATRIZ CORDEIRO OSÓRIO", "ASAFE CORDEIRO OSÓRIO"], "455": ["LAURA VITÓRIA PIOLI GIVALDELLO"], "456": ["MARYANE CAMPOS DOS SANTOS"], "457": ["YASMIN CARVALHO DIAS"], "458": ["JULIA SALVADOR MELLO"], "459": ["MARIA CLEMENTINA DOS SANTOS LEITE"], "460": ["VITÓRIA CRISTINA BERNARDO BUENO"], "461": ["POLLYANA FERREIRA CORDEIRO"], "462": ["NICOLE AMORIM GEREMIAS"], "463": ["RHAYSSA VITÓRIA CABRAL COSTA FEITOSA"], "464": ["LUANA CRISTINA RAMOS"], "465": ["SHAYANE SABRINE MACHADO CORDEIRO"], "466": ["MARIA CLARA ALVES DA SILVA"], "467": ["CECÍLIA SILVA SOLAREVICZ"], "468": ["REBECA VITÓRIA PEREIRA FERNANDES", "SAMUEL VICTOR PEREIRA FERNANDES"], "469": ["VITÓRIA DE LIMAS ROSINA"], "470": ["VITÓRIA EDUARDA ALVES RAMOS DE OLIVEIRA"], "471": ["HALLYNE DOS SANTOS ASSUNÇÃO"], "472": ["RYAN GABRIEL GONÇALVES PEREIRA ALVES"], "473": ["THAINA CARDOSO DO NASCIMENTO"], "474": ["EMANUELLY VITÓRIA DAS ALMAS MARTINS"], "475": ["KARINA CAROLINE BOAKES VIEIRA"], "476": ["ISABELLA VITÓRIA SOUZA VIEIRA"], "477": ["NICOLE STRAUBE DA SILVA", "NAYARA STRAUBE DA SILVA"], "478": ["GABRIELLA BARRETO NUNES DA SILVA"], "479": ["ACSA VITÓRIA RODRIGUES"], "480": ["RAFAEL AGOSTINHO ANTONIO"], "481": ["JACKSON DANIEL KOSOWS"], "482": ["SOPHYA LOPES DA SILVA", "SORYAN LOPES DA SILVA"], "483": ["TAILINE GONÇALVES ROSA", "ADRIAN MORAIS BRAGA DA SILVA", "THAILAINNY MARCELLA GONÇALVES RODRIGUES", "MARCELO DE LIMA RODRIGUES FILHO", "SAMUEL GONÇALVES DA CRUZ"], "484": ["KATERINY BIANCA CORDEIRO BARBOSA"], "485": ["ISABELA DA ROCHA BUENO"], "486": ["ANINKA LEAL FERNANDES"], "487": ["ALICIA RAFAELA MACHADO"], "488": ["a"], "489": ["KARINE CORREIA BATISTA"], "490": ["PASTA DUPLICADA ISABELA DA ROCHA BUENO"], "491": ["KAROLINY DA SILVA PATROCINIO"], "492": ["RHAYANE GABRIELLE RODRIGUES DOS SANTOS"], "493": ["MATHEUS ROBERT CAMARGO CAMIZÃO"], "494": ["VITÓRIA GABRIELLY SOARES"], "495": ["ISABELLA DA SILVA DE AVELAR"], "496": ["MARIA EVA ALVES NEVES"], "497": ["ISAAC PIRES DOS SANTOS"], "498": ["LILIDY SAYRUMI BRITO DOS SANTOS CARDOZO"], "499": ["HELENA GABRYELLE DE LIMA CARNEIRO PASZKO"], "500": ["LUCAS CORDEIRO RIBEIRO"], "501": ["GLÓRIA ISIS MELO HENRIQUE"], "502": ["KAMILE VITÓRIA FIGUEIRA DO NASCIMENTO"], "503": ["MARIANA RAFAELE RAMOS DA ROSA"], "504": ["DAVI PEREIRA RODRIGUES"], "505": ["FLÁVIA MAIER CARREIRO"], "506": ["NICOLY PINHEIRO DOS SANTOS"], "507": ["AYLA MENDES CHANG"], "508": ["ARTHUR RODRIGUES CAMPOS"], "509": ["NAYLA DA SILVA LEDRES"], "510": ["KEMILLY VITORIA DA SILVA FERREIRA", "KETELLYN VITÓRIA DA SILVA FERREIRA", "KAIO CARLOS DA SILVA FERREIRA", "KAUANE REBECA ASSUNÇÃO DA SILVA"], "511": ["MATHEUS LUIZ SOUZA DE JESUS", "FÁBIO DE OLIVEIRA VASCONCELOS JÚNIOR", "LAYSA VICTÓRIA DE OLIVEIRA VASCONCELOS"], "512": ["SABRYNA GONÇALVES RIBEIRO"], "513": ["BENJAMIM DOS SANTOS BOZI DEON"], "514": ["ROBERTY ALEXANDRE MACENO DE PAULA"], "515": ["KAUAN EDUARDO DO ROSÁRIO PRATES"], "516": ["GABRIEL RAMOS PEREIRA DA SILVA"], "517": ["VICTÓRIA LOANNE WASHIMA DUTRA"], "518": ["ARTHUR MAHALO CELESTINO DE SOUZA"], "519": ["ALYNE CORDEIRO ROSA"], "520": ["RAFAELLY CRISTINA AQUINO BISPO"], "521": ["SOPHIA TIBIRIÇA MERISIO DOS SANTOS"], "522": ["LAURA MIRANDA ROSSI"], "523": ["EMILY VITORIA BATISTA RAMOS"], "524": ["BERNARDO ALVES DE GOUVEA BORGES"], "525": ["MIRELLE CORDEIRO NOGUEIRA DA SILVA"], "526": ["AUREA MARIA CORDEIRO DO CARMO"], "527": ["ISABELLY THUANE BIALUZ SIQUEIRA"], "528": ["DAVI ANDREY MACHADO SAMPAIO"], "529": ["GEISA KLICHEVITS DOS SANTOS CONCEIÇÃO"], "530": ["MATHEUS FERNANDES LOPES"], "531": ["LUAN DOS SANTOS PRESTES"], "532": ["HELOIZE ROSA DA SILVA"], "533": ["MATHEUS MENDES CARRARO"], "534": ["THIAGO GABRIEL MARTINS LOPES LOURENÇO"], "535": ["LETÍCIA CAMARGO VITORIA SANTOS ROSA"], "536": ["VALENTINA GOMES OLIVEIRA"], "537": ["ARTHUR DANIEL VELAZQUEZ DOS SANTOS"], "538": ["RAYANE MAIA LACERDA FERREIRA"], "539": ["ITALO GABRIEL MENDES ROCHA"], "540": ["RAMONA ISADORA PIRES RAMOS DE MOURA BEZERRA", "ANA SOPHIA PIRES RAMOS SANGUINA AGUILERA"], "541": ["NICOLLY EMANUELLY VIEIRA", "MIKAELLE VITÓRIA VIEIRA", "CARLOS HENRIQUE"], "542": ["ISABELE VITÓRIA RIBEIRO PACHECO"], "543": ["MELISSA BRITTES THEODORO"], "544": ["ANNA CLARA CHARAVA"], "545": ["JUAN PABLO CARDOSO VEIGA"], "546": ["NICOLLY RAIANE RIBEIRO CAMBANELIS"], "547": ["GEOVANNA SOFIA STEINERT DE FRANÇA", "JOÃO LUCAS STEINERT DE FRANÇA"], "548": ["ESTHEFANY PONTES GALDINO DOS ANJOS"], "549": ["ANA LUIZA NUNES DA SILVA PINHEIRO"], "550": ["YASMIN CERQUEIRA CASTRO"], "551": ["a", "JOÃO FRANCISCO KACZUROUSKI HONORIO"], "552": ["JOAQUIM MENDES DA SILVA"], "553": ["ISABELLA NUNES DE SANTANA"], "554": ["MARIANA FANINI GERVASI"], "555": ["MAITE MIRANDA DAMASCENO"], "556": ["NICOLLY MIRELLA DA SILVA AYROSO"], "557": ["ISAQUE FRANCO PEREIRA"], "558": ["MILLENA YASMIN BORBA RIBEIRO"], "559": ["MARCELA FARIAS OLIVEIRA", "GABRIELA FARIAS OLIVEIRA", "DANIELA FARIAS OLIVEIRA", "RAFAELA FARIAS OLIVEIRA"], "560": ["VITÓRIA DO CARMO CORÁ"], "561": ["ANTONELLA RAFAELY FERNANDES FOSSILE", "BRUNO HENRIQUE FERNANDES ALVES", "SOFIA EMANUELLY FERNANDES ALVES", "ANTONIO GABRIEL FERNANDES SILVA DE PAULA"], "562": ["LAURA ESTEFANY PRADO ALVES"], "563": ["LAVÍNIA OLIVEIRA SERAFIM", "ELOÁH OLIVEIRA SERAFIM", "DANIEL OLIVEIRA SERAFIM"], "564": ["SABRINA GALDINO DE ANDRADE", "WALLACE MIGUEL GALDINO DE ANDRADE CUSTODIO"], "565": ["MATEUS ALVES DA COSTA"], "566": ["THALYA DA SILVA DE LIMA"], "567": ["MARIA PAULA DE ALMEIDA CARLOS"], "568": ["ANNA CLARA GONÇALVES"], "569": ["PIETRA ROSA POTGURSKI MARTINS"], "570": ["GIANE BENATTO COLODEL"], "571": ["ELISA LAGOS DO CARMO"], "572": ["LAISA VERÔNNICA GONÇALVES BATISTA"], "573": ["MAURICIO HIAGO VIEIRA RAMOS"], "574": ["SOPHIA GABRIELLA DOS SANTOS HONORATO"], "575": ["ISIS VALENTINA MATIAS DO NASCIMENTO", "JOÃO MATIAS DELFINO", "MELLANY VITORIA MATIAS DA COSTA", "JOSÉ MIGUEL MATIAS PEREIRA", "KAUÃ HENRIQUE MATIAS SANTOS"], "576": ["HEITOR NUNES TEODORO", "MIGUEL NUNES TEODORO"], "577": ["ANA ELIZE BARBOZA MARQUES"], "578": ["MAURÍCIO MARISTANY JUNIOR", "KAUAN MARISTANY", "KAYK MARISTANY"], "579": ["FELIPE REGO PEREIRA", "MIGUEL REGO PEREIRA", "GABRIEL REGO PEREIRA"], "580": ["GABRYELLE ERZINGER DE BONA SANTOS"], "581": ["MARIA EDUARDA WOSNIAK"], "582": ["KAUANNY GABRIELLY CARDOSO JACQUES"], "583": ["NICOLAS LORENZO MARTINS SANTANA"], "584": ["JOÃO VITOR DA SILVA MENDES"], "585": ["KAUANY NAYARA ALVES DA COSTA"], "586": ["KALLYANE RODRIGUES DO AMARAL"], "587": ["MARIA EDUARDA A. CORDEIRO"], "588": ["MILENE VICTÓRIA COSTA MENDONÇA"], "589": ["LUIZA FERNANDA NASCIMENTO BARBOSA"], "590": ["EMILY BEATRIZ NASCIMENTO FERREIRA", "LINDSEY SOFFY NASCIMENTO FREITAS", "OLIVIA MAHARA NASCIMENTO CABRAL"], "591": ["MILENA PEREIRA GROSZKO"], "592": ["ENZO FUKAMI PIGATTO"], "593": ["EMANUELI VITÓRIA MUNIZ", "SARINE CRISTINA MUNIZ"], "594": ["BERNARDO ECCEL MEDUNA"], "595": ["NATHALIA ALVES DOS SANTOS"], "596": ["KETLLYN MONIQUE PECCIN DA SILVA"], "597": ["POLLYANA FERREIRA FREITAS DA SILVA"], "598": ["ALLANA CRISTINA RIZENTAL", "ARTHUR RIZENTAL", "ANTÔNIO RIZENTAL", "AUGUSTO RIZENTAL", "ALICE RIZENTAL"], "599": ["MANUELLA HADASSA DE SOUZA RIBEIRO"], "600": ["ALINE KAROLAYNE NUNES DE SOUZA"], "601": ["GUILHERME FERREIRA DA SILVA"], "602": ["THAYLAINE LEMES DE JESUS"], "603": ["EMANUELLA SANTIM CATAPENA"], "604": ["RIAHN FELLIPE NUNES FERREIRA"], "605": ["GABRIEL DOS SANTOS ALBINO"], "606": ["BERNARDO SILVA SOUZA"], "607": ["DAVI LUCAS CUNHA CORREA", "LAURA CUNHA CORREA"], "608": ["a"], "609": ["KAYLAINE DE ARAUJO ROSA"], "610": ["THALIA GABRIELLA SANTOS NASCIMENTO MARTINS"], "611": ["NICOLLAS YAGO DO CARMO HENRIQUE"], "612": ["SAMUEL EDUARDO GONÇALVES", "ANGÊLA EDUARDA GONÇALVES DOS SANTOS"], "613": ["HADASSA SANTOS"], "614": ["LORRAYNE KAROLINE LEOPOLDINO RAMOS"], "615": ["ROBERTA ZELLA FERRARI"], "616": ["ELISABETE PRISCILA ALVE BEZERRA"], "617": ["LAURA ISABELE MARQUES MARTINS"], "618": ["NICOLAS ZACARIAS DE ASSIS MARQUES"], "619": ["MARIA IZABEL TULLIO FELIX DE CASTRO"], "620": ["AMANDA KAROLINE DE PAULA DOS SANTOS"], "621": ["VICTÓRIA MARIA MARTINS DE OLIVEIRA"], "622": ["LETICIA OLIVEIRA LOPES"], "623": ["ÁGATHA VITÓRIA DO CARMO LIMA"], "624": ["MARIA EDUARDA MENDES LEARDINE"], "625": ["DJENIFFER MONIQUE FREITAS ELIAS"], "626": ["MARIA ELOIZA BARBOSA DE OLIVEIRA"], "627": ["SUELLEN ARAÚJO LIMA"], "628": ["MARCELO AMARAL POLETI"], "629": ["ADRIAN HENRI DE ALMEIDA", "CECÍLIA ALMEIDA PORTO"], "630": ["KELVYN ROGERIO CORDEIRO"], "631": ["MARIA EDUARDA DE OLIVEIRA QUELHANTE"], "632": ["LAURA JENIFER SILVA DE ALMEIDA"], "633": ["KAMILY VICTÓRIA SIQUEIRA DE OLIVEIRA SOUZA"], "634": ["THIAGO FERNANDES DA SILVA"], "635": ["KAUAN PEREIRA"], "636": ["ÂNGELA PEDRINA NAGEL DA SILVA"], "637": ["NICOLLY DO SANTOS MARTINS", "NICOLAS DOS SANTOS MARTINS"], "638": ["VITÓRIA RODRIGUES DA SILVA"], "639": ["NICOLY MARTINS BRUM ALVES"], "640": ["AMANDA SIQUEIRA MATOS"], "641": ["ANNA CLARA CRISTINA CARDOSO CORDEIRO"], "642": ["ELOÁ GONSALVES FELTZ", "EMANOELE GONSALVES FELTZ", "NATALI GONSALVES FELTZ", "KRISTOPHER DA SILVA FELTZ", "HAZAEL LUCAS CORREIA MACHADO DE SOUZA", "REUEL LUCAS CORREIA MACHADO DE SOUZA"], "643": ["KAUÃ GUSTAVO DA SILVA VEIGA"], "644": ["MAIÂRA SCHAARSCHIMIDT DA SILVA", "LÊIA ANNELIE TESSER DA SILVA"], "645": ["MIGUEL VEIGA TORRES"], "646": ["GABRIELE RODRIGUES DE OLIVEIRA GONÇALVES"], "647": ["LIVIA GABRIELA DOS SANTOS CORDEIRO"], "648": ["KYARA EMANUELY ESTECHE FERREIRA"], "649": ["ANA LUIZA ALVES XAVIER DE SOUZA"], "650": ["FLÁVIA VICTÓRIA OLIVEIRA DA SILVA"], "651": ["MARIA EDUARDA GALDINO TRESSINO"], "652": ["MARIA EDUARDA IZIDORO ATHANASIO BUENO NASTARI"], "653": ["ANY MARIELE DE OLIVEIRA ROQUE DOIN", "MARIA EDUARDA DE OLIVEIRA PINTO"], "654": ["SOFIA DE PAULA ROCHA"], "655": ["MATEUS HENRIQUE MARTINS"], "656": ["a"], "657": ["a"], "658": ["SARAH DE PAULA ALVES"], "659": ["CAMILA VITÓRIA DAS NEVES OLIVEIRA"], "660": ["ANA CLARA CARNEIRO DA SILVA"], "661": ["JHONNY LEENDER GONÇALVES ALVES"], "662": ["NATHALIA FARIA DE JESUS"], "663": ["PEDRO HENRIQUE CAETANO BAYER DOS ANJOS", "DAVI CAETANO BAYER DOS ANJOS"], "664": ["ANTHONY FERNANDES DE MELO"], "665": ["ISABELA DE SOUZA CUNHA"], "666": ["KEROLLYN VICTÓRIA DOS SANTOS"], "667": ["LUIZA POLETI ALVES CORDEIRO"], "668": ["EDSON RABELO"], "669": ["ZILDA DE LIMA MARQUES"], "670": ["KEROLLYN ETUANY MENDES DO AMARAL LEOPOLDINO FRANÇA"], "671": ["SIBELLY CRISTINA GONÇALVES COSTA", "JAMILLY GABRIELLA GONÇALVES COSTA"], "672": ["YONÁ BEATRIZ PRESTES GOMES DE MORAIS"], "673": ["ELOAH CAETANO LOPES"], "674": ["a"], "675": ["ALICE FERREIRA GOMES"], "676": ["NICOLLI CASTILHA MOREIRA"], "677": ["KAIO HENRIQUE CASTRO CORDEIRO"], "678": ["RYANA MARTINS"], "679": ["LUIZ CARDOSO SALON"], "680": ["MIRELA DA CRUZ"], "681": ["HELENA TORTORA DE OLIVEIRA"], "682": ["MARIA EDUARDA VALJÃO DE PAULA"], "683": ["CELINA MARIA CHRISTAKIS PEREIRA"], "684": ["GIOVANA MARTINS ALVES"], "685": ["ALICE MARIANA GARCIA DE OLIVEIRA"], "686": ["LUARA MARIA DA COSTA ALPONT"], "687": ["JULIANA DA CRUZ BARBOZA", "ANDRESSA DA CRUZ BARBOZA", "JÚLIA DA CRUZ BARBOZA"], "688": ["JANAINA MENDES"], "689": ["AGATHA LETÍCIA MOURA DO ROSÁRIO"], "690": ["TALITA HENRIQUE DOS SANTOS"], "691": ["0", "KAUE MIKAEL SOUZA DA SILVA"], "692": ["ANTHONY MIGUEL DOS SANTOS MACHADO", "ALICIA YUMI DOS SANTOS VEIGA", "ENZO GABRIEL DOS SANTOS"], "693": ["SUELLEN MARIANO DE SOUZA"], "694": ["NATTALIA CORDEIRO FERNANDES"], "695": ["ANNA CLARA CARDOSO MACHADO"], "696": ["KEITI EDUARDA MUNIZ CARVALHO"], "697": ["NICOLY FERNANDA NASCIMENTO RODRIGUES RAUSIS"], "698": ["BRUNA LUÍSA DAVID CORDEIRO"], "699": ["ANA CLARA CUBAS ALVES", "LUIS BRAYAN ALVES DE OLIVEIRA"], "700": ["DAVI MARTINS FARIAS"], "701": ["ANNA CLARA CARDOSO VIDAL"], "702": ["MARCELA BARBOSA GONÇALVES DO ROSÁRIO"], "703": ["ANA LUIZA MENDES ROSA"], "704": ["EMILLY SOPHIA BERNARDO FERREIRA"], "705": ["RAYELLY OLIVEIRA DO NASCIMENTO"], "706": ["MAYARA PERES ONORATO"], "707": ["SARAH LORENA RODRIGUES"], "708": ["MYRELLA MARTINS RODRIGUES"], "709": ["MYRELLA DA ROCHA PREGÍDIO"], "710": ["EDUARDA LOPES HONORATO"], "711": ["KESSYLIN EDUARDA LOPES MACHADO", "YASMIN LOPES MACHADO", "ISABELLY LOPES MACHADO", "LARYSSA MANUELLA LOPES MACHADO", "a", "LEONAY VITÓRIA LOPES MACHADO"], "712": ["YASMIM EDUARDA CARDOSO DA SILVA"], "713": ["VITOR LEONIDAS PAOLINI RIBEIRO"], "714": ["GRAZIELY DA CRUZ CORREIA"], "715": ["DAVI PEREIRA DO ROSÁRIO"], "716": ["LUIZA FERNANDA FERREIRA"], "717": ["DAYANE GASPAR AMADOR"], "718": ["LAURA CRISTINA DOS PASSOS CANDIDO"], "719": ["KAYANNE MAYARA CARDOSO COSTA"], "720": ["KAUÊ FELIPE DA SILVA MATTOSO"], "721": ["LIVIA FERREIRA DE ALENCAR"], "722": ["LARA VICTÓRIA BATISTA DE SOUZA"], "723": ["MARIA ISABEL GASPAR FRANÇA CUNHA"], "724": ["KAUANE VITÓRIA ROSA DA SILVA"], "725": ["ANNY GABRIELLI DE PAULA FARIAS LOPES"], "726": ["MAYSA STHEFANY NUNES DOS ANJOS", "ANDERSON KAUÊ PONTES NUNES"], "727": ["ELLOA DE FREITAS MOREIRA"], "728": ["REBECCA VITÓRIA DA SILVA MENDES"], "729": ["a"], "730": ["ALICE DA ROSA CORDEIRO"], "731": ["ROGER FELIPE GONÇALVES PERSCHIM"], "732": ["THAIARA BELINDA GARCIA RAMALHO"], "733": ["LIVIA ALVES DE OLIVEIRA"], "734": ["NICOLY DOS SANTOS SALES"], "735": ["EVERTON ALMEIDA DE OLIVEIRA"], "736": ["EMANUEL DOS SANTOS GALDINO"], "737": ["SOFIA DA COSTA PIRES TEIXEIRA", "VALENTINA DA COSTA OLIVEIRA CORDEIRO"], "738": ["SARA MELISSA GOMES DE ANDRADE"], "739": ["LAURA IVANDINA PAULO", "ANA CLARA PAULO"], "740": ["EDUARDO MACENO DA SILVA"], "741": ["MURILO MENDES RODRIGUES"], "742": ["LUCAS TAVARES DOS ANJOS"], "743": ["a", "ANA LAURA DA CRUZ DIAS GALDINO", "JOÃO MARCOS DA CRUZ DIAS GALDINO"], "744": ["MARIA LUISA COSTA DE ASSIS SANTOS"], "745": ["WELLINGTON MIGUEL PEREIRA DE BRITO"], "746": ["LAVINIA EMANUELLE CACHILÉ GONÇALVES"], "747": ["HEVELYN CRISTINA PAZINATO DAMASCENO"], "748": ["CLARISSA FARIAS NASCIMENTO"], "749": ["RAFANY SOFIA CALADO GONÇALVES"], "750": ["GABRIELLE DO ROSÁRIO AVELAR"], "751": ["YASMIM MATOZO DA SILVA SANTOS VEIGA"], "752": ["ALANNISE DEL VALLE GUACARAM GOLINDANO"], "753": ["NATIELLY TAVARES"], "754": ["GABRIELLA DE DEUS RODRIGUES"], "755": ["RHUAN GABRIEL DE PAULO"], "756": ["LIRALCIO DOS SANTOS DE ARAÚJO FERREIRA", "VICKTÓRIA NADYLLE DE ARAÚJO"], "757": ["EVERLI MORAIS"], "758": ["MARIA FERNANDA DO CARMO NEVES"], "759": ["GABRYELL CHAGAS FRANCISCO DE LIMA", "LUCAS CHAGAS FRANCISCO DE LIMA", "LUDMYLLA CHAGAS FRANCISCO DE LIMA"], "760": ["LUCAS MISAEL PIRES ALVES"], "761": ["ALEXSANDRA GABRIELLA GOMES MIRANDA"], "762": ["MARIA CLARA GONÇALVES"], "763": ["KAIO HENRIQUE VANDOSKI BARBOSA"], "764": ["CECÍLIA BRITO AUWARTER"], "765": ["RAFAELA SILVEIRA DE JESUS"], "766": ["ESTER VITÓRIA GONÇALVES CARDOSO", "ESTHEFANI GABRIELA GONÇALVES CARDOSO DA SILVA"], "767": ["RAYANE DA SILVA COSTA"], "768": ["MICAELA LEANDRO DOS SANTOS"], "769": ["MARIA EDUARDA FREITAS DE AMORIM"], "770": ["HELOYSE MARIA MARTINS ALVES"], "771": ["LUANI DI SANTI OLIVEIRA"], "772": ["QUEZIA DIAS ROCHA"], "773": ["NATALY MARIA DE PAULA ALMEIDA"], "774": ["GABRIELA VITÓRIA CARVALHO DOS SANTOS"], "775": ["THAIS SALLYS MARTINS DOS SANTOS"], "776": ["VITOR ISAEL NUNES ABREU"], "777": ["DANIELLA GUSSO DA SILVA"], "778": ["RHAICHA RODRIGUES FERREIRA"], "779": ["HETIELLY NUNES DE ALMEIDA PEREIRA"], "780": ["MARIANE VIANA FERREIRA"], "781": ["LORRAYNE MENDES VIDAL"], "782": ["EDUARDO DAVYD DOS SANTOS"], "783": ["THAIS PEDRO PONTES"], "784": ["NICOLAS MIGUEL MANDIRA CARDOSO VELOZO"], "785": ["KAROLINE VITÓRIA ANTUNES TAUCHERT"], "786": ["LOHAN CUNHA CARDOSO"], "787": ["ALICE MACIEL FIGUEIRA", "ANA SABRYNA BARBOZA MENDES SOBRAL"], "788": ["BENJAMIN PEREIRA NUNES"], "789": ["GABRIEL NEVES DE FREITAS"], "790": ["MARJORIE VITORIA SALES DA SILVA"], "791": ["THAYNA EMANUELY LIMA DA SILVA"], "792": ["MURILO ARAUJO DE MELO"], "793": ["a"], "794": ["GUILHERME BERNARDI CHARLAU OKU"], "795": ["SARA MENEZES SANTOS", "SALÉM MENEZES SANTOS", "MILEIDE LUCIANE MENEZES SANTOS", "SILAS ALBERT MENEZES SANTOS"], "796": ["ALEXIA GONÇALVES CEZARINO"], "797": ["VITOR EDUARDO SORIANI FILHO"], "798": ["ALICE REBECA DA SILVA RODRIGUES FERREIRA"], "799": ["LUIZA DOS SANTOS SILVA"], "800": ["AMORA MARIA WOLF DE ARAUJO"], "801": ["LARA ALINNE TEODORO MAURICIO"], "802": ["BRYAN VITOR SYPERRECK SIMÔES"], "803": ["ANA BEATRIZ DE FREITAS ALVES"], "804": ["ISAQUE ALVES DEMBISKI"], "805": ["DAPHINY KARAM WEBER"], "806": ["RAYANE DOMINGUES FAGUNDES"], "807": ["ELOYZA LIMA DE SOUZA"], "808": ["ADRIAN HENRIQUE ZELLA DA SILVA"], "809": ["SAFIRA HELOISA DE SOUZA CORRÊA CARDOSO"], "810": ["ANTONIA RIBEIRO GUEDES GOMES"], "811": ["SANDRYELLE REGINA MONTEIRO"], "812": ["JHULYA VICTÓRIA PEREIRA"], "813": ["THOMAS DANIEL DO CARMO FRANCHACC", "EMILLY SOPHIE COSTA FRANCHACC"], "814": ["THAYNARA SOPHIA COSTA AMORIM", "AGATHA CRISTINA COSTA RODRIGUES", "RAFAEL COSTA ALVES"], "815": ["HENRY ASSUNÇÃO DA SILVA", "VITOR GUSTAVO ASSUNÇÃO DA SILVA"], "816": ["GIOVANNA PINHEIRO DE RAMOS"], "817": ["JOÃO ASAPH FANINI COSTA PEREIRA"], "818": ["LARISSA ARIELLE RIBEIRO MARTINS", "LETÍCIA ADRIELLE RIBEIRO MARTINS"], "819": ["LAURA BEATRIZ DE AZEVEDO ESTEVAM", "CECÍLIA LUÍZA DE AZEVEDO MAZIERO"], "820": ["ANA JULIA DOS SANTOS SERAPHIN", "ISABELLY MANUELLA DOS SANTOS SERAPHIN"], "821": ["YASMIN VITORIA VIANA LUVIZZOTTO MARTIN"], "822": ["LUANA PEREIRA COSTA"], "823": ["ISADÓRA CUSTÓDIO PAIXÃO"], "824": ["ALICE KAMILE ALMEIDA FRAGOSO PEREIRA"], "825": ["GIULIA SOFIA DE SOUZA OLIVEIRA"], "826": ["KAMILLY VICTORIA ADRIANO RIBEIRO"], "827": ["OLIVIA MARIA ADRIANO RIBEIRO"], "828": ["YASMIN NEVES ALVES"], "829": ["LETÍCIA MENDES VIDAL"], "830": ["ALINE RAMOS DA ROCHA"], "831": ["ESTEFANE MARTINS HRESCAK"], "832": ["MARJORY CASSILHA RODRIGUES"], "833": ["ELLOISE ALEXANDRE DE MORAIS"], "834": ["ISABELLA DA COSTA SOUZA"], "835": ["RAFAEL MARTINS SCHOFFEM"], "836": ["ANA ALICE CASSILHA DA SILVA"], "837": ["MELYSSA VITÓRIA MAIA NUNES"], "838": ["SOFIA RAFAELI JOAQUIM"], "839": ["NATACHA DE BARROS GONÇALVES"], "840": ["ALICE CAMARGO DA SILVA GRIGORIO"], "841": ["BIANCA GABRIELLY SILVA COSTA"], "842": ["MARIA GABRIELLY DE OLIVEIRA CORDEIRO"], "843": ["EMYLY PEREIRA RODRIGUES"], "844": ["SOPHIA DOS SANTOS DE MELO GAMA"], "845": ["PATRÍCIA CARDOSO JACQUES"], "846": ["HELLYN IARROCHESKI AMARAL VAZ DA SILVA"], "847": ["CAROLINE OLIVEIRA DEBACCO"], "848": ["VICTOR HUGO SAMPAIO"], "849": ["KEROLAINNE VITÓRIA BERNARDO RIBEIRO"], "850": ["BRYAN DOS REIS FERREIRA"], "851": ["HARIEL RODRIGUES DA SILVA"], "852": ["LUCIANA ROSA JUNGLE TAVARES", "GEORGE JUNGLES GARCIA"], "853": ["ANGELO GABRIEL TELES DE OLIVEIRA"], "854": ["SAMUEL HENRIQUE MIQUILINE GONÇALVES"], "855": ["JOAQUIM ADRIANO ASSUNÇÃO", "ANTHONY ADRIANO ASSUNÇÃO"], "856": ["ANNA LIVIA DA SILVA RANGEL"], "857": ["HELENA SOUZA"], "858": ["BRENDA MARQUES DE ALMEIDA TAVARES"], "859": ["GILMAR RAMOS DE LARA", "JOAQUIM RAMOS", "MISAEL RAMOS DE LARA"], "860": ["DENILSON NUNES ROSA"], "861": ["MIGUEL LUIZ CRISTO"], "862": ["JOÃO EMMANUEL RODRIGUES DO ROSÁRIO", "IZABELLE HENRIQUE RODRIGUES", "GABRIEL RODRIGUES DE FREITAS"], "863": ["JÉSSICA ALVES FERREIRA"], "864": ["JOÃO LUCAS DA SILVA FARIA"], "865": ["VITÓRIA COROL VASCONCELOS"], "866": ["JOÃO LUCAS MIRANDA DA CUNHA"], "867": ["JOÃO GUILHERME PONTES DO PRADO DOS SANTOS"], "868": ["EMANUEL DE PAULA WESENDONCK"], "869": ["GABRIELA MARIA MACHADO DE OLIVEIRA"], "870": ["EMANUELLY LIMA DOS SANTOS"], "871": ["JOÃO ARTHUR ABALEM SAIF"], "872": ["JULIA PONTES REINALDO"], "873": ["MARIA VITORIA RODRIGUES GONÇALVES"], "874": ["ALLANA VITÓRIA DOS SANTOS AZEVEDO PEREIRA"], "875": ["MARCIO GABRIEL FERNANDES DE LIMA"], "876": ["LAÍS ISABELLA SANTOS DA SILVA"], "877": ["CRISTIANO CÉSAR SERPA", "GLEICY KELLY SERPA"], "878": ["ANGELO GANS"], "879": ["DAVI LUIZ ANDRADE MARTINS BATISTA"], "880": ["CAUÃ ALEXANDER CORDEIRO DA SILVA"], "881": ["HELOISA FERREIRA MARTINS", "ANA BEATRIZ FERREIRA MARTINS"], "882": ["CAIO ALEXANDRE CONCEIÇÃO DE LIMA"], "883": ["JHENYFER FRANCO DE MELO"], "884": ["AMANDA VITÓRIA GONÇALVES"], "885": ["MARCEL RITA GALDINO JUNIOR"], "886": ["ARTHUR KRUGER DE CRISTO"], "887": ["ENZO GABRIEL FERREIRA LARDINE"], "888": ["YASMIN VITÓRIA CALIXTO OLIVEIRA MODESTO"], "889": ["ISABELA SAMPAIO TIZONI", "RAEL SAMPAIO TIZONI"], "890": ["VITOR PIERRE BARBOSA DE SOUZA", "MATEUS CAUÂ BARBOSA DE SOUZA", "VALENTIN ANTHONY BARBOSA DE SOUZA"], "891": ["MATHEUS LIMA DE OLIVEIRA"], "892": ["BEATRIZ DOS SANTOS MOREIRA GRUBE"], "893": ["LUIZA ALEXANDRE MEDEIROS DE OLIVEIRA"], "894": ["CLAUDIO SEBASTIÃO IZAIAS GARCIA NETO", "JOÃO CARLOS MIRANDA NUNES"], "895": ["YASMIN TOMAZ ROSA DOS SANTOS"], "896": ["ISAQUE FREITAS WAGNER DE SOUZA"], "897": ["ANA KAROLINA FRANCISCO PEREIRA"], "898": ["CARMELA ROSA VIANA"], "899": ["RAVI ARAUJO HULTHMAN"], "900": ["TIAGO PAES DA SILVA FILHO"], "901": ["SARAH DA SILVA MENDES"], "902": ["MARIANA TAVARES TIGRE"], "903": ["BENJAMIM OLIVEIRA SIMÔES"], "904": ["MIGUEL AMARAL MEDEIROS DE MARINS", "MURILO AMARAL MEDEIROS DE MARINS"], "905": ["ISABELA NICOLY GRITTEN DA SILVA", "MIRELLA VALENTINA GRITTEN DA SILVA"], "906": ["EDUARDA VALENTINA FERREIRA FAVARIN", "GABRIELLY FERREIRA FONTANA"], "907": ["FELIPE MARTINSKI"], "908": ["LAURA RAPHAELA CELESTINO DOS SANTOS DA SILVA", "LUIZ MIGUEL CELESTINO DOS SANTOS DA SILVA"], "909": ["NOAH CORDEIRO DA SILVA FERNANDES MARQUES"], "910": ["RICHARD NICOLAS DE CASTRO CARDOSO", "MARCIA NICOLLY CASTRO CARDOSO"], "911": ["MELISSA RODRIGUES MARTINS"], "912": ["HADASSA ESTER DOS SANTOS MARCELO"], "913": ["EMANUELA MAIA ROCHA"], "914": ["HALLANA BEATRIZ CORDEIRO DE SOUZA"], "915": ["VANESSA EMANOELA CALDELAS GONÇALVES"], "916": ["VINICIUS MATOSO CORDEIRO"], "917": ["ADRYAN DOS SANTOS CORDEIRO", "ALESSANDRO DOS SANTOS CORDEIRO"], "918": ["IGOR GUILHERME DE CASTRO DOS SANTOS", "MARIA TEREZA RODRIGUES DE CASTRO DOS SANTOS", "ENZO GABRIEL RODRIGUES DE CASTRO"], "919": ["BENJAMIN COELHO DA SILVA", "DAVI COELHO DA SILVA"], "920": ["RYAN MIRANDA LUIZ", "JEAN GUSTAVO MIRANDA LUIZ"], "921": ["NOAH LOBO KELEMENTI SANTOS"], "922": ["LORENZO CARVALHO DA CRUZ"], "923": ["KAROLYNE RIBEIRO CONSTANTINO"], "924": ["THEO OSVALDO ARAUJO OYERA VIDAL"], "925": ["ANA LETÍCIA LOPES DA SILVA"], "926": ["ENZO MIGUEL MARQUES DOS SANTOS"], "927": ["ANA BEATRIZ GONÇALVES CABRAL"], "928": ["RAYSSA DOS SANTOS CORREA CARDOSO"], "929": ["VALENTINA TOMADON SCHMIDT"], "930": ["MATEUS HENRIQUE CABRAL DIAS"], "931": ["JHON GABRIEL REIS PEREIRA"], "932": ["MARIANA DIAS DE OLIVEIRA"], "933": ["SOPHIA GABRIELLE ADÃO AMORIM", "ARTHUR GABRIEL ADÃO AMORIM"], "934": ["ALICE CRISTINA DO CARMO TEODOSIO"], "935": ["MARIANA ALVES JACQUES"], "936": ["PAOLA CRISTYNA AMARAL GARZARO"], "937": ["PATRÍCIA CORDEIRO DOS SANTOS"], "938": ["KAUAN HENRIQUE ALEXANDRE RODRIGUES"], "939": ["LUCAS LEONARDO RODRIGUES BEZERRA DA SILVA", "VITOR GABRIEL BEZERRA DA SILVA", "LUIZ MIGUEL RODRIGUES BEZERRA DA SILVA"], "940": ["LARA SOPHIA DOS SANTOS NASCIMENTO"], "941": ["JULIA RYLANDER DORIA"], "942": ["NATALY DANIELA ALVES VIEIRA"], "943": ["LUISA VALLENTINA BATISTA DOS SANTOS"], "944": ["MARIA ALICE COSTA DE OLIVEIRA"], "945": ["LIVIA DAS NEVES SILVA"], "946": ["MIGUEL GARCIA MARUJO"], "947": ["PAULO CESAR NASCIMENTO GARCIA"], "948": ["RHUAN CONSTANTINO DIAS"], "949": ["ISAAC AUGUSTO BELIZÁRIO DOS SANTOS"], "950": ["HEILLY GABRIELE DA VEIGA MAXIMO"], "951": ["RAYLA VITÓRIA MARTINS CATANIO"], "952": ["JHORDAN HENRIQUE DE OLIVEIRA LEAL SOARES"], "953": ["CARLA FERNANDA PEREIRA DE JESUS"]};
+
+/* ===== V13: lógica corrigida por login, abas e configurações ===== */
+const nomesTemasCaicavv = {
+  "azul":"Azul",
+  "azul-claro":"Azul claro",
+  "vermelho":"Vermelho",
+  "rosa":"Rosa",
+  "roxo":"Roxo",
+  "verde":"Verde",
+  "amarelo":"Amarelo",
+  "laranja":"Laranja"
+};
+function idUsuarioTemaCaicavv(){
+  if(!tecnicoLogado) return "geral";
+  const chave = Object.keys(usuarios).find(k => usuarios[k] === tecnicoLogado || usuarios[k].nome === tecnicoLogado.nome && usuarios[k].role === tecnicoLogado.role);
+  return chave || String(tecnicoLogado.nome || "geral").toLowerCase().replace(/\s+/g,"_");
+}
+function chaveTemaCaicavv(){ return "caicavv_tema_" + idUsuarioTemaCaicavv(); }
+function chaveLembreteCaicavv(){ return "caicavv_lembrete_" + idUsuarioTemaCaicavv(); }
+function temaAtualCaicavv(){ return localStorage.getItem(chaveTemaCaicavv()) || "azul"; }
+function nomeTemaCaicavv(tema){ return nomesTemasCaicavv[tema] || "Azul"; }
+
+aplicarTemaSalvo = function(){
+  const tema = temaAtualCaicavv();
+  document.body.classList.remove("tema-azul","tema-azul-claro","tema-vermelho","tema-rosa","tema-roxo","tema-verde","tema-amarelo","tema-laranja");
+  document.body.classList.add("tema-" + tema);
+  const txt = document.getElementById("temaAtualTxt");
+  if(txt) txt.textContent = nomeTemaCaicavv(tema);
+};
+
+lembreteAtivo = function(){
+  return localStorage.getItem(chaveLembreteCaicavv()) !== "off";
+};
+
+definirTema = function(tema){
+  localStorage.setItem(chaveTemaCaicavv(), tema);
+  aplicarTemaSalvo();
+  const txt = document.getElementById("temaAtualTxt");
+  if(txt) txt.textContent = nomeTemaCaicavv(tema);
+  mostrarSucesso("Cor padrão alterada para " + nomeTemaCaicavv(tema) + ".");
+};
+
+definirLembrete = function(ativo){
+  localStorage.setItem(chaveLembreteCaicavv(), ativo ? "on" : "off");
+  mostrarSucesso(ativo ? "Lembrete ativado para este login." : "Lembrete desativado para este login.");
+  if(telaAtualCaicavv === "agendamentos" && renderOriginalCaicavv) renderOriginalCaicavv();
+};
+
+montarMenu = function(){
+  let html = "";
+  const role = tecnicoLogado.role;
+  if(role === "recepcao" || role === "adm" || role === "coordenacao"){
+    const tecnicos = Object.values(usuarios).filter(u => u.role === "tecnico").map(u => u.nome);
+    if(tecnicos.length > 0 && !filtroAtual) filtroAtual = tecnicos[0];
+    tecnicos.forEach((t)=>{
+      html += `<button class="${t === filtroAtual ? 'ativo' : ''}" onclick="filtrar('${escapeHTML(t)}',this)">${escapeHTML(t)}</button>`;
+    });
+  } else {
+    filtroAtual = tecnicoLogado.nome;
+    html = `<button class="ativo">${escapeHTML(tecnicoLogado.nome)}</button>`;
+  }
+  menu.innerHTML = html;
+  boasVindas.className = "info user-panel";
+  boasVindas.innerHTML = `<span class="avatar">♙</span><span><b>Usuário:</b> ${escapeHTML(tecnicoLogado.nome)} <span class="divisor">|</span> <b>Perfil:</b> ${escapeHTML(tecnicoLogado.role)}</span>`;
+};
+
+abrirTelaPacientes = function(){
+  setTelaAtiva("pacientes");
+  mostrarBlocosAgendamento(false);
+  const totalPastas = Object.keys(cadastros).length;
+  const totalNomes = Object.values(cadastros).reduce((s, nomes)=>s + nomes.length, 0);
+  let cards = "";
+  Object.entries(cadastros).forEach(([pasta, nomes])=>{
+    nomes.forEach(nome=>{
+      cards += `<div class="paciente-card"><strong>${escapeHTML(nome)}</strong><span>📁 Pasta ${escapeHTML(pasta)}</span></div>`;
+    });
+  });
+  lista.innerHTML = `
+    <div class="pagina-titulo-solo">
+      <div class="pagina-titulo">Pastas</div>
+      <div class="pagina-sub">Busca rápida por nome ou nº da pasta.</div>
+    </div>
+    <div class="search-card" style="margin-bottom:14px">
+      <div class="search-box"><span>🔍</span><input id="buscaPacientes" placeholder="Buscar por nome ou nº" oninput="filtrarPacientes()"></div>
+    </div>
+    <div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div>
+    <div id="listaPacientes" class="pacientes-grid">${cards}</div>`;
+};
+
+abrirTelaTecnicos = function(){
+  setTelaAtiva("tecnicos");
+  mostrarBlocosAgendamento(false);
+  const tecnicos = Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);
+  const mesAtual = new Date().toISOString().slice(0,7);
+  lista.innerHTML = `
+    <div class="pagina-titulo-solo">
+      <div class="pagina-titulo">Relatório por técnico</div>
+      <div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div>
+    </div>
+    <div class="tecnico-relatorio-box">
+      <label><b>Técnico</b></label>
+      <select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select>
+      <label><b>Mês</b></label>
+      <input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}">
+      <button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button>
+    </div>
+    <div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;
+};
+
+abrirTelaConfiguracoes = function(){
+  setTelaAtiva("configuracoes");
+  mostrarBlocosAgendamento(false);
+  const temaAtual = temaAtualCaicavv();
+  const lembrete = lembreteAtivo();
+  const botaoTema = (id, classe)=>`<button class="${classe}" onclick="definirTema('${id}')">${nomeTemaCaicavv(id)}</button>`;
+  lista.innerHTML = `
+    <div class="pagina-titulo-solo">
+      <div class="pagina-titulo">Configurações</div>
+      <div class="pagina-sub">Essas preferências valem somente para este login.</div>
+    </div>
+    <div class="config-grid">
+      <div class="config-card">
+        <h3>Cor padrão do site</h3>
+        <p class="pagina-sub">Tema atual: <span class="tema-atual-nome" id="temaAtualTxt">${nomeTemaCaicavv(temaAtual)}</span></p>
+        <div class="theme-options">
+          ${botaoTema("azul","tema-btn-azul")}
+          ${botaoTema("azul-claro","tema-btn-azul-claro")}
+          ${botaoTema("vermelho","tema-btn-vermelho")}
+          ${botaoTema("rosa","tema-btn-rosa")}
+          ${botaoTema("roxo","tema-btn-roxo")}
+          ${botaoTema("verde","tema-btn-verde")}
+          ${botaoTema("amarelo","tema-btn-amarelo")}
+          ${botaoTema("laranja","tema-btn-laranja")}
+        </div>
+      </div>
+      <div class="config-card switch-row">
+        <div>
+          <h3>Lembrete de consulta próxima</h3>
+          <p class="pagina-sub">Quando ligado, o sistema destaca atendimentos próximos do horário. Essa opção também fica só para este login.</p>
+        </div>
+        <input type="checkbox" id="checkLembrete" ${lembrete ? "checked" : ""} onchange="definirLembrete(this.checked)">
+      </div>
+    </div>`;
+};
+
+const loginOriginalV13 = login;
+login = async function(){
+  await loginOriginalV13();
+  aplicarTemaSalvo();
+};
+
+const restaurarTemaAposLoadV13 = () => {
+  aplicarTemaSalvo();
+  if(typeof montarMenu === "function" && tecnicoLogado && document.getElementById("menu")) montarMenu();
+};
+window.addEventListener("DOMContentLoaded", restaurarTemaAposLoadV13);
+
 </script>
 
 <script>
@@ -777,7 +1238,7 @@ function carregarFiltrosAvancados(){
 function sincronizarFiltroTecnico(){
   const select = document.getElementById("filtroTecnicoAvancado");
   if(select) filtroAtual = select.value;
-  document.querySelectorAll(".menu button").forEach(b=>{
+  document.querySelectorAll("#menu button").forEach(b=>{
     const txt = (b.textContent || "").trim();
     b.classList.toggle("ativo", !!filtroAtual && txt === filtroAtual);
   });
@@ -1089,6 +1550,8 @@ async function carregar(){
   render();
 }
 
+let atendimentoMarcacaoPendente = null;
+
 async function marcar(id,status){
   if(!tecnicoLogado) return;
 
@@ -1108,13 +1571,53 @@ async function marcar(id,status){
     return;
   }
 
+  atendimentoMarcacaoPendente = { id, status };
+  const obs = document.getElementById("observacaoRealizado");
+  if(obs) obs.value = item.observacaoRealizacao || "";
+  const modal = document.getElementById("modalObservacaoRealizado");
+  if(modal) modal.classList.add("show");
+}
+
+function cancelarObservacaoRealizado(){
+  atendimentoMarcacaoPendente = null;
+  const modal = document.getElementById("modalObservacaoRealizado");
+  if(modal) modal.classList.remove("show");
+}
+
+async function confirmarObservacaoRealizado(){
+  if(!atendimentoMarcacaoPendente) return;
+  const { id, status } = atendimentoMarcacaoPendente;
+  const item = atendimentos.find(a => a.id === id);
+  if(!item){
+    cancelarObservacaoRealizado();
+    mostrarErro("Atendimento não encontrado.");
+    return;
+  }
+
+  const obs = textoSeguro(document.getElementById("observacaoRealizado")?.value || "", 500);
   const statusAnterior = item.status || "agendado";
   item.status = status;
-  registrarLog("Status alterado", item, `Status alterado de ${statusBonito(statusAnterior)} para ${statusBonito(status)}.`);
+  item.observacaoRealizacao = obs;
   item.atualizadoPor = tecnicoLogado.nome;
   item.atualizadoEm = new Date().toISOString();
+
+  registrarLog(
+    "Status alterado",
+    item,
+    `Status alterado de ${statusBonito(statusAnterior)} para ${statusBonito(status)}.${obs ? " Observação: " + obs : ""}`
+  );
+
   await salvarAtendimentosFirebase();
+  cancelarObservacaoRealizado();
   render();
+  mostrarAnimacaoAtendimentoRealizado();
+}
+
+function mostrarAnimacaoAtendimentoRealizado(){
+  const anim = document.getElementById("animacaoAtendimentoRealizado");
+  if(!anim) return;
+  anim.classList.add("show");
+  setTimeout(()=>anim.classList.remove("show"), 1400);
 }
 
 function podeEditarAtendimento(item){
@@ -1304,7 +1807,7 @@ function filtrar(t,btn){
   const selectTecnico = document.getElementById("filtroTecnicoAvancado");
   if(selectTecnico) selectTecnico.value = t;
 
-  document.querySelectorAll(".menu button")
+  document.querySelectorAll("#menu button")
     .forEach(b=>b.classList.remove("ativo"));
 
   btn.classList.add("ativo");
@@ -1782,6 +2285,7 @@ function render(){
             <div class="v10-meta-item"><div class="v10-meta-label">Técnico</div><div class="v10-meta-value">${escapeHTML(a.tecnico)}</div></div>
             <div class="v10-meta-item"><div class="v10-meta-label">Data e horário</div><div class="v10-meta-value">${escapeHTML(formatarDataBR(a.data))} • ${escapeHTML(a.hora)}</div></div>
             <div class="v10-meta-item"><div class="v10-meta-label">Descrição</div><div class="v10-meta-value">${escapeHTML(a.descricao || "—")}</div></div>
+            ${a.observacaoRealizacao ? `<div class="v10-meta-item"><div class="v10-meta-label">Observação</div><div class="v10-meta-value">${escapeHTML(a.observacaoRealizacao)}</div></div>` : ""}
           </div>
 
           ${realizado ? `<div style="margin-top:12px"><span class="selo-realizado">JÁ REALIZADO</span></div>` : ""}
@@ -1793,7 +2297,188 @@ function render(){
       </div>
     `;  });
 }
+
+
+/* ===== AJUSTES FINAIS DE NAVEGAÇÃO, PACIENTES, TÉCNICOS E CONFIGURAÇÕES ===== */
+let telaAtualCaicavv = "agendamentos";
+let renderOriginalCaicavv = null;
+function aplicarTemaSalvo(){const tema=localStorage.getItem("caicavv_tema")||"azul";document.body.classList.remove("tema-azul","tema-azul-claro","tema-vermelho","tema-rosa","tema-roxo","tema-verde","tema-amarelo","tema-laranja");document.body.classList.add("tema-"+tema);}
+function lembreteAtivo(){return localStorage.getItem("caicavv_lembrete")!=="off";}
+const getStatusTempoOriginalCaicavv = typeof getStatusTempo === "function" ? getStatusTempo : null;
+getStatusTempo = function(item){ if(!lembreteAtivo()) return ""; return getStatusTempoOriginalCaicavv ? getStatusTempoOriginalCaicavv(item) : ""; };
+function setTelaAtiva(nome){telaAtualCaicavv=nome;document.querySelectorAll(".app-shell .nav").forEach(nav=>nav.classList.toggle("active",nav.dataset.tela===nome));}
+function mostrarBlocosAgendamento(mostrar){["boasVindas","menu","relatorio","filtrosV6","formAtendimento"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("hidden",!mostrar);});}
+function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();}
+function abrirTelaPacientes(){setTelaAtiva("pacientes");mostrarBlocosAgendamento(false);const totalPastas=Object.keys(cadastros).length;const totalNomes=Object.values(cadastros).reduce((s,nomes)=>s+nomes.length,0);let cards="";Object.entries(cadastros).forEach(([pasta,nomes])=>{nomes.forEach(nome=>{cards+=`<div class="paciente-card"><strong>${escapeHTML(nome)}</strong><span>📁 Pasta ${escapeHTML(pasta)}</span></div>`;});});lista.innerHTML=`<div class="pagina-titulo">Pastas</div><div class="pagina-sub">Busca rápida por nome ou nº da pasta.</div><div class="search-card" style="margin-bottom:14px"><div class="search-box"><span>🔍</span><input id="buscaPacientes" placeholder="Buscar por nome ou nº" oninput="filtrarPacientes()"></div></div><div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div><div id="listaPacientes" class="pacientes-grid">${cards}</div>`;}
+function filtrarPacientes(){const termo=normalizarBusca(document.getElementById("buscaPacientes")?.value||"");document.querySelectorAll(".paciente-card").forEach(card=>{card.style.display=normalizarBusca(card.innerText).includes(termo)?"block":"none";});}
+function abrirTelaTecnicos(){setTelaAtiva("tecnicos");mostrarBlocosAgendamento(false);const tecnicos=Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);const mesAtual=new Date().toISOString().slice(0,7);lista.innerHTML=`<div class="pagina-titulo">Relatório por técnico</div><div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div><div class="tecnico-relatorio-box"><label><b>Técnico</b></label><select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select><label><b>Mês</b></label><input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}"><button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button></div><div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;}
+function gerarRelatorioTecnicoNaTela(){const tecnico=document.getElementById("tecnicoRelatorioTela").value;const mes=document.getElementById("mesRelatorioTecnicoTela").value;const dados=atendimentos.filter(a=>a.tecnico===tecnico&&String(a.data||"").startsWith(mes));const total=dados.length;const ok=dados.filter(a=>a.status==="compareceu").length;const falta=dados.filter(a=>a.status==="faltou").length;const pendente=dados.filter(a=>!a.status||a.status==="agendado").length;const linhas=dados.sort((a,b)=>getDataHoraAtendimento(a).localeCompare(getDataHoraAtendimento(b))).map(a=>`<div class="paciente-card"><strong>📁 Pasta ${escapeHTML(a.pasta)} · ${escapeHTML(formatarDataBR(a.data))}</strong><span>${escapeHTML(a.status||"agendado")} · ${escapeHTML(a.descricao||"Sem descrição")}</span></div>`).join("");document.getElementById("resultadoTecnicoTela").innerHTML=`<div class="relatorio-card"><div class="rel-icone">👥</div><div><span class="rel-nome">${escapeHTML(tecnico)}</span><br><span class="rel-metrica">Total: <b>${total}</b></span><span class="rel-metrica ok">Compareceu: <b>${ok}</b></span><span class="rel-metrica erro">Faltou: <b>${falta}</b></span><span class="rel-metrica">Pendente: <b>${pendente}</b></span></div></div><div class="pacientes-grid" style="margin-top:12px">${linhas||'<div class="paciente-card"><strong>Nenhum atendimento encontrado.</strong></div>'}</div>`;}
+function abrirTelaConfiguracoes(){setTelaAtiva("configuracoes");mostrarBlocosAgendamento(false);const temaAtual=localStorage.getItem("caicavv_tema")||"azul";const lembrete=lembreteAtivo();lista.innerHTML=`<div class="pagina-titulo">Configurações</div><div class="pagina-sub">Defina a cor padrão do sistema e o lembrete de horário.</div><div class="config-grid"><div class="config-card"><h3>Cor padrão do site</h3><p class="pagina-sub">Tema atual: <b id="temaAtualTxt">${escapeHTML(temaAtual)}</b></p><div class="theme-options"><button class="tema-btn-azul" onclick="definirTema('azul')">Azul</button><button class="tema-btn-azul-claro" onclick="definirTema('azul-claro')">Azul claro</button><button class="tema-btn-vermelho" onclick="definirTema('vermelho')">Vermelho</button><button class="tema-btn-rosa" onclick="definirTema('rosa')">Rosa</button><button class="tema-btn-roxo" onclick="definirTema('roxo')">Roxo</button><button class="tema-btn-verde" onclick="definirTema('verde')">Verde</button><button class="tema-btn-amarelo" onclick="definirTema('amarelo')">Amarelo</button><button class="tema-btn-laranja" onclick="definirTema('laranja')">Laranja</button></div></div><div class="config-card switch-row"><div><h3>Lembrete de consulta próxima</h3><p class="pagina-sub">Quando ligado, o sistema destaca atendimentos próximos do horário.</p></div><input type="checkbox" id="checkLembrete" ${lembrete?"checked":""} onchange="definirLembrete(this.checked)"></div></div>`;}
+function definirTema(tema){localStorage.setItem("caicavv_tema",tema);aplicarTemaSalvo();const txt=document.getElementById("temaAtualTxt");if(txt)txt.textContent=tema;}
+function definirLembrete(ativo){localStorage.setItem("caicavv_lembrete",ativo?"on":"off");mostrarSucesso(ativo?"Lembrete ativado.":"Lembrete desativado.");}
+window.addEventListener("DOMContentLoaded",()=>{aplicarTemaSalvo();renderOriginalCaicavv=window.render;window.render=function(){if(telaAtualCaicavv!=="agendamentos")return;return renderOriginalCaicavv();};const menuIcon=document.querySelector(".menu-icon");if(menuIcon)menuIcon.onclick=toggleMenuLateral;});
+
+
+/* ===== V13: lógica corrigida por login, abas e configurações ===== */
+const nomesTemasCaicavv = {
+  "azul":"Azul",
+  "azul-claro":"Azul claro",
+  "vermelho":"Vermelho",
+  "rosa":"Rosa",
+  "roxo":"Roxo",
+  "verde":"Verde",
+  "amarelo":"Amarelo",
+  "laranja":"Laranja"
+};
+function idUsuarioTemaCaicavv(){
+  if(!tecnicoLogado) return "geral";
+  const chave = Object.keys(usuarios).find(k => usuarios[k] === tecnicoLogado || usuarios[k].nome === tecnicoLogado.nome && usuarios[k].role === tecnicoLogado.role);
+  return chave || String(tecnicoLogado.nome || "geral").toLowerCase().replace(/\s+/g,"_");
+}
+function chaveTemaCaicavv(){ return "caicavv_tema_" + idUsuarioTemaCaicavv(); }
+function chaveLembreteCaicavv(){ return "caicavv_lembrete_" + idUsuarioTemaCaicavv(); }
+function temaAtualCaicavv(){ return localStorage.getItem(chaveTemaCaicavv()) || "azul"; }
+function nomeTemaCaicavv(tema){ return nomesTemasCaicavv[tema] || "Azul"; }
+
+aplicarTemaSalvo = function(){
+  const tema = temaAtualCaicavv();
+  document.body.classList.remove("tema-azul","tema-azul-claro","tema-vermelho","tema-rosa","tema-roxo","tema-verde","tema-amarelo","tema-laranja");
+  document.body.classList.add("tema-" + tema);
+  const txt = document.getElementById("temaAtualTxt");
+  if(txt) txt.textContent = nomeTemaCaicavv(tema);
+};
+
+lembreteAtivo = function(){
+  return localStorage.getItem(chaveLembreteCaicavv()) !== "off";
+};
+
+definirTema = function(tema){
+  localStorage.setItem(chaveTemaCaicavv(), tema);
+  aplicarTemaSalvo();
+  const txt = document.getElementById("temaAtualTxt");
+  if(txt) txt.textContent = nomeTemaCaicavv(tema);
+  mostrarSucesso("Cor padrão alterada para " + nomeTemaCaicavv(tema) + ".");
+};
+
+definirLembrete = function(ativo){
+  localStorage.setItem(chaveLembreteCaicavv(), ativo ? "on" : "off");
+  mostrarSucesso(ativo ? "Lembrete ativado para este login." : "Lembrete desativado para este login.");
+  if(telaAtualCaicavv === "agendamentos" && renderOriginalCaicavv) renderOriginalCaicavv();
+};
+
+montarMenu = function(){
+  let html = "";
+  const role = tecnicoLogado.role;
+  if(role === "recepcao" || role === "adm" || role === "coordenacao"){
+    const tecnicos = Object.values(usuarios).filter(u => u.role === "tecnico").map(u => u.nome);
+    if(tecnicos.length > 0 && !filtroAtual) filtroAtual = tecnicos[0];
+    tecnicos.forEach((t)=>{
+      html += `<button class="${t === filtroAtual ? 'ativo' : ''}" onclick="filtrar('${escapeHTML(t)}',this)">${escapeHTML(t)}</button>`;
+    });
+  } else {
+    filtroAtual = tecnicoLogado.nome;
+    html = `<button class="ativo">${escapeHTML(tecnicoLogado.nome)}</button>`;
+  }
+  menu.innerHTML = html;
+  boasVindas.className = "info user-panel";
+  boasVindas.innerHTML = `<span class="avatar">♙</span><span><b>Usuário:</b> ${escapeHTML(tecnicoLogado.nome)} <span class="divisor">|</span> <b>Perfil:</b> ${escapeHTML(tecnicoLogado.role)}</span>`;
+};
+
+abrirTelaPacientes = function(){
+  setTelaAtiva("pacientes");
+  mostrarBlocosAgendamento(false);
+  const totalPastas = Object.keys(cadastros).length;
+  const totalNomes = Object.values(cadastros).reduce((s, nomes)=>s + nomes.length, 0);
+  let cards = "";
+  Object.entries(cadastros).forEach(([pasta, nomes])=>{
+    nomes.forEach(nome=>{
+      cards += `<div class="paciente-card"><strong>${escapeHTML(nome)}</strong><span>📁 Pasta ${escapeHTML(pasta)}</span></div>`;
+    });
+  });
+  lista.innerHTML = `
+    <div class="pagina-titulo-solo">
+      <div class="pagina-titulo">Pastas</div>
+      <div class="pagina-sub">Busca rápida por nome ou nº da pasta.</div>
+    </div>
+    <div class="search-card" style="margin-bottom:14px">
+      <div class="search-box"><span>🔍</span><input id="buscaPacientes" placeholder="Buscar por nome ou nº" oninput="filtrarPacientes()"></div>
+    </div>
+    <div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div>
+    <div id="listaPacientes" class="pacientes-grid">${cards}</div>`;
+};
+
+abrirTelaTecnicos = function(){
+  setTelaAtiva("tecnicos");
+  mostrarBlocosAgendamento(false);
+  const tecnicos = Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);
+  const mesAtual = new Date().toISOString().slice(0,7);
+  lista.innerHTML = `
+    <div class="pagina-titulo-solo">
+      <div class="pagina-titulo">Relatório por técnico</div>
+      <div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div>
+    </div>
+    <div class="tecnico-relatorio-box">
+      <label><b>Técnico</b></label>
+      <select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select>
+      <label><b>Mês</b></label>
+      <input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}">
+      <button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button>
+    </div>
+    <div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;
+};
+
+abrirTelaConfiguracoes = function(){
+  setTelaAtiva("configuracoes");
+  mostrarBlocosAgendamento(false);
+  const temaAtual = temaAtualCaicavv();
+  const lembrete = lembreteAtivo();
+  const botaoTema = (id, classe)=>`<button class="${classe}" onclick="definirTema('${id}')">${nomeTemaCaicavv(id)}</button>`;
+  lista.innerHTML = `
+    <div class="pagina-titulo-solo">
+      <div class="pagina-titulo">Configurações</div>
+      <div class="pagina-sub">Essas preferências valem somente para este login.</div>
+    </div>
+    <div class="config-grid">
+      <div class="config-card">
+        <h3>Cor padrão do site</h3>
+        <p class="pagina-sub">Tema atual: <span class="tema-atual-nome" id="temaAtualTxt">${nomeTemaCaicavv(temaAtual)}</span></p>
+        <div class="theme-options">
+          ${botaoTema("azul","tema-btn-azul")}
+          ${botaoTema("azul-claro","tema-btn-azul-claro")}
+          ${botaoTema("vermelho","tema-btn-vermelho")}
+          ${botaoTema("rosa","tema-btn-rosa")}
+          ${botaoTema("roxo","tema-btn-roxo")}
+          ${botaoTema("verde","tema-btn-verde")}
+          ${botaoTema("amarelo","tema-btn-amarelo")}
+          ${botaoTema("laranja","tema-btn-laranja")}
+        </div>
+      </div>
+      <div class="config-card switch-row">
+        <div>
+          <h3>Lembrete de consulta próxima</h3>
+          <p class="pagina-sub">Quando ligado, o sistema destaca atendimentos próximos do horário. Essa opção também fica só para este login.</p>
+        </div>
+        <input type="checkbox" id="checkLembrete" ${lembrete ? "checked" : ""} onchange="definirLembrete(this.checked)">
+      </div>
+    </div>`;
+};
+
+const loginOriginalV13 = login;
+login = async function(){
+  await loginOriginalV13();
+  aplicarTemaSalvo();
+};
+
+const restaurarTemaAposLoadV13 = () => {
+  aplicarTemaSalvo();
+  if(typeof montarMenu === "function" && tecnicoLogado && document.getElementById("menu")) montarMenu();
+};
+window.addEventListener("DOMContentLoaded", restaurarTemaAposLoadV13);
+
 </script>
+
+
+
 
 </body>
 </html>
