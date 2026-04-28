@@ -393,6 +393,41 @@ body.recepcao-restrita #formAtendimento{display:none!important;}
 @keyframes pulseRealizado{from{transform:scale(1)}to{transform:scale(1.08)}}
 @media(max-width:720px){.v10-card-top{padding-right:0!important;padding-top:42px!important}.v10-card-top .status-chip{left:0!important;right:auto!important;top:0!important}.pacientes-grid{grid-template-columns:1fr!important}.v10-actions{display:grid!important;grid-template-columns:1fr 1fr!important}.v10-actions button{min-width:0!important;width:100%!important}}
 
+
+
+/* ===== V23: atendimento concluído cinza no fim + tema por login ===== */
+.card.atendimento-card.realizado,
+.card.atendimento-card.v10-card.realizado,
+.app-shell .v10-card.realizado{
+  filter: grayscale(1) !important;
+  opacity: .72 !important;
+  background: #f1f5f9 !important;
+  border-color: #cbd5e1 !important;
+  border-left-color: #94a3b8 !important;
+  box-shadow: 0 8px 18px rgba(15,23,42,.06) !important;
+}
+.card.atendimento-card.realizado .v10-meta-item,
+.card.atendimento-card.v10-card.realizado .v10-meta-item{
+  background:#eef2f7 !important;
+  border-color:#d4dce8 !important;
+}
+.card.atendimento-card.realizado .v10-actions{
+  display:none !important;
+}
+.card.atendimento-card.realizado .status-chip{
+  background:#e2e8f0 !important;
+  color:#334155 !important;
+}
+.card.atendimento-card.realizado .selo-realizado{
+  background:#475569 !important;
+}
+.app-shell .sidebar{
+  background:linear-gradient(180deg,var(--tema),var(--tema-escuro)) !important;
+}
+.menu-icon{
+  border-color:rgba(255,255,255,.45) !important;
+}
+
 </style>
 </head>
 
@@ -1000,6 +1035,7 @@ async function login(){
     loginDiv.style.display = "none";
     app.style.display = "block";
     document.body.classList.add("modo-app");
+    aplicarTemaSalvo();
 
     montarMenu();
     carregarFiltrosAvancados();
@@ -1024,6 +1060,7 @@ async function login(){
     loginDiv.style.display = "none";
     app.style.display = "block";
     document.body.classList.add("modo-app");
+    aplicarTemaSalvo();
 
     montarMenu();
     carregarFiltrosAvancados();
@@ -1855,7 +1892,7 @@ function render(){
     const chipClass = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : "";
     const podeEditar = podeEditarAtendimento(a);
     const podeExcluir = permissoes[role].del;
-    const podeMarcar = permissoes[role].marcar;
+    const podeMarcar = permissoes[role].marcar && !realizado;
 
     lista.innerHTML += `
       <div class="card atendimento-card v10-card status-${a.status || 'agendado'} ${realizado ? 'realizado' : ''} ${classeTempo}" onclick="fecharMenusAtendimento()">
@@ -1906,8 +1943,30 @@ function render(){
 /* ===== AJUSTES FINAIS DE NAVEGAÇÃO, PACIENTES, TÉCNICOS E CONFIGURAÇÕES ===== */
 let telaAtualCaicavv = "agendamentos";
 let renderOriginalCaicavv = null;
-function aplicarTemaSalvo(){const tema=localStorage.getItem("caicavv_tema")||"azul";document.body.classList.remove("tema-azul","tema-azul-claro","tema-vermelho","tema-rosa","tema-roxo","tema-verde","tema-amarelo","tema-laranja");document.body.classList.add("tema-"+tema);}
-function lembreteAtivo(){return localStorage.getItem("caicavv_lembrete")!=="off";}
+function usuarioPreferencias(){
+  return lerSessao() || (tecnicoLogado && tecnicoLogado.login) || (tecnicoLogado && tecnicoLogado.nome) || "sem_login";
+}
+function chavePreferencia(nome){
+  return "caicavv_" + nome + "_" + usuarioPreferencias();
+}
+const nomesTemasCaicavv = {
+  "azul":"Azul",
+  "azul-claro":"Azul claro",
+  "vermelho":"Vermelho",
+  "rosa":"Rosa",
+  "roxo":"Roxo",
+  "verde":"Verde",
+  "amarelo":"Amarelo",
+  "laranja":"Laranja"
+};
+function aplicarTemaSalvo(){
+  const tema = localStorage.getItem(chavePreferencia("tema")) || "azul";
+  document.body.classList.remove("tema-azul","tema-azul-claro","tema-vermelho","tema-rosa","tema-roxo","tema-verde","tema-amarelo","tema-laranja");
+  document.body.classList.add("tema-" + tema);
+}
+function lembreteAtivo(){
+  return localStorage.getItem(chavePreferencia("lembrete")) !== "off";
+}
 const getStatusTempoOriginalCaicavv = typeof getStatusTempo === "function" ? getStatusTempo : null;
 getStatusTempo = function(item){ if(!lembreteAtivo()) return ""; return getStatusTempoOriginalCaicavv ? getStatusTempoOriginalCaicavv(item) : ""; };
 function setTelaAtiva(nome){telaAtualCaicavv=nome;document.querySelectorAll(".app-shell .nav").forEach(nav=>nav.classList.toggle("active",nav.dataset.tela===nome));}
@@ -1917,9 +1976,26 @@ function abrirTelaPacientes(){setTelaAtiva("pacientes");mostrarBlocosAgendamento
 function filtrarPacientes(){const termo=normalizarBusca(document.getElementById("buscaPacientes")?.value||"");document.querySelectorAll(".paciente-card").forEach(card=>{card.style.display=normalizarBusca(card.innerText).includes(termo)?"block":"none";});}
 function abrirTelaTecnicos(){setTelaAtiva("tecnicos");mostrarBlocosAgendamento(false);const tecnicos=Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);const mesAtual=new Date().toISOString().slice(0,7);lista.innerHTML=`<div class="pagina-titulo">Relatório por técnico</div><div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div><div class="tecnico-relatorio-box"><label><b>Técnico</b></label><select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select><label><b>Mês</b></label><input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}"><button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button></div><div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;}
 function gerarRelatorioTecnicoNaTela(){const tecnico=document.getElementById("tecnicoRelatorioTela").value;const mes=document.getElementById("mesRelatorioTecnicoTela").value;const dados=atendimentos.filter(a=>a.tecnico===tecnico&&String(a.data||"").startsWith(mes));const total=dados.length;const ok=dados.filter(a=>a.status==="compareceu").length;const falta=dados.filter(a=>a.status==="faltou").length;const pendente=dados.filter(a=>!a.status||a.status==="agendado").length;const linhas=dados.sort((a,b)=>getDataHoraAtendimento(a).localeCompare(getDataHoraAtendimento(b))).map(a=>`<div class="paciente-card"><strong>📁 Pasta ${escapeHTML(a.pasta)} · ${escapeHTML(formatarDataBR(a.data))}</strong><span>${escapeHTML(a.status||"agendado")} · ${escapeHTML(a.descricao||"Sem descrição")}</span></div>`).join("");document.getElementById("resultadoTecnicoTela").innerHTML=`<div class="relatorio-card"><div class="rel-icone">👥</div><div><span class="rel-nome">${escapeHTML(tecnico)}</span><br><span class="rel-metrica">Total: <b>${total}</b></span><span class="rel-metrica ok">Compareceu: <b>${ok}</b></span><span class="rel-metrica erro">Faltou: <b>${falta}</b></span><span class="rel-metrica">Pendente: <b>${pendente}</b></span></div></div><div class="pacientes-grid" style="margin-top:12px">${linhas||'<div class="paciente-card"><strong>Nenhum atendimento encontrado.</strong></div>'}</div>`;}
-function abrirTelaConfiguracoes(){setTelaAtiva("configuracoes");mostrarBlocosAgendamento(false);const temaAtual=localStorage.getItem("caicavv_tema")||"azul";const lembrete=lembreteAtivo();lista.innerHTML=`<div class="pagina-titulo">Configurações</div><div class="pagina-sub">Defina a cor padrão do sistema e o lembrete de horário.</div><div class="config-grid"><div class="config-card"><h3>Cor padrão do site</h3><p class="pagina-sub">Tema atual: <b id="temaAtualTxt">${escapeHTML(temaAtual)}</b></p><div class="theme-options"><button class="tema-btn-azul" onclick="definirTema('azul')">Azul</button><button class="tema-btn-azul-claro" onclick="definirTema('azul-claro')">Azul claro</button><button class="tema-btn-vermelho" onclick="definirTema('vermelho')">Vermelho</button><button class="tema-btn-rosa" onclick="definirTema('rosa')">Rosa</button><button class="tema-btn-roxo" onclick="definirTema('roxo')">Roxo</button><button class="tema-btn-verde" onclick="definirTema('verde')">Verde</button><button class="tema-btn-amarelo" onclick="definirTema('amarelo')">Amarelo</button><button class="tema-btn-laranja" onclick="definirTema('laranja')">Laranja</button></div></div><div class="config-card switch-row"><div><h3>Lembrete de consulta próxima</h3><p class="pagina-sub">Quando ligado, o sistema destaca atendimentos próximos do horário.</p></div><input type="checkbox" id="checkLembrete" ${lembrete?"checked":""} onchange="definirLembrete(this.checked)"></div></div>`;}
-function definirTema(tema){localStorage.setItem("caicavv_tema",tema);aplicarTemaSalvo();const txt=document.getElementById("temaAtualTxt");if(txt)txt.textContent=tema;}
-function definirLembrete(ativo){localStorage.setItem("caicavv_lembrete",ativo?"on":"off");mostrarSucesso(ativo?"Lembrete ativado.":"Lembrete desativado.");}
+function abrirTelaConfiguracoes(){
+  setTelaAtiva("configuracoes");
+  mostrarBlocosAgendamento(false);
+  const temaAtual = localStorage.getItem(chavePreferencia("tema")) || "azul";
+  const lembrete = lembreteAtivo();
+  const nomeTema = nomesTemasCaicavv[temaAtual] || "Azul";
+  lista.innerHTML = `<div class="pagina-titulo">Configurações</div><div class="pagina-sub">Defina a cor padrão do sistema e o lembrete de horário. Essas opções ficam salvas apenas para este login.</div><div class="config-grid"><div class="config-card"><h3>Cor padrão do site</h3><p class="pagina-sub">Tema atual: <b id="temaAtualTxt">${escapeHTML(nomeTema)}</b></p><div class="theme-options"><button class="tema-btn-azul" onclick="definirTema('azul')">Azul</button><button class="tema-btn-azul-claro" onclick="definirTema('azul-claro')">Azul claro</button><button class="tema-btn-vermelho" onclick="definirTema('vermelho')">Vermelho</button><button class="tema-btn-rosa" onclick="definirTema('rosa')">Rosa</button><button class="tema-btn-roxo" onclick="definirTema('roxo')">Roxo</button><button class="tema-btn-verde" onclick="definirTema('verde')">Verde</button><button class="tema-btn-amarelo" onclick="definirTema('amarelo')">Amarelo</button><button class="tema-btn-laranja" onclick="definirTema('laranja')">Laranja</button></div></div><div class="config-card switch-row"><div><h3>Lembrete de consulta próxima</h3><p class="pagina-sub">Quando ligado, o sistema destaca atendimentos próximos do horário. Essa configuração também fica só neste login.</p></div><input type="checkbox" id="checkLembrete" ${lembrete?"checked":""} onchange="definirLembrete(this.checked)"></div></div>`;
+}
+function definirTema(tema){
+  localStorage.setItem(chavePreferencia("tema"), tema);
+  aplicarTemaSalvo();
+  const txt = document.getElementById("temaAtualTxt");
+  if(txt) txt.textContent = nomesTemasCaicavv[tema] || tema;
+  mostrarSucesso("Tema salvo apenas para este login.");
+}
+function definirLembrete(ativo){
+  localStorage.setItem(chavePreferencia("lembrete"), ativo ? "on" : "off");
+  mostrarSucesso(ativo ? "Lembrete ativado para este login." : "Lembrete desativado para este login.");
+  if(telaAtualCaicavv === "agendamentos" && renderOriginalCaicavv) renderOriginalCaicavv();
+}
 window.addEventListener("DOMContentLoaded",()=>{aplicarTemaSalvo();renderOriginalCaicavv=window.render;window.render=function(){if(telaAtualCaicavv!=="agendamentos")return;return renderOriginalCaicavv();};const menuIcon=document.querySelector(".menu-icon");if(menuIcon)menuIcon.onclick=toggleMenuLateral;});
 
 </script>
