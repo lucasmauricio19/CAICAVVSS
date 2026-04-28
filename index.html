@@ -21,9 +21,6 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos");
-const CACHE_ATENDIMENTOS = "caicavv_atendimentos_cache_v2";
-let escutaFirebaseAtiva = null;
-let salvandoFirebase = false;
 </script>
 
 <style>
@@ -396,43 +393,6 @@ body.recepcao-restrita #formAtendimento{display:none!important;}
 @keyframes pulseRealizado{from{transform:scale(1)}to{transform:scale(1.08)}}
 @media(max-width:720px){.v10-card-top{padding-right:0!important;padding-top:42px!important}.v10-card-top .status-chip{left:0!important;right:auto!important;top:0!important}.pacientes-grid{grid-template-columns:1fr!important}.v10-actions{display:grid!important;grid-template-columns:1fr 1fr!important}.v10-actions button{min-width:0!important;width:100%!important}}
 
-
-
-/* ===== V14: correções finais de login, escala, tema por usuário e cores ===== */
-.login-screen .side-icon,
-.login-screen .login-eye{display:none!important;}
-.login-screen .login-card{transform:scale(.92);transform-origin:center;}
-body.modo-app .sidebar{background:linear-gradient(180deg,var(--tema-escuro,#062b78),var(--tema-principal,#005bff))!important;}
-body.modo-app .topbar{background:linear-gradient(135deg,var(--tema-escuro,#06246c),var(--tema-principal,#004bd4) 70%,var(--tema-escuro,#002874))!important;}
-body.modo-app .nav.active,
-body.modo-app .tab.active,
-body.modo-app .active-filter,
-body.modo-app .search-row .active-filter,
-body.modo-app .menu .ativo{background:linear-gradient(135deg,var(--tema-principal,#005bff),var(--tema-escuro,#003ec8))!important;color:#fff!important;}
-body.modo-app .appointment-card,
-body.modo-app .card.atendimento-card.v10-card::before{border-left-color:var(--tema-principal,#005bff)!important;background:var(--tema-principal,#005bff)!important;}
-body.tema-azul{--tema-principal:#005bff;--tema-escuro:#062b78;}
-body.tema-azul-claro{--tema-principal:#0ea5e9;--tema-escuro:#075985;}
-body.tema-vermelho{--tema-principal:#dc2626;--tema-escuro:#7f1d1d;}
-body.tema-rosa{--tema-principal:#ec4899;--tema-escuro:#831843;}
-body.tema-roxo{--tema-principal:#7c3aed;--tema-escuro:#3b0764;}
-body.tema-verde{--tema-principal:#16a34a;--tema-escuro:#14532d;}
-body.tema-amarelo{--tema-principal:#eab308;--tema-escuro:#854d0e;}
-body.tema-laranja{--tema-principal:#f97316;--tema-escuro:#9a3412;}
-body.modo-app .card.atendimento-card.realizado,
-body.modo-app .card.atendimento-card.v10-card.realizado{filter:grayscale(1)!important;opacity:.72!important;background:#f3f4f6!important;}
-.theme-options button{display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;}
-.theme-options button::before{content:"";width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.75);display:inline-block;}
-
-
-/* ===== CORREÇÃO FINAL: realizado só com Editar + Log + status na mesma linha ===== */
-.v10-actions.realizado-actions{display:flex!important;align-items:center!important;justify-content:center!important;gap:10px!important;flex-wrap:wrap!important;}
-.v10-actions.realizado-actions .compareceu,.v10-actions.realizado-actions .faltou{display:none!important;}
-.v10-actions.realizado-actions .editar,.v10-actions.realizado-actions .v7-log{height:36px!important;min-width:130px!important;border-radius:999px!important;color:#fff!important;font-size:13px!important;font-weight:900!important;}
-.v10-actions.realizado-actions .editar{background:#0f766e!important;}
-.v10-actions.realizado-actions .v7-log{background:#475569!important;}
-.v10-actions.realizado-actions .selo-realizado{margin:0!important;height:36px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;padding:0 12px!important;border-radius:999px!important;}
-
 </style>
 </head>
 
@@ -728,85 +688,38 @@ const horariosAtendimento = [
 ];
 let filtroDataModo = "todos";
 
-function salvarCacheLocal(){
-  try{
-    localStorage.setItem(CACHE_ATENDIMENTOS, JSON.stringify({
-      itens: Array.isArray(atendimentos) ? atendimentos : [],
-      logs: Array.isArray(logsAlteracoes) ? logsAlteracoes : [],
-      salvoEm: new Date().toISOString()
-    }));
-  }catch(e){ console.warn("Cache local não foi salvo", e); }
-}
-
-function carregarCacheLocal(){
-  try{
-    const bruto = localStorage.getItem(CACHE_ATENDIMENTOS);
-    if(!bruto) return false;
-    const dados = JSON.parse(bruto);
-    atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
-    logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
-    return true;
-  }catch(e){ console.warn("Cache local inválido", e); return false; }
-}
-
 async function salvarAtendimentosFirebase(){
-  salvarCacheLocal();
-  salvandoFirebase = true;
   try{
     await DOC_ATENDIMENTOS.set({
-      itens: Array.isArray(atendimentos) ? atendimentos : [],
-      logs: Array.isArray(logsAlteracoes) ? logsAlteracoes : [],
-      atualizadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-      atualizadoLocalEm: new Date().toISOString()
+      itens: atendimentos,
+      logs: logsAlteracoes,
+      atualizadoEm: new Date().toISOString()
     }, { merge: true });
   }catch(e){
-    console.error("ERRO FIREBASE AO SALVAR:", e);
-    mostrarErro("Não salvou online. Confira as regras do Firestore/publicação do site.");
+    console.error(e);
+    mostrarErro("Erro ao salvar no Firebase.");
     throw e;
-  }finally{ salvandoFirebase = false; }
+  }
 }
 
 async function carregarAtendimentosFirebase(){
-  carregarCacheLocal();
   try{
     const snap = await DOC_ATENDIMENTOS.get();
     if(snap.exists){
       const dados = snap.data() || {};
-      atendimentos = Array.isArray(dados.itens) ? dados.itens : atendimentos;
-      logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : logsAlteracoes;
-      salvarCacheLocal();
+      atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
+      logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
     } else {
-      await DOC_ATENDIMENTOS.set({
-        itens: Array.isArray(atendimentos) ? atendimentos : [],
-        logs: Array.isArray(logsAlteracoes) ? logsAlteracoes : [],
-        criadoEm: firebase.firestore.FieldValue.serverTimestamp(),
-        criadoLocalEm: new Date().toISOString()
-      }, { merge: true });
+      atendimentos = [];
+      logsAlteracoes = [];
+      await DOC_ATENDIMENTOS.set({ itens: [], logs: [], criadoEm: new Date().toISOString() }, { merge: true });
     }
   }catch(e){
-    console.error("ERRO FIREBASE AO CARREGAR:", e);
-    if(!carregarCacheLocal()){ atendimentos = []; logsAlteracoes = []; }
-    mostrarErro("Firebase não carregou. Mostrando cache deste computador.");
+    console.error(e);
+    atendimentos = [];
+    logsAlteracoes = [];
+    mostrarErro("Não foi possível carregar os dados do Firebase.");
   }
-}
-
-function iniciarEscutaAtendimentosFirebase(){
-  if(escutaFirebaseAtiva) return;
-  escutaFirebaseAtiva = DOC_ATENDIMENTOS.onSnapshot((snap)=>{
-    if(!snap.exists) return;
-    const dados = snap.data() || {};
-    atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
-    logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
-    salvarCacheLocal();
-    gerarHorarios();
-    if(typeof gerarHorariosEdicao === "function") gerarHorariosEdicao();
-    if(tecnicoLogado) render();
-  }, (e)=>{
-    console.error("ERRO NA ESCUTA FIREBASE:", e);
-    carregarCacheLocal();
-    if(tecnicoLogado) render();
-    mostrarErro("Sem conexão/permissão no Firebase. Dados online não sincronizaram.");
-  });
 }
 
 const usuarios = {
@@ -1066,13 +979,8 @@ function ativarEnterLogin(){
 ativarEnterLogin();
 
 async function login(){
-  const userInput = document.getElementById("user");
-  const passInput = document.getElementById("pass");
-  const loginEl = document.getElementById("loginDiv");
-  const appEl = document.getElementById("app");
-
-  let u = String(userInput?.value || "").trim().toLowerCase();
-  let p = String(passInput?.value || "");
+  let u = String(user.value || "").trim().toLowerCase();
+  let p = String(pass.value || "");
 
   if(!u || !p){
     mostrarErro("Preencha usuário e senha.");
@@ -1089,17 +997,14 @@ async function login(){
     }
 
     salvarSessao(u);
-    if(loginEl) loginEl.style.display = "none";
-    if(appEl) appEl.style.display = "block";
+    loginDiv.style.display = "none";
+    app.style.display = "block";
     document.body.classList.add("modo-app");
 
-    telaAtualCaicavv = "agendamentos";
-    aplicarTemaSalvo();
     montarMenu();
     carregarFiltrosAvancados();
     aplicarPermissoesNaTela();
     await carregar();
-    abrirTelaAgendamentos();
   } else {
     mostrarErro("Senha ou usuário incorretos");
   }
@@ -1120,39 +1025,16 @@ async function login(){
     app.style.display = "block";
     document.body.classList.add("modo-app");
 
-    telaAtualCaicavv = "agendamentos";
-    aplicarTemaSalvo();
     montarMenu();
     carregarFiltrosAvancados();
     aplicarPermissoesNaTela();
     await carregar();
-    abrirTelaAgendamentos();
   }
 })();
 
 function logout(){
   limparSessao();
-  if(escutaFirebaseAtiva){ escutaFirebaseAtiva(); escutaFirebaseAtiva = null; }
-  tecnicoLogado = null;
-  filtroAtual = "";
-  telaAtualCaicavv = "agendamentos";
-
-  const appEl = document.getElementById("app");
-  const loginEl = document.getElementById("loginDiv");
-
-  if(appEl) appEl.style.display = "none";
-  if(loginEl) loginEl.style.display = "flex";
-
-  document.body.classList.remove("modo-app", "recepcao-restrita", "sem-relatorios");
-  document.querySelectorAll(".app-shell .nav").forEach(nav => {
-    nav.classList.toggle("active", nav.dataset.tela === "agendamentos");
-  });
-
-  const userInput = document.getElementById("user");
-  const passInput = document.getElementById("pass");
-  if(userInput) userInput.value = "";
-  if(passInput) passInput.value = "";
-  if(userInput) userInput.focus();
+  location.reload();
 }
 
 function montarMenu(){
@@ -1164,13 +1046,13 @@ function montarMenu(){
       .filter(u => u.role === "tecnico")
       .map(u => u.nome);
 
+    tecnicos.forEach((t, i)=>{
+      html += `<button ${i===0 ? 'class="ativo"' : ""} onclick="filtrar('${escapeHTML(t)}',this)">${escapeHTML(t)}</button>`;
+    });
+
     if(tecnicos.length > 0 && !filtroAtual){
       filtroAtual = tecnicos[0];
     }
-
-    tecnicos.forEach((t)=>{
-      html += `<button ${t === filtroAtual ? 'class="ativo"' : ""} onclick="filtrar('${escapeHTML(t)}',this)">${escapeHTML(t)}</button>`;
-    });
   } else {
     html = `<button class="ativo">${escapeHTML(tecnicoLogado.nome)}</button>`;
   }
@@ -1269,7 +1151,6 @@ async function add(){
 
 async function carregar(){
   await carregarAtendimentosFirebase();
-  iniciarEscutaAtendimentosFirebase();
   render();
 }
 
@@ -2011,14 +1892,10 @@ function render(){
             ${a.observacaoRealizacao ? `<div class="v10-meta-item"><div class="v10-meta-label">Observação</div><div class="v10-meta-value">${escapeHTML(a.observacaoRealizacao)}</div></div>` : ""}
           </div>
 
-          <div class="v10-actions ${realizado ? 'realizado-actions' : ''}">
-            ${realizado ? `
-              ${podeEditar ? `<button class="editar" onclick="event.stopPropagation(); abrirModalEdicao('${a.id}')">✎ Editar</button>` : ""}
-              <button class="v7-log" onclick="event.stopPropagation(); abrirLogAtendimento('${a.id}')">☰ Log</button>
-              <span class="selo-realizado">JÁ REALIZADO</span>
-            ` : `
-              ${podeMarcar ? `<button class="compareceu" onclick="event.stopPropagation(); marcar('${a.id}','compareceu')">✔ Compareceu</button><button class="faltou" onclick="event.stopPropagation(); marcar('${a.id}','faltou')">✖ Faltou</button>` : ""}
-            `}
+          ${realizado ? `<div style="margin-top:12px"><span class="selo-realizado">JÁ REALIZADO</span></div>` : ""}
+
+          <div class="v10-actions">
+            ${podeMarcar ? `<button class="compareceu" onclick="event.stopPropagation(); marcar('${a.id}','compareceu')">✔ Compareceu</button><button class="faltou" onclick="event.stopPropagation(); marcar('${a.id}','faltou')">✖ Faltou</button>` : ""}
           </div>
         </div>
       </div>
@@ -2026,214 +1903,24 @@ function render(){
 }
 
 
-/* ===== V14: navegação limpa, tema por login e configurações corrigidas ===== */
+/* ===== AJUSTES FINAIS DE NAVEGAÇÃO, PACIENTES, TÉCNICOS E CONFIGURAÇÕES ===== */
 let telaAtualCaicavv = "agendamentos";
 let renderOriginalCaicavv = null;
-
-const nomesTemasCaicavv = {
-  "azul":"Azul",
-  "azul-claro":"Azul claro",
-  "vermelho":"Vermelho",
-  "rosa":"Rosa",
-  "roxo":"Roxo",
-  "verde":"Verde",
-  "amarelo":"Amarelo",
-  "laranja":"Laranja"
-};
-
-function usuarioAtualChaveCaicavv(){
-  const salvo = lerSessao ? lerSessao() : "";
-  if(salvo) return salvo;
-  if(!tecnicoLogado) return "geral";
-  const achado = Object.keys(usuarios).find(k => usuarios[k].nome === tecnicoLogado.nome && usuarios[k].role === tecnicoLogado.role);
-  return achado || String(tecnicoLogado.nome || "geral").toLowerCase().replace(/\s+/g,"_");
-}
-
-function chaveTemaCaicavv(){ return "caicavv_tema_" + usuarioAtualChaveCaicavv(); }
-function chaveLembreteCaicavv(){ return "caicavv_lembrete_" + usuarioAtualChaveCaicavv(); }
-function temaAtualCaicavv(){ return localStorage.getItem(chaveTemaCaicavv()) || "azul"; }
-function nomeTemaCaicavv(tema){ return nomesTemasCaicavv[tema] || "Azul"; }
-
-function aplicarTemaSalvo(){
-  const tema = temaAtualCaicavv();
-  document.body.classList.remove("tema-azul","tema-azul-claro","tema-vermelho","tema-rosa","tema-roxo","tema-verde","tema-amarelo","tema-laranja");
-  document.body.classList.add("tema-" + tema);
-  const txt = document.getElementById("temaAtualTxt");
-  if(txt) txt.textContent = nomeTemaCaicavv(tema);
-}
-
-function lembreteAtivo(){
-  return localStorage.getItem(chaveLembreteCaicavv()) !== "off";
-}
-
+function aplicarTemaSalvo(){const tema=localStorage.getItem("caicavv_tema")||"azul";document.body.classList.remove("tema-azul","tema-azul-claro","tema-vermelho","tema-rosa","tema-roxo","tema-verde","tema-amarelo","tema-laranja");document.body.classList.add("tema-"+tema);}
+function lembreteAtivo(){return localStorage.getItem("caicavv_lembrete")!=="off";}
 const getStatusTempoOriginalCaicavv = typeof getStatusTempo === "function" ? getStatusTempo : null;
-getStatusTempo = function(item){
-  if(!lembreteAtivo()) return "";
-  return getStatusTempoOriginalCaicavv ? getStatusTempoOriginalCaicavv(item) : "";
-};
-
-function setTelaAtiva(nome){
-  telaAtualCaicavv = nome;
-  document.querySelectorAll(".app-shell .nav").forEach(nav => {
-    nav.classList.toggle("active", nav.dataset.tela === nome);
-  });
-}
-
-function mostrarBlocosAgendamento(mostrar){
-  ["boasVindas","menu","relatorio","filtrosV6","formAtendimento"].forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.classList.toggle("hidden", !mostrar);
-  });
-}
-
-function abrirTelaAgendamentos(){
-  setTelaAtiva("agendamentos");
-  mostrarBlocosAgendamento(true);
-  aplicarPermissoesNaTela();
-  if(renderOriginalCaicavv) renderOriginalCaicavv();
-}
-
-function abrirTelaPacientes(){
-  setTelaAtiva("pacientes");
-  mostrarBlocosAgendamento(false);
-
-  const totalPastas = Object.keys(cadastros).length;
-  const totalNomes = Object.values(cadastros).reduce((s, nomes) => s + nomes.length, 0);
-  let cards = "";
-
-  Object.entries(cadastros).forEach(([pastaNum, nomes]) => {
-    nomes.forEach(nomePaciente => {
-      cards += `<div class="paciente-card"><strong>${escapeHTML(nomePaciente)}</strong><span>📁 Pasta ${escapeHTML(pastaNum)}</span></div>`;
-    });
-  });
-
-  lista.innerHTML = `
-    <div class="pagina-titulo">Pastas</div>
-    <div class="pagina-sub">Busca rápida por nome ou nº da pasta.</div>
-    <div class="search-card" style="margin-bottom:14px">
-      <div class="search-box"><span>🔍</span><input id="buscaPacientes" placeholder="Buscar por nome ou nº" oninput="filtrarPacientes()"></div>
-    </div>
-    <div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div>
-    <div id="listaPacientes" class="pacientes-grid">${cards}</div>
-  `;
-}
-
-function filtrarPacientes(){
-  const termo = normalizarBusca(document.getElementById("buscaPacientes")?.value || "");
-  document.querySelectorAll(".paciente-card").forEach(card => {
-    card.style.display = normalizarBusca(card.innerText).includes(termo) ? "block" : "none";
-  });
-}
-
-function abrirTelaTecnicos(){
-  setTelaAtiva("tecnicos");
-  mostrarBlocosAgendamento(false);
-  const tecnicos = Object.values(usuarios).filter(u => u.role === "tecnico").map(u => u.nome);
-  const mesAtual = new Date().toISOString().slice(0,7);
-
-  lista.innerHTML = `
-    <div class="pagina-titulo">Relatório por técnico</div>
-    <div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div>
-    <div class="tecnico-relatorio-box">
-      <label><b>Técnico</b></label>
-      <select id="tecnicoRelatorioTela">${tecnicos.map(t => `<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select>
-      <label><b>Mês</b></label>
-      <input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}">
-      <button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button>
-    </div>
-    <div id="resultadoTecnicoTela" style="margin-top:14px"></div>
-  `;
-}
-
-function gerarRelatorioTecnicoNaTela(){
-  const tecnico = document.getElementById("tecnicoRelatorioTela").value;
-  const mes = document.getElementById("mesRelatorioTecnicoTela").value;
-  const dados = atendimentos.filter(a => a.tecnico === tecnico && String(a.data || "").startsWith(mes));
-  const total = dados.length;
-  const ok = dados.filter(a => a.status === "compareceu").length;
-  const falta = dados.filter(a => a.status === "faltou").length;
-  const pendente = dados.filter(a => !a.status || a.status === "agendado").length;
-  const linhas = dados.slice().sort((a,b) => getDataHoraAtendimento(a).localeCompare(getDataHoraAtendimento(b))).map(a => `
-    <div class="paciente-card">
-      <strong>📁 Pasta ${escapeHTML(a.pasta)} · ${escapeHTML(formatarDataBR(a.data))}</strong>
-      <span>${escapeHTML(a.status || "agendado")} · ${escapeHTML(a.descricao || "Sem descrição")}</span>
-    </div>
-  `).join("");
-
-  document.getElementById("resultadoTecnicoTela").innerHTML = `
-    <div class="relatorio-card">
-      <div class="rel-icone">👥</div>
-      <div>
-        <span class="rel-nome">${escapeHTML(tecnico)}</span><br>
-        <span class="rel-metrica">Total: <b>${total}</b></span>
-        <span class="rel-metrica ok">Compareceu: <b>${ok}</b></span>
-        <span class="rel-metrica erro">Faltou: <b>${falta}</b></span>
-        <span class="rel-metrica">Pendente: <b>${pendente}</b></span>
-      </div>
-    </div>
-    <div class="pacientes-grid" style="margin-top:12px">${linhas || '<div class="paciente-card"><strong>Nenhum atendimento encontrado.</strong></div>'}</div>
-  `;
-}
-
-function abrirTelaConfiguracoes(){
-  setTelaAtiva("configuracoes");
-  mostrarBlocosAgendamento(false);
-  const temaAtual = temaAtualCaicavv();
-  const lembrete = lembreteAtivo();
-
-  lista.innerHTML = `
-    <div class="pagina-titulo">Configurações</div>
-    <div class="pagina-sub">Defina a cor padrão do sistema e o lembrete de horário. Essas opções ficam salvas somente para este login.</div>
-    <div class="config-grid">
-      <div class="config-card">
-        <h3>Cor padrão do site</h3>
-        <p class="pagina-sub">Tema atual: <b id="temaAtualTxt">${escapeHTML(nomeTemaCaicavv(temaAtual))}</b></p>
-        <div class="theme-options">
-          <button class="tema-btn-azul" onclick="definirTema('azul')">Azul</button>
-          <button class="tema-btn-azul-claro" onclick="definirTema('azul-claro')">Azul claro</button>
-          <button class="tema-btn-vermelho" onclick="definirTema('vermelho')">Vermelho</button>
-          <button class="tema-btn-rosa" onclick="definirTema('rosa')">Rosa</button>
-          <button class="tema-btn-roxo" onclick="definirTema('roxo')">Roxo</button>
-          <button class="tema-btn-verde" onclick="definirTema('verde')">Verde</button>
-          <button class="tema-btn-amarelo" onclick="definirTema('amarelo')">Amarelo</button>
-          <button class="tema-btn-laranja" onclick="definirTema('laranja')">Laranja</button>
-        </div>
-      </div>
-      <div class="config-card switch-row">
-        <div>
-          <h3>Lembrete de consulta próxima</h3>
-          <p class="pagina-sub">Quando ligado, o sistema destaca atendimentos próximos do horário.</p>
-        </div>
-        <input type="checkbox" id="checkLembrete" ${lembrete ? "checked" : ""} onchange="definirLembrete(this.checked)">
-      </div>
-    </div>
-  `;
-}
-
-function definirTema(tema){
-  localStorage.setItem(chaveTemaCaicavv(), tema);
-  aplicarTemaSalvo();
-  const txt = document.getElementById("temaAtualTxt");
-  if(txt) txt.textContent = nomeTemaCaicavv(tema);
-  mostrarSucesso("Cor padrão alterada para " + nomeTemaCaicavv(tema) + ".");
-}
-
-function definirLembrete(ativo){
-  localStorage.setItem(chaveLembreteCaicavv(), ativo ? "on" : "off");
-  mostrarSucesso(ativo ? "Lembrete ativado para este login." : "Lembrete desativado para este login.");
-  if(telaAtualCaicavv === "agendamentos" && renderOriginalCaicavv) renderOriginalCaicavv();
-}
-
-window.addEventListener("DOMContentLoaded", () => {
-  aplicarTemaSalvo();
-  renderOriginalCaicavv = window.render;
-  window.render = function(){
-    if(telaAtualCaicavv !== "agendamentos") return;
-    return renderOriginalCaicavv();
-  };
-  const menuIcon = document.querySelector(".menu-icon");
-  if(menuIcon) menuIcon.onclick = toggleMenuLateral;
-});
+getStatusTempo = function(item){ if(!lembreteAtivo()) return ""; return getStatusTempoOriginalCaicavv ? getStatusTempoOriginalCaicavv(item) : ""; };
+function setTelaAtiva(nome){telaAtualCaicavv=nome;document.querySelectorAll(".app-shell .nav").forEach(nav=>nav.classList.toggle("active",nav.dataset.tela===nome));}
+function mostrarBlocosAgendamento(mostrar){["boasVindas","menu","relatorio","filtrosV6","formAtendimento"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("hidden",!mostrar);});}
+function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();}
+function abrirTelaPacientes(){setTelaAtiva("pacientes");mostrarBlocosAgendamento(false);const totalPastas=Object.keys(cadastros).length;const totalNomes=Object.values(cadastros).reduce((s,nomes)=>s+nomes.length,0);let cards="";Object.entries(cadastros).forEach(([pasta,nomes])=>{nomes.forEach(nome=>{cards+=`<div class="paciente-card"><strong>${escapeHTML(nome)}</strong><span>📁 Pasta ${escapeHTML(pasta)}</span></div>`;});});lista.innerHTML=`<div class="pagina-titulo">Pastas</div><div class="pagina-sub">Busca rápida por nome ou nº da pasta.</div><div class="search-card" style="margin-bottom:14px"><div class="search-box"><span>🔍</span><input id="buscaPacientes" placeholder="Buscar por nome ou nº" oninput="filtrarPacientes()"></div></div><div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div><div id="listaPacientes" class="pacientes-grid">${cards}</div>`;}
+function filtrarPacientes(){const termo=normalizarBusca(document.getElementById("buscaPacientes")?.value||"");document.querySelectorAll(".paciente-card").forEach(card=>{card.style.display=normalizarBusca(card.innerText).includes(termo)?"block":"none";});}
+function abrirTelaTecnicos(){setTelaAtiva("tecnicos");mostrarBlocosAgendamento(false);const tecnicos=Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);const mesAtual=new Date().toISOString().slice(0,7);lista.innerHTML=`<div class="pagina-titulo">Relatório por técnico</div><div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div><div class="tecnico-relatorio-box"><label><b>Técnico</b></label><select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select><label><b>Mês</b></label><input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}"><button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button></div><div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;}
+function gerarRelatorioTecnicoNaTela(){const tecnico=document.getElementById("tecnicoRelatorioTela").value;const mes=document.getElementById("mesRelatorioTecnicoTela").value;const dados=atendimentos.filter(a=>a.tecnico===tecnico&&String(a.data||"").startsWith(mes));const total=dados.length;const ok=dados.filter(a=>a.status==="compareceu").length;const falta=dados.filter(a=>a.status==="faltou").length;const pendente=dados.filter(a=>!a.status||a.status==="agendado").length;const linhas=dados.sort((a,b)=>getDataHoraAtendimento(a).localeCompare(getDataHoraAtendimento(b))).map(a=>`<div class="paciente-card"><strong>📁 Pasta ${escapeHTML(a.pasta)} · ${escapeHTML(formatarDataBR(a.data))}</strong><span>${escapeHTML(a.status||"agendado")} · ${escapeHTML(a.descricao||"Sem descrição")}</span></div>`).join("");document.getElementById("resultadoTecnicoTela").innerHTML=`<div class="relatorio-card"><div class="rel-icone">👥</div><div><span class="rel-nome">${escapeHTML(tecnico)}</span><br><span class="rel-metrica">Total: <b>${total}</b></span><span class="rel-metrica ok">Compareceu: <b>${ok}</b></span><span class="rel-metrica erro">Faltou: <b>${falta}</b></span><span class="rel-metrica">Pendente: <b>${pendente}</b></span></div></div><div class="pacientes-grid" style="margin-top:12px">${linhas||'<div class="paciente-card"><strong>Nenhum atendimento encontrado.</strong></div>'}</div>`;}
+function abrirTelaConfiguracoes(){setTelaAtiva("configuracoes");mostrarBlocosAgendamento(false);const temaAtual=localStorage.getItem("caicavv_tema")||"azul";const lembrete=lembreteAtivo();lista.innerHTML=`<div class="pagina-titulo">Configurações</div><div class="pagina-sub">Defina a cor padrão do sistema e o lembrete de horário.</div><div class="config-grid"><div class="config-card"><h3>Cor padrão do site</h3><p class="pagina-sub">Tema atual: <b id="temaAtualTxt">${escapeHTML(temaAtual)}</b></p><div class="theme-options"><button class="tema-btn-azul" onclick="definirTema('azul')">Azul</button><button class="tema-btn-azul-claro" onclick="definirTema('azul-claro')">Azul claro</button><button class="tema-btn-vermelho" onclick="definirTema('vermelho')">Vermelho</button><button class="tema-btn-rosa" onclick="definirTema('rosa')">Rosa</button><button class="tema-btn-roxo" onclick="definirTema('roxo')">Roxo</button><button class="tema-btn-verde" onclick="definirTema('verde')">Verde</button><button class="tema-btn-amarelo" onclick="definirTema('amarelo')">Amarelo</button><button class="tema-btn-laranja" onclick="definirTema('laranja')">Laranja</button></div></div><div class="config-card switch-row"><div><h3>Lembrete de consulta próxima</h3><p class="pagina-sub">Quando ligado, o sistema destaca atendimentos próximos do horário.</p></div><input type="checkbox" id="checkLembrete" ${lembrete?"checked":""} onchange="definirLembrete(this.checked)"></div></div>`;}
+function definirTema(tema){localStorage.setItem("caicavv_tema",tema);aplicarTemaSalvo();const txt=document.getElementById("temaAtualTxt");if(txt)txt.textContent=tema;}
+function definirLembrete(ativo){localStorage.setItem("caicavv_lembrete",ativo?"on":"off");mostrarSucesso(ativo?"Lembrete ativado.":"Lembrete desativado.");}
+window.addEventListener("DOMContentLoaded",()=>{aplicarTemaSalvo();renderOriginalCaicavv=window.render;window.render=function(){if(telaAtualCaicavv!=="agendamentos")return;return renderOriginalCaicavv();};const menuIcon=document.querySelector(".menu-icon");if(menuIcon)menuIcon.onclick=toggleMenuLateral;});
 
 </script>
 
