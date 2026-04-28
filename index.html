@@ -20,7 +20,7 @@ const firebaseConfig = {
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
-const DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos");
+const DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos"); // caminho oficial dos agendamentos online
 </script>
 
 <style>
@@ -722,6 +722,7 @@ const cadastros = {"1": ["EMELLY GABRIELLY DA ANUNCIAÇÃO"], "2": ["LAURA RODRI
 <script>
 let atendimentos = [];
 let logsAlteracoes = [];
+let unsubscribeAtendimentosFirebase = null;
 const horariosAtendimento = [
   "08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30",
   "13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30"
@@ -730,15 +731,45 @@ let filtroDataModo = "todos";
 
 async function salvarAtendimentosFirebase(){
   try{
+    // CAMINHO OFICIAL DO FIREBASE:
+    // Firestore > caicavv > atendimentos
+    // Campo principal: itens
+    // Campo lista mantido como espelho para compatibilidade com versões antigas.
     await DOC_ATENDIMENTOS.set({
       itens: atendimentos,
+      lista: atendimentos,
       logs: logsAlteracoes,
+      atualizadoPor: tecnicoLogado ? tecnicoLogado.nome : "Sistema",
       atualizadoEm: new Date().toISOString()
     }, { merge: true });
   }catch(e){
     console.error(e);
-    mostrarErro("Erro ao salvar no Firebase.");
+    mostrarErro("Erro ao salvar no Firebase. Verifique a conexão e as regras do Firestore.");
     throw e;
+  }
+}
+
+function iniciarEscutaFirebase(){
+  if(unsubscribeAtendimentosFirebase) return;
+  unsubscribeAtendimentosFirebase = DOC_ATENDIMENTOS.onSnapshot((snap)=>{
+    if(!snap.exists) return;
+    const dados = snap.data() || {};
+    // Lê o campo oficial "itens" e também aceita "lista" de versões antigas.
+    atendimentos = Array.isArray(dados.itens) ? dados.itens : (Array.isArray(dados.lista) ? dados.lista : []);
+    logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
+    if(document.body.classList.contains("modo-app")){
+      render();
+    }
+  }, (erro)=>{
+    console.error(erro);
+    mostrarErro("Não foi possível sincronizar com o Firebase.");
+  });
+}
+
+function pararEscutaFirebase(){
+  if(unsubscribeAtendimentosFirebase){
+    unsubscribeAtendimentosFirebase();
+    unsubscribeAtendimentosFirebase = null;
   }
 }
 
@@ -747,12 +778,14 @@ async function carregarAtendimentosFirebase(){
     const snap = await DOC_ATENDIMENTOS.get();
     if(snap.exists){
       const dados = snap.data() || {};
-      atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
+      // Caminho correto: Firestore > caicavv > atendimentos
+      // Campo atual: itens | Campo antigo aceito: lista
+      atendimentos = Array.isArray(dados.itens) ? dados.itens : (Array.isArray(dados.lista) ? dados.lista : []);
       logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
     } else {
       atendimentos = [];
       logsAlteracoes = [];
-      await DOC_ATENDIMENTOS.set({ itens: [], logs: [], criadoEm: new Date().toISOString() }, { merge: true });
+      await DOC_ATENDIMENTOS.set({ itens: [], lista: [], logs: [], criadoEm: new Date().toISOString() }, { merge: true });
     }
   }catch(e){
     console.error(e);
@@ -1084,6 +1117,7 @@ async function login(){
 })();
 
 function logout(){
+  pararEscutaFirebase();
   limparSessao();
   tecnicoLogado = null;
   filtroAtual = "";
@@ -1203,7 +1237,12 @@ async function add(){
 
   atendimentos.unshift(obj);
   registrarLog("Agendamento criado", obj, `Atendimento marcado para ${formatarDataBR(obj.data)} às ${obj.hora}, com ${obj.tecnico}.`);
-  await salvarAtendimentosFirebase();
+  try{
+    await salvarAtendimentosFirebase();
+  } catch(e){
+    btnAdicionar.disabled = false;
+    return;
+  }
 
   pasta.value = "";
   nome.value = "";
@@ -1221,6 +1260,7 @@ async function add(){
 
 async function carregar(){
   await carregarAtendimentosFirebase();
+  iniciarEscutaFirebase();
   render();
 }
 
