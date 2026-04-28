@@ -421,6 +421,56 @@ body.modo-app .card.atendimento-card.v10-card.realizado{filter:grayscale(1)!impo
 .theme-options button{display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;}
 .theme-options button::before{content:"";width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.75);display:inline-block;}
 
+
+/* ===== CORREÇÃO FINAL: atendimento realizado limpo ===== */
+.v10-card.realizado .card-top-realizado{
+  padding-right:0!important;
+}
+
+.v10-card.realizado .v10-actions.realizado-actions{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:12px!important;
+  flex-wrap:wrap!important;
+}
+
+.v10-card.realizado .v10-actions.realizado-actions button{
+  min-width:150px!important;
+  height:38px!important;
+  margin:0!important;
+}
+
+.v10-card.realizado .v10-actions.realizado-actions .editar{
+  background:#0f766e!important;
+}
+
+.v10-card.realizado .v10-actions.realizado-actions .v7-log{
+  background:#475569!important;
+}
+
+.v10-card.realizado .v10-actions.realizado-actions .selo-realizado{
+  margin:0!important;
+  height:38px!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:0 14px!important;
+  border-radius:999px!important;
+  background:#334155!important;
+  color:#fff!important;
+  font-size:12px!important;
+  font-weight:900!important;
+  letter-spacing:.4px!important;
+}
+
+.v10-card.realizado .compareceu,
+.v10-card.realizado .faltou,
+.v10-card.realizado .btn-menu-atendimento,
+.v10-card.realizado .atendimento-menu-wrap{
+  display:none!important;
+}
+
 </style>
 </head>
 
@@ -715,6 +765,14 @@ const horariosAtendimento = [
   "13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30"
 ];
 let filtroDataModo = "todos";
+let unsubscribeAtendimentosFirebase = null;
+let primeiraCargaFirebaseResolvida = false;
+
+function aplicarDadosAtendimentosFirebase(dados){
+  dados = dados || {};
+  atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
+  logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
+}
 
 async function salvarAtendimentosFirebase(){
   try{
@@ -725,29 +783,59 @@ async function salvarAtendimentosFirebase(){
     }, { merge: true });
   }catch(e){
     console.error(e);
-    mostrarErro("Erro ao salvar no Firebase.");
+    mostrarErro("Erro ao salvar no Firebase. Verifique as regras do Firestore e a internet.");
     throw e;
   }
 }
 
-async function carregarAtendimentosFirebase(){
-  try{
-    const snap = await DOC_ATENDIMENTOS.get();
-    if(snap.exists){
-      const dados = snap.data() || {};
-      atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
-      logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
-    } else {
-      atendimentos = [];
-      logsAlteracoes = [];
-      await DOC_ATENDIMENTOS.set({ itens: [], logs: [], criadoEm: new Date().toISOString() }, { merge: true });
-    }
-  }catch(e){
-    console.error(e);
-    atendimentos = [];
-    logsAlteracoes = [];
-    mostrarErro("Não foi possível carregar os dados do Firebase.");
+function iniciarSincronizacaoAtendimentosFirebase(){
+  if(unsubscribeAtendimentosFirebase){
+    return Promise.resolve();
   }
+
+  primeiraCargaFirebaseResolvida = false;
+
+  return new Promise((resolve) => {
+    unsubscribeAtendimentosFirebase = DOC_ATENDIMENTOS.onSnapshot(async (snap) => {
+      try{
+        if(snap.exists){
+          aplicarDadosAtendimentosFirebase(snap.data());
+        } else {
+          atendimentos = [];
+          logsAlteracoes = [];
+          await DOC_ATENDIMENTOS.set({
+            itens: [],
+            logs: [],
+            criadoEm: new Date().toISOString(),
+            atualizadoEm: new Date().toISOString()
+          }, { merge: true });
+        }
+
+        gerarHorarios();
+        render();
+        if(typeof rel === "function") rel();
+
+        if(!primeiraCargaFirebaseResolvida){
+          primeiraCargaFirebaseResolvida = true;
+          resolve();
+        }
+      }catch(e){
+        console.error(e);
+        mostrarErro("Erro ao sincronizar os atendimentos.");
+        if(!primeiraCargaFirebaseResolvida){
+          primeiraCargaFirebaseResolvida = true;
+          resolve();
+        }
+      }
+    }, (erro) => {
+      console.error(erro);
+      mostrarErro("Não foi possível conectar ao Firebase. Verifique as regras do Firestore e a internet.");
+      if(!primeiraCargaFirebaseResolvida){
+        primeiraCargaFirebaseResolvida = true;
+        resolve();
+      }
+    });
+  });
 }
 
 const usuarios = {
@@ -1073,6 +1161,11 @@ async function login(){
 
 function logout(){
   limparSessao();
+  if(unsubscribeAtendimentosFirebase){
+    unsubscribeAtendimentosFirebase();
+    unsubscribeAtendimentosFirebase = null;
+    primeiraCargaFirebaseResolvida = false;
+  }
   tecnicoLogado = null;
   filtroAtual = "";
   telaAtualCaicavv = "agendamentos";
@@ -1208,8 +1301,7 @@ async function add(){
 }
 
 async function carregar(){
-  await carregarAtendimentosFirebase();
-  render();
+  await iniciarSincronizacaoAtendimentosFirebase();
 }
 
 let atendimentoMarcacaoPendente = null;
@@ -1917,19 +2009,21 @@ function render(){
 
     lista.innerHTML += `
       <div class="card atendimento-card v10-card status-${a.status || 'agendado'} ${realizado ? 'realizado' : ''} ${classeTempo}" onclick="fecharMenusAtendimento()">
-        <div class="atendimento-menu-wrap" onclick="event.stopPropagation()">
-          <button type="button" class="btn-menu-atendimento" title="Mais opções" onclick="toggleMenuAtendimento(event,'${a.id}')">⋮</button>
-          <div id="menuAtendimento-${a.id}" class="menu-atendimento">
-            ${podeEditar ? `<button type="button" onclick="abrirModalEdicao('${a.id}'); fecharMenusAtendimento();">✎ Editar atendimento</button>` : ""}
-            ${podeEditar ? `<button type="button" onclick="abrirReagendamento('${a.id}'); fecharMenusAtendimento();">↻ Reagendar</button>` : ""}
-            <button type="button" onclick="abrirHistoricoPaciente('${a.id}'); fecharMenusAtendimento();">▤ Histórico do paciente</button>
-            <button type="button" onclick="abrirLogAtendimento('${a.id}'); fecharMenusAtendimento();">☰ Log de alterações</button>
-            ${podeExcluir ? `<button type="button" class="danger" onclick="excluir('${a.id}'); fecharMenusAtendimento();">▥ Excluir</button>` : ""}
+        ${!realizado ? `
+          <div class="atendimento-menu-wrap" onclick="event.stopPropagation()">
+            <button type="button" class="btn-menu-atendimento" title="Mais opções" onclick="toggleMenuAtendimento(event,'${a.id}')">⋮</button>
+            <div id="menuAtendimento-${a.id}" class="menu-atendimento">
+              ${podeEditar ? `<button type="button" onclick="abrirModalEdicao('${a.id}'); fecharMenusAtendimento();">✎ Editar atendimento</button>` : ""}
+              ${podeEditar ? `<button type="button" onclick="abrirReagendamento('${a.id}'); fecharMenusAtendimento();">↻ Reagendar</button>` : ""}
+              <button type="button" onclick="abrirHistoricoPaciente('${a.id}'); fecharMenusAtendimento();">▤ Histórico do paciente</button>
+              <button type="button" onclick="abrirLogAtendimento('${a.id}'); fecharMenusAtendimento();">☰ Log de alterações</button>
+              ${podeExcluir ? `<button type="button" class="danger" onclick="excluir('${a.id}'); fecharMenusAtendimento();">▥ Excluir</button>` : ""}
+            </div>
           </div>
-        </div>
+        ` : ""}
 
         <div class="v10-card-inner">
-          <div class="v10-card-top">
+          <div class="v10-card-top ${realizado ? 'card-top-realizado' : ''}">
             <div class="v10-identidade">
               <div class="v10-nome">${escapeHTML(a.nome)}</div>
               <div class="v10-sub">
@@ -1939,7 +2033,7 @@ function render(){
                 ${labelAlertaTempo(statusTempo)}
               </div>
             </div>
-            <span class="status-chip ${chipClass || 'v10-pendente'}">${escapeHTML(statusLabel)}</span>
+            ${!realizado ? `<span class="status-chip ${chipClass || 'v10-pendente'}">${escapeHTML(statusLabel)}</span>` : ""}
           </div>
 
           <div class="v10-meta">
@@ -1950,10 +2044,18 @@ function render(){
             ${a.observacaoRealizacao ? `<div class="v10-meta-item"><div class="v10-meta-label">Observação</div><div class="v10-meta-value">${escapeHTML(a.observacaoRealizacao)}</div></div>` : ""}
           </div>
 
-          ${realizado ? `<div style="margin-top:12px"><span class="selo-realizado">JÁ REALIZADO</span></div>` : ""}
-
-          <div class="v10-actions">
-            ${podeMarcar ? `<button class="compareceu" onclick="event.stopPropagation(); marcar('${a.id}','compareceu')">✔ Compareceu</button><button class="faltou" onclick="event.stopPropagation(); marcar('${a.id}','faltou')">✖ Faltou</button>` : ""}
+          <div class="v10-actions ${realizado ? 'realizado-actions' : ''}">
+            ${
+              realizado
+              ? `
+                ${podeEditar ? `<button type="button" class="editar" onclick="event.stopPropagation(); abrirModalEdicao('${a.id}')">✎ Editar</button>` : ""}
+                <button type="button" class="v7-log" onclick="event.stopPropagation(); abrirLogAtendimento('${a.id}')">☰ Log</button>
+                <span class="selo-realizado">JÁ REALIZADO</span>
+              `
+              : `
+                ${podeMarcar ? `<button class="compareceu" onclick="event.stopPropagation(); marcar('${a.id}','compareceu')">✔ Compareceu</button><button class="faltou" onclick="event.stopPropagation(); marcar('${a.id}','faltou')">✖ Faltou</button>` : ""}
+              `
+            }
           </div>
         </div>
       </div>
