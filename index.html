@@ -421,6 +421,18 @@ body.modo-app .card.atendimento-card.v10-card.realizado{filter:grayscale(1)!impo
 .theme-options button{display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;}
 .theme-options button::before{content:"";width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.75);display:inline-block;}
 
+
+
+/* ===== V15: status ao lado do menu e ações ocultas quando realizado ===== */
+.v10-card-top{padding-right:150px!important;}
+.v10-card-top .status-chip{position:absolute!important;right:50px!important;top:0!important;max-width:none!important;white-space:nowrap!important;}
+.atendimento-menu-wrap{top:10px!important;right:10px!important;}
+.card.atendimento-card.realizado .v10-actions{display:none!important;}
+(max-width:720px){
+  .v10-card-top{padding-right:0!important;padding-top:44px!important;}
+  .v10-card-top .status-chip{left:0!important;right:auto!important;top:0!important;}
+  .atendimento-menu-wrap{top:10px!important;right:10px!important;}
+}
 </style>
 </head>
 
@@ -1913,18 +1925,23 @@ function render(){
     const chipClass = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : "";
     const podeEditar = podeEditarAtendimento(a);
     const podeExcluir = permissoes[role].del;
-    const podeMarcar = permissoes[role].marcar;
+    const podeMarcar = permissoes[role].marcar && !realizado;
 
     lista.innerHTML += `
       <div class="card atendimento-card v10-card status-${a.status || 'agendado'} ${realizado ? 'realizado' : ''} ${classeTempo}" onclick="fecharMenusAtendimento()">
         <div class="atendimento-menu-wrap" onclick="event.stopPropagation()">
           <button type="button" class="btn-menu-atendimento" title="Mais opções" onclick="toggleMenuAtendimento(event,'${a.id}')">⋮</button>
           <div id="menuAtendimento-${a.id}" class="menu-atendimento">
-            ${podeEditar ? `<button type="button" onclick="abrirModalEdicao('${a.id}'); fecharMenusAtendimento();">✎ Editar atendimento</button>` : ""}
-            ${podeEditar ? `<button type="button" onclick="abrirReagendamento('${a.id}'); fecharMenusAtendimento();">↻ Reagendar</button>` : ""}
-            <button type="button" onclick="abrirHistoricoPaciente('${a.id}'); fecharMenusAtendimento();">▤ Histórico do paciente</button>
-            <button type="button" onclick="abrirLogAtendimento('${a.id}'); fecharMenusAtendimento();">☰ Log de alterações</button>
-            ${podeExcluir ? `<button type="button" class="danger" onclick="excluir('${a.id}'); fecharMenusAtendimento();">▥ Excluir</button>` : ""}
+            ${realizado ? `
+              ${podeEditar ? `<button type="button" onclick="abrirModalEdicao('${a.id}'); fecharMenusAtendimento();">✎ Editar atendimento</button>` : ""}
+              <button type="button" onclick="abrirLogAtendimento('${a.id}'); fecharMenusAtendimento();">☰ Log de alterações</button>
+            ` : `
+              ${podeEditar ? `<button type="button" onclick="abrirModalEdicao('${a.id}'); fecharMenusAtendimento();">✎ Editar atendimento</button>` : ""}
+              ${podeEditar ? `<button type="button" onclick="abrirReagendamento('${a.id}'); fecharMenusAtendimento();">↻ Reagendar</button>` : ""}
+              <button type="button" onclick="abrirHistoricoPaciente('${a.id}'); fecharMenusAtendimento();">▤ Histórico do paciente</button>
+              <button type="button" onclick="abrirLogAtendimento('${a.id}'); fecharMenusAtendimento();">☰ Log de alterações</button>
+              ${podeExcluir ? `<button type="button" class="danger" onclick="excluir('${a.id}'); fecharMenusAtendimento();">▥ Excluir</button>` : ""}
+            `}
           </div>
         </div>
 
@@ -1952,9 +1969,7 @@ function render(){
 
           ${realizado ? `<div style="margin-top:12px"><span class="selo-realizado">JÁ REALIZADO</span></div>` : ""}
 
-          <div class="v10-actions">
-            ${podeMarcar ? `<button class="compareceu" onclick="event.stopPropagation(); marcar('${a.id}','compareceu')">✔ Compareceu</button><button class="faltou" onclick="event.stopPropagation(); marcar('${a.id}','faltou')">✖ Faltou</button>` : ""}
-          </div>
+          ${podeMarcar ? `<div class="v10-actions"><button class="compareceu" onclick="event.stopPropagation(); marcar('${a.id}','compareceu')">✔ Compareceu</button><button class="faltou" onclick="event.stopPropagation(); marcar('${a.id}','faltou')">✖ Faltou</button></div>` : ""}
         </div>
       </div>
     `;  });
