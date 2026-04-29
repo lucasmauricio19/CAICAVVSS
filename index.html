@@ -1722,7 +1722,166 @@ function montarResumoCards(resumo){
 }
 
 function estiloJanelaRelatorio(){
-  return `<style>body{font-family:Arial,sans-serif;background:#f3f6fb;color:#081946;margin:0;padding:26px}.wrap{max-width:1100px;margin:auto;background:#fff;border:1px solid #e8edf7;border-radius:16px;padding:26px;box-shadow:0 10px 32px rgba(15,23,42,.08)}h1{margin:0 0 4px;font-size:28px}.sub{color:#64748b;margin-bottom:22px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.card{background:#f8fafc;border:1px solid #e8edf7;border-radius:12px;padding:16px}.num{font-size:28px;font-weight:900;color:#2563eb}.lbl{color:#64748b;font-size:13px;font-weight:800}.acoes{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.acoes button{border:0;border-radius:10px;background:#2563eb;color:#fff;font-weight:800;padding:12px 16px;cursor:pointer}.acoes button.sec{background:#0f766e}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #e2e8f0;padding:10px;text-align:left;font-size:14px}th{background:#0f172a;color:#fff}.tecnico td{background:#eaf1ff;color:#0f172a;font-weight:900}.aviso{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;margin-top:14px}@media print{body{background:#fff;padding:0}.wrap{box-shadow:none;border:0}.acoes{display:none}.cards{grid-template-columns:repeat(4,1fr)}}@media(max-width:800px){.cards{grid-template-columns:1fr 1fr}}</style>`;
+  return `<style>body{font-family:Arial,sans-serif;background:#f3f6fb;color:#081946;margin:0;padding:26px}.wrap{max-width:1100px;margin:auto;background:#fff;border:1px solid #e8edf7;border-radius:16px;padding:26px;box-shadow:0 10px 32px rgba(15,23,42,.08)}h1{margin:0 0 4px;font-size:28px}.sub{color:#64748b;margin-bottom:22px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.card{background:#f8fafc;border:1px solid #e8edf7;border-radius:12px;padding:16px}.num{font-size:28px;font-weight:900;color:#2563eb}.lbl{color:#64748b;font-size:13px;font-weight:800}.acoes{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.acoes button{border:0;border-radius:10px;background:#2563eb;color:#fff;font-weight:800;padding:12px 16px;cursor:pointer}.acoes button.sec{background:#0f766e}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #e2e8f0;padding:10px;text-align:left;font-size:14px}th{background:#0f172a;color:#fff}.tecnico td{background:#eaf1ff;color:#0f172a;font-weight:900}.aviso{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;margin-top:14px}@media print{body{background:#fff;padding:0}.wrap{box-shadow:none;border:0}.acoes{display:none}.cards{grid-template-columns:repeat(4,1fr)}}@media(max-width:800px){.cards{grid-template-columns:1fr 1fr}}
+
+/* ===== V25: STATUS AO LADO DO MENU + PÓS-LOGIN MAIS PREMIUM ===== */
+body.tema-azul{--tema:#003ec8;--tema-escuro:#001947;--tema-claro:#dbeafe;--tema-glow:rgba(0,91,255,.34);}
+body.tema-azul-claro{--tema:#0284c7;--tema-escuro:#075985;--tema-claro:#e0f2fe;--tema-glow:rgba(14,165,233,.30);}
+body.tema-vermelho{--tema:#b91c1c;--tema-escuro:#450a0a;--tema-claro:#fee2e2;--tema-glow:rgba(220,38,38,.25);}
+body.tema-rosa{--tema:#be185d;--tema-escuro:#500724;--tema-claro:#fce7f3;--tema-glow:rgba(236,72,153,.27);}
+body.tema-roxo{--tema:#5b21b6;--tema-escuro:#2e1065;--tema-claro:#ede9fe;--tema-glow:rgba(124,58,237,.30);}
+body.tema-verde{--tema:#15803d;--tema-escuro:#052e16;--tema-claro:#dcfce7;--tema-glow:rgba(22,163,74,.25);}
+body.tema-amarelo{--tema:#b45309;--tema-escuro:#451a03;--tema-claro:#fef3c7;--tema-glow:rgba(234,179,8,.23);}
+body.tema-laranja{--tema:#c2410c;--tema-escuro:#431407;--tema-claro:#ffedd5;--tema-glow:rgba(249,115,22,.25);}
+
+body.modo-app{
+  position:relative!important;
+  background:
+    radial-gradient(circle at 82% 8%, var(--tema-glow), transparent 28%),
+    radial-gradient(circle at 8% 76%, rgba(14,165,233,.13), transparent 34%),
+    linear-gradient(180deg,#f7fbff 0%,#eaf1ff 100%)!important;
+}
+body.modo-app::before{
+  content:""!important;
+  display:block!important;
+  position:fixed!important;
+  inset:0!important;
+  z-index:0!important;
+  pointer-events:none!important;
+  background:
+    radial-gradient(circle at 74% 12%,rgba(255,255,255,.42),transparent 12%),
+    radial-gradient(circle at 14% 20%,var(--tema-glow),transparent 18%),
+    radial-gradient(circle at 88% 88%,rgba(56,189,248,.16),transparent 24%)!important;
+  opacity:1!important;
+}
+body.modo-app::after{
+  content:""!important;
+  display:block!important;
+  position:fixed!important;
+  right:-180px!important;
+  top:78px!important;
+  width:780px!important;
+  height:260px!important;
+  border-radius:50%!important;
+  border:1px solid rgba(255,255,255,.42)!important;
+  box-shadow:0 0 0 18px rgba(255,255,255,.08),0 0 0 38px rgba(255,255,255,.05),0 0 0 62px rgba(255,255,255,.035)!important;
+  transform:rotate(-18deg)!important;
+  z-index:0!important;
+  pointer-events:none!important;
+  background:transparent!important;
+}
+.app-shell,.app-shell .main,.content{position:relative!important;z-index:1!important;}
+.app-shell .sidebar{
+  background:linear-gradient(180deg,var(--tema),var(--tema-escuro))!important;
+  box-shadow:18px 0 45px rgba(0,22,80,.34), inset -1px 0 0 rgba(255,255,255,.14)!important;
+}
+.app-shell .topbar{
+  background:
+    radial-gradient(circle at 82% 0%,rgba(255,255,255,.24),transparent 28%),
+    linear-gradient(135deg,var(--tema-escuro),var(--tema) 66%,var(--tema-escuro))!important;
+  box-shadow:0 16px 38px rgba(0,40,120,.26)!important;
+}
+.app-shell .topbar::after{
+  content:"";
+  position:absolute;
+  right:-90px;
+  top:-130px;
+  width:680px;
+  height:270px;
+  border-radius:50%;
+  border:1px solid rgba(255,255,255,.16);
+  box-shadow:0 0 0 22px rgba(255,255,255,.045),0 0 0 44px rgba(255,255,255,.03);
+  transform:rotate(-18deg);
+}
+.app-shell .nav.active{
+  background:linear-gradient(135deg,var(--tema),var(--tema-escuro))!important;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.25),0 14px 30px var(--tema-glow)!important;
+}
+.app-shell .user-panel,
+.app-shell #menu,
+.app-shell .relatorio-card,
+.app-shell .search-card,
+.app-shell .form-card,
+.app-shell .v10-card,
+.paciente-card,
+.config-card,
+.tecnico-relatorio-box{
+  backdrop-filter:blur(14px)!important;
+  background:rgba(255,255,255,.92)!important;
+  border:1px solid rgba(216,228,250,.86)!important;
+  box-shadow:0 18px 42px rgba(23,70,150,.13),0 0 30px rgba(255,255,255,.35) inset!important;
+}
+.app-shell .v10-card{
+  border-left-color:var(--tema)!important;
+  box-shadow:0 18px 42px rgba(23,70,150,.14),0 0 0 1px rgba(255,255,255,.45) inset!important;
+}
+.app-shell .v10-card:hover{
+  transform:translateY(-2px)!important;
+  box-shadow:0 22px 52px rgba(23,70,150,.18),0 0 34px var(--tema-glow)!important;
+}
+.v10-card-top{
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:space-between!important;
+  gap:16px!important;
+  padding-right:0!important;
+}
+.v10-identidade{min-width:0!important;flex:1 1 auto!important;}
+.v10-top-right{
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  gap:10px!important;
+  flex:0 0 auto!important;
+  margin-left:14px!important;
+}
+.v10-top-right .atendimento-menu-wrap{
+  position:relative!important;
+  top:auto!important;
+  right:auto!important;
+  z-index:40!important;
+  display:flex!important;
+  align-items:center!important;
+}
+.v10-top-right .btn-menu-atendimento{
+  position:relative!important;
+  width:36px!important;
+  height:36px!important;
+  min-width:36px!important;
+  border-radius:12px!important;
+  background:linear-gradient(180deg,#ffffff,#eef4ff)!important;
+  color:var(--tema-escuro)!important;
+  border:1px solid #dbe3ee!important;
+  box-shadow:0 8px 18px rgba(15,23,42,.10)!important;
+}
+.v10-top-right .menu-atendimento{top:42px!important;right:0!important;}
+.v10-top-right .status-chip{
+  margin:0!important;
+  box-shadow:0 8px 18px var(--tema-glow)!important;
+}
+.status-chip.ok{
+  background:#dcfce7!important;
+  color:#166534!important;
+  box-shadow:0 8px 18px rgba(22,163,74,.18)!important;
+}
+.status-chip.falta{
+  background:#fee2e2!important;
+  color:#991b1b!important;
+  box-shadow:0 8px 18px rgba(220,38,38,.15)!important;
+}
+.card.atendimento-card.realizado,
+.card.atendimento-card.v10-card.realizado{
+  filter:grayscale(1)!important;
+  opacity:.70!important;
+  background:rgba(248,250,252,.94)!important;
+}
+@media(max-width:720px){
+  .v10-card-top{align-items:flex-start!important}
+  .v10-top-right{gap:8px!important}
+  .v10-top-right .status-chip{font-size:11px!important;padding:6px 9px!important}
+  .v10-top-right .btn-menu-atendimento{width:34px!important;height:34px!important;min-width:34px!important}
+}
+</style>`;
 }
 
 function abrirJanelaRelatorio(titulo, subtitulo, conteudo){
@@ -1896,17 +2055,6 @@ function render(){
 
     lista.innerHTML += `
       <div class="card atendimento-card v10-card status-${a.status || 'agendado'} ${realizado ? 'realizado' : ''} ${classeTempo}" onclick="fecharMenusAtendimento()">
-        <div class="atendimento-menu-wrap" onclick="event.stopPropagation()">
-          <button type="button" class="btn-menu-atendimento" title="Mais opções" onclick="toggleMenuAtendimento(event,'${a.id}')">⋮</button>
-          <div id="menuAtendimento-${a.id}" class="menu-atendimento">
-            ${podeEditar ? `<button type="button" onclick="abrirModalEdicao('${a.id}'); fecharMenusAtendimento();">✎ Editar atendimento</button>` : ""}
-            ${podeEditar ? `<button type="button" onclick="abrirReagendamento('${a.id}'); fecharMenusAtendimento();">↻ Reagendar</button>` : ""}
-            <button type="button" onclick="abrirHistoricoPaciente('${a.id}'); fecharMenusAtendimento();">▤ Histórico do paciente</button>
-            <button type="button" onclick="abrirLogAtendimento('${a.id}'); fecharMenusAtendimento();">☰ Log de alterações</button>
-            ${podeExcluir ? `<button type="button" class="danger" onclick="excluir('${a.id}'); fecharMenusAtendimento();">▥ Excluir</button>` : ""}
-          </div>
-        </div>
-
         <div class="v10-card-inner">
           <div class="v10-card-top">
             <div class="v10-identidade">
@@ -1918,7 +2066,19 @@ function render(){
                 ${labelAlertaTempo(statusTempo)}
               </div>
             </div>
-            <span class="status-chip ${chipClass || 'v10-pendente'}">${escapeHTML(statusLabel)}</span>
+            <div class="v10-top-right" onclick="event.stopPropagation()">
+              <span class="status-chip ${chipClass || 'v10-pendente'}">${escapeHTML(statusLabel)}</span>
+              <div class="atendimento-menu-wrap">
+                <button type="button" class="btn-menu-atendimento" title="Mais opções" onclick="toggleMenuAtendimento(event,'${a.id}')">⋮</button>
+                <div id="menuAtendimento-${a.id}" class="menu-atendimento">
+                  ${podeEditar ? `<button type="button" onclick="abrirModalEdicao('${a.id}'); fecharMenusAtendimento();">✎ Editar atendimento</button>` : ""}
+                  ${podeEditar ? `<button type="button" onclick="abrirReagendamento('${a.id}'); fecharMenusAtendimento();">↻ Reagendar</button>` : ""}
+                  <button type="button" onclick="abrirHistoricoPaciente('${a.id}'); fecharMenusAtendimento();">▤ Histórico do paciente</button>
+                  <button type="button" onclick="abrirLogAtendimento('${a.id}'); fecharMenusAtendimento();">☰ Log de alterações</button>
+                  ${podeExcluir ? `<button type="button" class="danger" onclick="excluir('${a.id}'); fecharMenusAtendimento();">▥ Excluir</button>` : ""}
+                </div>
+              </div>
+            </div>
           </div>
 
           <div class="v10-meta">
