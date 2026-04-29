@@ -428,6 +428,99 @@ body.recepcao-restrita #formAtendimento{display:none!important;}
   border-color:rgba(255,255,255,.45) !important;
 }
 
+
+
+/* ===== V26: STATUS AO LADO DO ⋮ + PREMIUM PÓS-LOGIN REAL ===== */
+body.tema-azul{--tema:#003ec8;--tema-escuro:#001947;--tema-claro:#eaf1ff;}
+body.tema-azul-claro{--tema:#0284c7;--tema-escuro:#075985;--tema-claro:#e0f2fe;}
+body.tema-vermelho{--tema:#b91c1c;--tema-escuro:#7f1d1d;--tema-claro:#fee2e2;}
+body.tema-rosa{--tema:#be185d;--tema-escuro:#831843;--tema-claro:#fce7f3;}
+body.tema-roxo{--tema:#6d28d9;--tema-escuro:#3b0764;--tema-claro:#ede9fe;}
+body.tema-verde{--tema:#15803d;--tema-escuro:#14532d;--tema-claro:#dcfce7;}
+body.tema-amarelo{--tema:#ca8a04;--tema-escuro:#713f12;--tema-claro:#fef9c3;}
+body.tema-laranja{--tema:#ea580c;--tema-escuro:#7c2d12;--tema-claro:#ffedd5;}
+
+body.modo-app{
+  background:
+    radial-gradient(circle at 78% 10%, color-mix(in srgb, var(--tema) 40%, transparent), transparent 28%),
+    radial-gradient(circle at 10% 88%, color-mix(in srgb, var(--tema-escuro) 34%, transparent), transparent 34%),
+    linear-gradient(135deg,#eef4ff 0%,#f8fbff 46%,#e7efff 100%) !important;
+}
+.app-shell{position:relative;min-height:100vh;isolation:isolate;}
+.app-shell::before{
+  content:"";position:fixed;inset:0;z-index:-2;pointer-events:none;
+  background:
+    radial-gradient(circle at 82% 8%, color-mix(in srgb, var(--tema) 22%, transparent), transparent 25%),
+    radial-gradient(circle at 15% 72%, color-mix(in srgb, var(--tema-escuro) 18%, transparent), transparent 30%);
+}
+.app-shell::after{
+  content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;opacity:.45;
+  background-image:
+    radial-gradient(circle, color-mix(in srgb, var(--tema) 35%, transparent) 1.4px, transparent 1.4px),
+    radial-gradient(circle, rgba(255,255,255,.75) 1.2px, transparent 1.2px);
+  background-size:20px 20px,24px 24px;
+  background-position:calc(100% - 210px) 115px, 170px calc(100% - 150px);
+  background-repeat:no-repeat;
+}
+.app-shell .topbar{
+  background:
+    radial-gradient(circle at 90% 5%, rgba(255,255,255,.22), transparent 22%),
+    linear-gradient(135deg,var(--tema-escuro),var(--tema) 58%,var(--tema-escuro)) !important;
+  box-shadow:0 18px 42px color-mix(in srgb, var(--tema-escuro) 34%, transparent) !important;
+}
+.app-shell .topbar::after{
+  content:"";position:absolute;right:-80px;top:-130px;width:560px;height:230px;border-radius:50%;
+  border:1px solid rgba(255,255,255,.18);transform:rotate(-16deg);pointer-events:none;
+}
+.app-shell .sidebar{
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255,255,255,.16), transparent 30%),
+    linear-gradient(180deg,var(--tema),var(--tema-escuro)) !important;
+  box-shadow:14px 0 38px color-mix(in srgb, var(--tema-escuro) 36%, transparent) !important;
+}
+.app-shell .user-panel,.app-shell #menu,.app-shell .relatorio-card,.app-shell .search-card,.app-shell .form-card,.app-shell .v10-card,.paciente-card,.config-card,.tecnico-relatorio-box{
+  backdrop-filter:blur(12px);
+  background:rgba(255,255,255,.94)!important;
+  border-color:color-mix(in srgb, var(--tema) 20%, #d8e4fa)!important;
+  box-shadow:0 18px 38px rgba(15,23,42,.10),0 0 0 1px rgba(255,255,255,.55) inset!important;
+}
+.app-shell .v10-card{
+  border-left-color:var(--tema)!important;
+  box-shadow:0 18px 36px rgba(15,23,42,.11),0 0 22px color-mix(in srgb, var(--tema) 10%, transparent)!important;
+}
+.app-shell .nav.active,.app-shell #menu button.ativo,.search-row .active-filter,.search-row .ativo{
+  background:linear-gradient(135deg,var(--tema),var(--tema-escuro))!important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.45),0 14px 26px color-mix(in srgb, var(--tema-escuro) 30%, transparent)!important;
+}
+
+/* status fica exatamente ao lado dos três pontinhos */
+.v10-card-top{padding-right:190px!important;position:relative!important;}
+.v10-card-top .status-chip{position:static!important;right:auto!important;top:auto!important;max-width:none!important;}
+.atendimento-menu-wrap.status-menu-group{
+  position:absolute!important;top:12px!important;right:12px!important;z-index:70!important;
+  display:flex!important;align-items:center!important;gap:9px!important;width:auto!important;max-width:none!important;
+}
+.atendimento-menu-wrap.status-menu-group .status-chip{
+  position:static!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  min-height:34px!important;padding:7px 13px!important;margin:0!important;
+  background:var(--tema-claro)!important;color:var(--tema)!important;
+  border:1px solid color-mix(in srgb, var(--tema) 20%, transparent)!important;
+  box-shadow:0 8px 18px color-mix(in srgb, var(--tema) 12%, transparent)!important;
+}
+.atendimento-menu-wrap.status-menu-group .status-chip.ok{background:#dcfce7!important;color:#166534!important;border-color:#bbf7d0!important;}
+.atendimento-menu-wrap.status-menu-group .status-chip.falta{background:#fee2e2!important;color:#991b1b!important;border-color:#fecaca!important;}
+.atendimento-menu-wrap.status-menu-group .btn-menu-atendimento{
+  position:static!important;flex:0 0 auto!important;background:#fff!important;border:1px solid #dbe3ee!important;
+  box-shadow:0 8px 20px rgba(15,23,42,.10)!important;
+}
+.card.atendimento-card.realizado .atendimento-menu-wrap.status-menu-group .status-chip{
+  background:#e2e8f0!important;color:#334155!important;border-color:#cbd5e1!important;box-shadow:none!important;
+}
+@media(max-width:720px){
+  .v10-card-top{padding-right:0!important;padding-top:46px!important;}
+  .atendimento-menu-wrap.status-menu-group{left:14px!important;right:auto!important;top:12px!important;}
+}
+
 </style>
 </head>
 
@@ -1896,7 +1989,8 @@ function render(){
 
     lista.innerHTML += `
       <div class="card atendimento-card v10-card status-${a.status || 'agendado'} ${realizado ? 'realizado' : ''} ${classeTempo}" onclick="fecharMenusAtendimento()">
-        <div class="atendimento-menu-wrap" onclick="event.stopPropagation()">
+        <div class="atendimento-menu-wrap status-menu-group" onclick="event.stopPropagation()">
+          <span class="status-chip ${chipClass || 'v10-pendente'}">${escapeHTML(statusLabel)}</span>
           <button type="button" class="btn-menu-atendimento" title="Mais opções" onclick="toggleMenuAtendimento(event,'${a.id}')">⋮</button>
           <div id="menuAtendimento-${a.id}" class="menu-atendimento">
             ${podeEditar ? `<button type="button" onclick="abrirModalEdicao('${a.id}'); fecharMenusAtendimento();">✎ Editar atendimento</button>` : ""}
@@ -1918,7 +2012,6 @@ function render(){
                 ${labelAlertaTempo(statusTempo)}
               </div>
             </div>
-            <span class="status-chip ${chipClass || 'v10-pendente'}">${escapeHTML(statusLabel)}</span>
           </div>
 
           <div class="v10-meta">
