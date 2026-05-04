@@ -521,6 +521,15 @@ body.modo-app{
   .atendimento-menu-wrap.status-menu-group{left:14px!important;right:auto!important;top:12px!important;}
 }
 
+
+
+/* ===== NOVO STATUS: AGUARDANDO ===== */
+.card.atendimento-card.v10-card.status-aguardando{border-left-color:#f59e0b!important;}
+.card.atendimento-card.v10-card.status-aguardando::before{background:#f59e0b!important;}
+.status-chip.aguardando,
+.atendimento-menu-wrap.status-menu-group .status-chip.aguardando{background:#fef3c7!important;color:#92400e!important;border-color:#fde68a!important;}
+.v7-tag.aguardando{background:#fef3c7!important;color:#92400e!important;}
+
 </style>
 </head>
 
@@ -597,6 +606,7 @@ body.modo-app{
 
     <select id="editStatus">
       <option value="agendado">Pendente / agendado</option>
+      <option value="aguardando">Aguardando</option>
       <option value="compareceu">Compareceu</option>
       <option value="faltou">Faltou</option>
     </select>
@@ -1347,6 +1357,41 @@ async function confirmarObservacaoRealizado(){
   mostrarAnimacaoAtendimentoRealizado();
 }
 
+async function marcarAguardando(id){
+  if(!tecnicoLogado) return;
+
+  if(!permissoes[tecnicoLogado.role].marcar){
+    mostrarErro("Sem permissão.");
+    return;
+  }
+
+  const item = atendimentos.find(a => a.id === id);
+  if(!item){
+    mostrarErro("Atendimento não encontrado.");
+    return;
+  }
+
+  if(item.status === "compareceu" || item.status === "faltou"){
+    mostrarErro("Esse atendimento já foi realizado.");
+    return;
+  }
+
+  const statusAnterior = item.status || "agendado";
+  item.status = "aguardando";
+  item.atualizadoPor = tecnicoLogado.nome;
+  item.atualizadoEm = new Date().toISOString();
+
+  registrarLog(
+    "Paciente chegou",
+    item,
+    `Status alterado de ${statusBonito(statusAnterior)} para Aguardando.`
+  );
+
+  await salvarAtendimentosFirebase();
+  render();
+  mostrarToast("Paciente marcado como aguardando.", "sucesso");
+}
+
 function mostrarAnimacaoAtendimentoRealizado(){
   const anim = document.getElementById("animacaoAtendimentoRealizado");
   if(!anim) return;
@@ -1446,7 +1491,7 @@ async function salvarEdicao(){
   const podeEditarDados = tecnicoLogado.role === "tecnico" || tecnicoLogado.role === "adm" || tecnicoLogado.role === "coordenacao";
 
   let novoStatus = String(editStatus.value || "agendado");
-  if(!["agendado", "compareceu", "faltou"].includes(novoStatus)){
+  if(!["agendado", "aguardando", "compareceu", "faltou"].includes(novoStatus)){
     mostrarErro("Status inválido.");
     return;
   }
@@ -1647,6 +1692,7 @@ function formatarDataHoraBR(iso){
 function statusBonito(status){
   if(status === "compareceu") return "Compareceu";
   if(status === "faltou") return "Faltou";
+  if(status === "aguardando") return "Aguardando";
   return "Agendado";
 }
 
@@ -1659,7 +1705,7 @@ function abrirHistoricoPaciente(id){
   const faltas = relacionados.filter(a=>a.status === "faltou").length;
   const pendentes = relacionados.filter(a=>a.status === "agendado" || !a.status).length;
   const linhas = relacionados.slice().sort((a,b)=>getDataHoraAtendimento(b).localeCompare(getDataHoraAtendimento(a))).map(a=>{
-    const cls = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : "";
+    const cls = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : a.status === "aguardando" ? "aguardando" : "";
     return `<div class="v7-item"><b>${escapeHTML(formatarDataBR(a.data))} às ${escapeHTML(a.hora)}</b><br><span class="v7-muted">Técnico: ${escapeHTML(a.tecnico)} • ${escapeHTML(a.descricao || "Sem descrição")}</span><br><span class="v7-tag ${cls}">${escapeHTML(statusBonito(a.status))}</span></div>`;
   }).join("");
   conteudoHistorico.innerHTML = `
@@ -1774,6 +1820,7 @@ function getPeriodoMes(yyyyMm){
 function statusRelatorio(status){
   if(status === "compareceu") return "Veio";
   if(status === "faltou") return "Não veio";
+  if(status === "aguardando") return "Aguardando";
   return "Pendente";
 }
 
@@ -1978,11 +2025,11 @@ function render(){
 
   dados.forEach(a=>{
     const realizado = a.status === "compareceu" || a.status === "faltou";
-    const statusLabel = a.status === "compareceu" ? "Compareceu" : a.status === "faltou" ? "Faltou" : "Agendado";
+    const statusLabel = a.status === "compareceu" ? "Compareceu" : a.status === "faltou" ? "Faltou" : a.status === "aguardando" ? "Aguardando" : "Agendado";
     const statusTempo = getStatusTempo(a);
     const classeTempo = statusTempo === "atrasado" ? "alerta-atrasado" : statusTempo === "proximo" ? "alerta-proximo" : "";
 
-    const chipClass = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : "";
+    const chipClass = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : a.status === "aguardando" ? "aguardando" : "";
     const podeEditar = podeEditarAtendimento(a);
     const podeExcluir = permissoes[role].del;
     const podeMarcar = permissoes[role].marcar && !realizado;
@@ -1993,6 +2040,7 @@ function render(){
           <span class="status-chip ${chipClass || 'v10-pendente'}">${escapeHTML(statusLabel)}</span>
           <button type="button" class="btn-menu-atendimento" title="Mais opções" onclick="toggleMenuAtendimento(event,'${a.id}')">⋮</button>
           <div id="menuAtendimento-${a.id}" class="menu-atendimento">
+            ${podeMarcar && a.status !== "aguardando" ? `<button type="button" onclick="marcarAguardando('${a.id}'); fecharMenusAtendimento();">⏳ O paciente chegou</button>` : ""}
             ${podeEditar ? `<button type="button" onclick="abrirModalEdicao('${a.id}'); fecharMenusAtendimento();">✎ Editar atendimento</button>` : ""}
             ${podeEditar ? `<button type="button" onclick="abrirReagendamento('${a.id}'); fecharMenusAtendimento();">↻ Reagendar</button>` : ""}
             <button type="button" onclick="abrirHistoricoPaciente('${a.id}'); fecharMenusAtendimento();">▤ Histórico do paciente</button>
