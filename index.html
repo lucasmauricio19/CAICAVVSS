@@ -19,6 +19,7 @@ const firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+//amo isso
 const db = firebase.firestore();
 const DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos");
 </script>
@@ -521,15 +522,6 @@ body.modo-app{
   .atendimento-menu-wrap.status-menu-group{left:14px!important;right:auto!important;top:12px!important;}
 }
 
-
-
-/* ===== NOVO STATUS: AGUARDANDO ===== */
-.card.atendimento-card.v10-card.status-aguardando{border-left-color:#f59e0b!important;}
-.card.atendimento-card.v10-card.status-aguardando::before{background:#f59e0b!important;}
-.status-chip.aguardando,
-.atendimento-menu-wrap.status-menu-group .status-chip.aguardando{background:#fef3c7!important;color:#92400e!important;border-color:#fde68a!important;}
-.v7-tag.aguardando{background:#fef3c7!important;color:#92400e!important;}
-
 </style>
 </head>
 
@@ -606,7 +598,6 @@ body.modo-app{
 
     <select id="editStatus">
       <option value="agendado">Pendente / agendado</option>
-      <option value="aguardando">Aguardando</option>
       <option value="compareceu">Compareceu</option>
       <option value="faltou">Faltou</option>
     </select>
@@ -820,6 +811,7 @@ const cadastros = {"1": ["EMELLY GABRIELLY DA ANUNCIAÇÃO"], "2": ["LAURA RODRI
 <script>
 let atendimentos = [];
 let logsAlteracoes = [];
+let pacientesExtras = {};
 const horariosAtendimento = [
   "08:00","08:30","09:00","09:30","10:00","10:30","11:00","11:30",
   "13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30"
@@ -831,6 +823,7 @@ async function salvarAtendimentosFirebase(){
     await DOC_ATENDIMENTOS.set({
       itens: atendimentos,
       logs: logsAlteracoes,
+      pacientesExtras: pacientesExtras,
       atualizadoEm: new Date().toISOString()
     }, { merge: true });
   }catch(e){
@@ -847,15 +840,18 @@ async function carregarAtendimentosFirebase(){
       const dados = snap.data() || {};
       atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
       logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
+      pacientesExtras = dados.pacientesExtras && typeof dados.pacientesExtras === "object" ? dados.pacientesExtras : {};
+      Object.assign(cadastros, pacientesExtras);
     } else {
       atendimentos = [];
       logsAlteracoes = [];
-      await DOC_ATENDIMENTOS.set({ itens: [], logs: [], criadoEm: new Date().toISOString() }, { merge: true });
+      await DOC_ATENDIMENTOS.set({ itens: [], logs: [], pacientesExtras: {}, criadoEm: new Date().toISOString() }, { merge: true });
     }
   }catch(e){
     console.error(e);
     atendimentos = [];
     logsAlteracoes = [];
+    pacientesExtras = {};
     mostrarErro("Não foi possível carregar os dados do Firebase.");
   }
 }
@@ -1049,6 +1045,71 @@ setTimeout(()=>{
 
 function normalizarPasta(valor){
   return String(valor || "").replace(/\D/g, "");
+}
+
+function normalizarNomePaciente(valor){
+  return String(valor || "").trim().replace(/\s+/g, " ").toUpperCase();
+}
+
+function podeGerenciarPacientes(){
+  return !!tecnicoLogado && ["recepcao", "adm", "coordenacao"].includes(tecnicoLogado.role);
+}
+
+async function salvarPacientesFirebase(){
+  try{
+    await DOC_ATENDIMENTOS.set({
+      pacientesExtras: pacientesExtras,
+      atualizadoEm: new Date().toISOString()
+    }, { merge: true });
+  }catch(e){
+    console.error(e);
+    mostrarErro("Erro ao salvar paciente no Firebase.");
+    throw e;
+  }
+}
+
+async function adicionarPaciente(){
+  if(!podeGerenciarPacientes()){
+    mostrarErro("Sem permissão para cadastrar pacientes.");
+    return;
+  }
+
+  const campoPasta = document.getElementById("novaPastaPaciente");
+  const campoNome = document.getElementById("novoNomePaciente");
+  const btnSalvar = document.getElementById("btnSalvarPaciente");
+
+  const pastaNova = normalizarPasta(campoPasta?.value || "");
+  const nomeNovo = normalizarNomePaciente(campoNome?.value || "");
+
+  if(!pastaNova || !nomeNovo){
+    mostrarErro("Preencha o número da pasta e o nome do paciente.");
+    return;
+  }
+
+  const nomesAtuais = Array.isArray(cadastros[pastaNova]) ? cadastros[pastaNova] : (cadastros[pastaNova] ? [cadastros[pastaNova]] : []);
+  const jaExiste = nomesAtuais.some(n => normalizarBusca(n) === normalizarBusca(nomeNovo));
+
+  if(jaExiste){
+    mostrarErro("Esse paciente já está cadastrado nessa pasta.");
+    return;
+  }
+
+  cadastros[pastaNova] = [...nomesAtuais, nomeNovo];
+  pacientesExtras[pastaNova] = cadastros[pastaNova];
+
+  try{
+    if(btnSalvar) btnSalvar.disabled = true;
+    await salvarPacientesFirebase();
+    mostrarToast("Paciente cadastrado com sucesso.", "sucesso");
+    abrirTelaPacientes();
+    const busca = document.getElementById("buscaPacientes");
+    if(busca){
+      busca.value = pastaNova;
+      filtrarPacientes();
+    }
+  }finally{
+    if(btnSalvar) btnSalvar.disabled = false;
+  }
 }
 
 function limparConfirmacaoPasta(){
@@ -1357,41 +1418,6 @@ async function confirmarObservacaoRealizado(){
   mostrarAnimacaoAtendimentoRealizado();
 }
 
-async function marcarAguardando(id){
-  if(!tecnicoLogado) return;
-
-  if(!permissoes[tecnicoLogado.role].marcar){
-    mostrarErro("Sem permissão.");
-    return;
-  }
-
-  const item = atendimentos.find(a => a.id === id);
-  if(!item){
-    mostrarErro("Atendimento não encontrado.");
-    return;
-  }
-
-  if(item.status === "compareceu" || item.status === "faltou"){
-    mostrarErro("Esse atendimento já foi realizado.");
-    return;
-  }
-
-  const statusAnterior = item.status || "agendado";
-  item.status = "aguardando";
-  item.atualizadoPor = tecnicoLogado.nome;
-  item.atualizadoEm = new Date().toISOString();
-
-  registrarLog(
-    "Paciente chegou",
-    item,
-    `Status alterado de ${statusBonito(statusAnterior)} para Aguardando.`
-  );
-
-  await salvarAtendimentosFirebase();
-  render();
-  mostrarToast("Paciente marcado como aguardando.", "sucesso");
-}
-
 function mostrarAnimacaoAtendimentoRealizado(){
   const anim = document.getElementById("animacaoAtendimentoRealizado");
   if(!anim) return;
@@ -1491,7 +1517,7 @@ async function salvarEdicao(){
   const podeEditarDados = tecnicoLogado.role === "tecnico" || tecnicoLogado.role === "adm" || tecnicoLogado.role === "coordenacao";
 
   let novoStatus = String(editStatus.value || "agendado");
-  if(!["agendado", "aguardando", "compareceu", "faltou"].includes(novoStatus)){
+  if(!["agendado", "compareceu", "faltou"].includes(novoStatus)){
     mostrarErro("Status inválido.");
     return;
   }
@@ -1692,7 +1718,6 @@ function formatarDataHoraBR(iso){
 function statusBonito(status){
   if(status === "compareceu") return "Compareceu";
   if(status === "faltou") return "Faltou";
-  if(status === "aguardando") return "Aguardando";
   return "Agendado";
 }
 
@@ -1705,7 +1730,7 @@ function abrirHistoricoPaciente(id){
   const faltas = relacionados.filter(a=>a.status === "faltou").length;
   const pendentes = relacionados.filter(a=>a.status === "agendado" || !a.status).length;
   const linhas = relacionados.slice().sort((a,b)=>getDataHoraAtendimento(b).localeCompare(getDataHoraAtendimento(a))).map(a=>{
-    const cls = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : a.status === "aguardando" ? "aguardando" : "";
+    const cls = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : "";
     return `<div class="v7-item"><b>${escapeHTML(formatarDataBR(a.data))} às ${escapeHTML(a.hora)}</b><br><span class="v7-muted">Técnico: ${escapeHTML(a.tecnico)} • ${escapeHTML(a.descricao || "Sem descrição")}</span><br><span class="v7-tag ${cls}">${escapeHTML(statusBonito(a.status))}</span></div>`;
   }).join("");
   conteudoHistorico.innerHTML = `
@@ -1820,7 +1845,6 @@ function getPeriodoMes(yyyyMm){
 function statusRelatorio(status){
   if(status === "compareceu") return "Veio";
   if(status === "faltou") return "Não veio";
-  if(status === "aguardando") return "Aguardando";
   return "Pendente";
 }
 
@@ -2025,11 +2049,11 @@ function render(){
 
   dados.forEach(a=>{
     const realizado = a.status === "compareceu" || a.status === "faltou";
-    const statusLabel = a.status === "compareceu" ? "Compareceu" : a.status === "faltou" ? "Faltou" : a.status === "aguardando" ? "Aguardando" : "Agendado";
+    const statusLabel = a.status === "compareceu" ? "Compareceu" : a.status === "faltou" ? "Faltou" : "Agendado";
     const statusTempo = getStatusTempo(a);
     const classeTempo = statusTempo === "atrasado" ? "alerta-atrasado" : statusTempo === "proximo" ? "alerta-proximo" : "";
 
-    const chipClass = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : a.status === "aguardando" ? "aguardando" : "";
+    const chipClass = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : "";
     const podeEditar = podeEditarAtendimento(a);
     const podeExcluir = permissoes[role].del;
     const podeMarcar = permissoes[role].marcar && !realizado;
@@ -2040,7 +2064,6 @@ function render(){
           <span class="status-chip ${chipClass || 'v10-pendente'}">${escapeHTML(statusLabel)}</span>
           <button type="button" class="btn-menu-atendimento" title="Mais opções" onclick="toggleMenuAtendimento(event,'${a.id}')">⋮</button>
           <div id="menuAtendimento-${a.id}" class="menu-atendimento">
-            ${podeMarcar && a.status !== "aguardando" ? `<button type="button" onclick="marcarAguardando('${a.id}'); fecharMenusAtendimento();">⏳ O paciente chegou</button>` : ""}
             ${podeEditar ? `<button type="button" onclick="abrirModalEdicao('${a.id}'); fecharMenusAtendimento();">✎ Editar atendimento</button>` : ""}
             ${podeEditar ? `<button type="button" onclick="abrirReagendamento('${a.id}'); fecharMenusAtendimento();">↻ Reagendar</button>` : ""}
             <button type="button" onclick="abrirHistoricoPaciente('${a.id}'); fecharMenusAtendimento();">▤ Histórico do paciente</button>
@@ -2113,8 +2136,62 @@ getStatusTempo = function(item){ if(!lembreteAtivo()) return ""; return getStatu
 function setTelaAtiva(nome){telaAtualCaicavv=nome;document.querySelectorAll(".app-shell .nav").forEach(nav=>nav.classList.toggle("active",nav.dataset.tela===nome));}
 function mostrarBlocosAgendamento(mostrar){["boasVindas","menu","relatorio","filtrosV6","formAtendimento"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("hidden",!mostrar);});}
 function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();}
-function abrirTelaPacientes(){setTelaAtiva("pacientes");mostrarBlocosAgendamento(false);const totalPastas=Object.keys(cadastros).length;const totalNomes=Object.values(cadastros).reduce((s,nomes)=>s+nomes.length,0);let cards="";Object.entries(cadastros).forEach(([pasta,nomes])=>{nomes.forEach(nome=>{cards+=`<div class="paciente-card"><strong>${escapeHTML(nome)}</strong><span>📁 Pasta ${escapeHTML(pasta)}</span></div>`;});});lista.innerHTML=`<div class="pagina-titulo">Pastas</div><div class="pagina-sub">Busca rápida por nome ou nº da pasta.</div><div class="search-card" style="margin-bottom:14px"><div class="search-box"><span>🔍</span><input id="buscaPacientes" placeholder="Buscar por nome ou nº" oninput="filtrarPacientes()"></div></div><div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div><div id="listaPacientes" class="pacientes-grid">${cards}</div>`;}
-function filtrarPacientes(){const termo=normalizarBusca(document.getElementById("buscaPacientes")?.value||"");document.querySelectorAll(".paciente-card").forEach(card=>{card.style.display=normalizarBusca(card.innerText).includes(termo)?"block":"none";});}
+function abrirTelaPacientes(){
+  setTelaAtiva("pacientes");
+  mostrarBlocosAgendamento(false);
+
+  const entradas = Object.entries(cadastros).sort((a,b)=>Number(a[0])-Number(b[0]));
+  const totalPastas = entradas.length;
+  const totalNomes = entradas.reduce((s,[,nomes])=>s+(Array.isArray(nomes)?nomes.length:1),0);
+  const podeCadastrar = podeGerenciarPacientes();
+
+  let cards = "";
+  entradas.forEach(([pasta,nomes])=>{
+    const listaNomes = Array.isArray(nomes) ? nomes : [nomes];
+    listaNomes.forEach(nome=>{
+      cards += `<div class="paciente-card" data-paciente="${escapeHTML(`${pasta} ${nome}`)}"><strong>${escapeHTML(nome)}</strong><span>📁 Pasta ${escapeHTML(pasta)}</span></div>`;
+    });
+  });
+
+  const formCadastro = podeCadastrar ? `
+    <div class="search-card" style="margin-bottom:14px">
+      <h3>CADASTRAR NOVO PACIENTE</h3>
+      <div class="search-row" style="grid-template-columns:180px 1fr 170px">
+        <div class="search-box">
+          <span>📁</span>
+          <input id="novaPastaPaciente" inputmode="numeric" placeholder="Nº da pasta" oninput="this.value=normalizarPasta(this.value)">
+        </div>
+        <div class="search-box">
+          <span>👤</span>
+          <input id="novoNomePaciente" placeholder="Nome completo do paciente" onkeydown="if(event.key==='Enter'){event.preventDefault();adicionarPaciente();}">
+        </div>
+        <button type="button" id="btnSalvarPaciente" onclick="adicionarPaciente()">+ Salvar</button>
+      </div>
+      <p class="pagina-sub" style="margin-top:10px">Depois de salvar, essa pasta já aparece na busca e também funciona no botão “Confirmar pasta” dos agendamentos.</p>
+    </div>` : `<div class="pagina-sub">Você pode consultar pacientes, mas este perfil não cadastra novos pacientes.</div>`;
+
+  lista.innerHTML = `
+    <div class="pagina-titulo">Pastas</div>
+    <div class="pagina-sub">Cadastre novos pacientes com nome e número da pasta.</div>
+    ${formCadastro}
+    <div class="search-card" style="margin-bottom:14px">
+      <h3>BUSCAR PACIENTE</h3>
+      <div class="search-box">
+        <span>🔍</span>
+        <input id="buscaPacientes" placeholder="Buscar por nome ou nº da pasta" oninput="filtrarPacientes()">
+      </div>
+    </div>
+    <div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div>
+    <div id="listaPacientes" class="pacientes-grid">${cards}</div>`;
+}
+
+function filtrarPacientes(){
+  const termo = normalizarBusca(document.getElementById("buscaPacientes")?.value || "");
+  document.querySelectorAll(".paciente-card").forEach(card=>{
+    const alvo = normalizarBusca(card.dataset.paciente || card.innerText);
+    card.style.display = alvo.includes(termo) ? "block" : "none";
+  });
+}
 function abrirTelaTecnicos(){setTelaAtiva("tecnicos");mostrarBlocosAgendamento(false);const tecnicos=Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);const mesAtual=new Date().toISOString().slice(0,7);lista.innerHTML=`<div class="pagina-titulo">Relatório por técnico</div><div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div><div class="tecnico-relatorio-box"><label><b>Técnico</b></label><select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select><label><b>Mês</b></label><input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}"><button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button></div><div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;}
 function gerarRelatorioTecnicoNaTela(){const tecnico=document.getElementById("tecnicoRelatorioTela").value;const mes=document.getElementById("mesRelatorioTecnicoTela").value;const dados=atendimentos.filter(a=>a.tecnico===tecnico&&String(a.data||"").startsWith(mes));const total=dados.length;const ok=dados.filter(a=>a.status==="compareceu").length;const falta=dados.filter(a=>a.status==="faltou").length;const pendente=dados.filter(a=>!a.status||a.status==="agendado").length;const linhas=dados.sort((a,b)=>getDataHoraAtendimento(a).localeCompare(getDataHoraAtendimento(b))).map(a=>`<div class="paciente-card"><strong>📁 Pasta ${escapeHTML(a.pasta)} · ${escapeHTML(formatarDataBR(a.data))}</strong><span>${escapeHTML(a.status||"agendado")} · ${escapeHTML(a.descricao||"Sem descrição")}</span></div>`).join("");document.getElementById("resultadoTecnicoTela").innerHTML=`<div class="relatorio-card"><div class="rel-icone">👥</div><div><span class="rel-nome">${escapeHTML(tecnico)}</span><br><span class="rel-metrica">Total: <b>${total}</b></span><span class="rel-metrica ok">Compareceu: <b>${ok}</b></span><span class="rel-metrica erro">Faltou: <b>${falta}</b></span><span class="rel-metrica">Pendente: <b>${pendente}</b></span></div></div><div class="pacientes-grid" style="margin-top:12px">${linhas||'<div class="paciente-card"><strong>Nenhum atendimento encontrado.</strong></div>'}</div>`;}
 function abrirTelaConfiguracoes(){
