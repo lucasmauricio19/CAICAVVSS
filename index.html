@@ -625,6 +625,34 @@ body.modo-app{
   .pacientes-form-grid{grid-template-columns:1fr;}
 }
 
+
+
+/* ===== CORREÇÃO PACIENTES: editar funcionando + exclusão animada ===== */
+.modal-fundo.animado.show{animation: modalFadeIn .18s ease both;}
+.modal-fundo.animado .modal-box{animation: modalPopIn .22s cubic-bezier(.2,1.15,.35,1) both;}
+.modal-fundo.saindo{animation: modalFadeOut .18s ease both;}
+.modal-fundo.saindo .modal-box{animation: modalPopOut .18s ease both;}
+.modal-box.modal-excluir-paciente{text-align:center;max-width:440px!important;border:1px solid #fee2e2!important;}
+.delete-icon-circle{width:76px;height:76px;border-radius:50%;margin:0 auto 14px;background:#fee2e2;color:#dc2626;display:flex;align-items:center;justify-content:center;font-size:42px;font-weight:900;box-shadow:0 0 0 10px rgba(220,38,38,.08);animation: deletePulse 1.15s ease-in-out infinite;}
+.delete-icon-circle.concluido{background:#dc2626;color:#fff;animation: deleteDone .45s ease both;}
+.modal-excluir-paciente h3{color:#7f1d1d!important;margin-bottom:8px!important;}
+.modal-excluir-paciente p{color:#334155!important;}
+.modal-excluir-paciente .paciente-alvo{display:block;margin:10px 0 0;padding:10px 12px;border-radius:12px;background:#f8fafc;border:1px solid #e2e8f0;color:#071957;font-weight:900;}
+.modal-excluir-paciente .modal-acoes button{height:42px!important;border-radius:12px!important;font-weight:900!important;}
+.modal-excluir-paciente .btn-confirmar-exclusao{background:#dc2626!important;}
+.modal-excluir-paciente .btn-cancelar-exclusao{background:#64748b!important;}
+.modal-excluir-paciente.cancelado .delete-icon-circle{background:#e2e8f0;color:#64748b;animation: cancelShake .32s ease both;}
+.modal-excluir-paciente.excluido .delete-icon-circle{animation: deleteDone .45s ease both;background:#dc2626;color:#fff;}
+.paciente-card.removendo{animation: pacienteRemove .38s ease forwards;transform-origin:center;}
+@keyframes modalFadeIn{from{opacity:0}to{opacity:1}}
+@keyframes modalFadeOut{from{opacity:1}to{opacity:0}}
+@keyframes modalPopIn{from{opacity:0;transform:translateY(12px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes modalPopOut{from{opacity:1;transform:translateY(0) scale(1)}to{opacity:0;transform:translateY(10px) scale(.94)}}
+@keyframes deletePulse{0%,100%{transform:scale(1);box-shadow:0 0 0 10px rgba(220,38,38,.08)}50%{transform:scale(1.06);box-shadow:0 0 0 16px rgba(220,38,38,.04)}}
+@keyframes deleteDone{0%{transform:scale(.8) rotate(-8deg)}55%{transform:scale(1.12) rotate(4deg)}100%{transform:scale(1) rotate(0)}}
+@keyframes cancelShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@keyframes pacienteRemove{0%{opacity:1;transform:scale(1);max-height:180px}100%{opacity:0;transform:scale(.96);max-height:0;margin:0;padding-top:0;padding-bottom:0}}
+
 </style>
 </head>
 
@@ -2297,7 +2325,7 @@ function montarCardPaciente(pasta, nome, index){
       <div class="paciente-menu-wrap">
         <button type="button" class="btn-menu-paciente" onclick="alternarMenuPaciente(event,'${pastaHTML}',${index})">⋮</button>
         <div class="menu-paciente" id="${idMenu}">
-          <button type="button" onclick="event.stopPropagation(); abrirModalEdicaoPaciente('${pastaHTML}',${index})">✏️ Editar</button>
+          <button type="button" onclick="event.stopPropagation(); editarPaciente('${pastaHTML}',${index})">✏️ Editar</button>
           <button type="button" class="danger" onclick="event.stopPropagation(); excluirPaciente('${pastaHTML}',${index})">🗑️ Excluir</button>
         </div>
       </div>
@@ -2415,7 +2443,7 @@ function garantirModalEdicaoPaciente(){
 
   modal = document.createElement("div");
   modal.id = "modalEditarPaciente";
-  modal.className = "modal-fundo";
+  modal.className = "modal-fundo animado";
   modal.innerHTML = `
     <div class="modal-box" onclick="event.stopPropagation()">
       <h3>Editar paciente</h3>
@@ -2515,10 +2543,47 @@ async function editarPaciente(pastaAntiga, index){
 }
 
 function fecharMenusPaciente(){
-  fecharMenusPaciente();
+  document.querySelectorAll(".menu-paciente.show").forEach(menu => menu.classList.remove("show"));
 }
 
-async function excluirPaciente(pasta, index){
+function fecharModalComAnimacao(modal, aoFechar){
+  if(!modal) return;
+  modal.classList.add("saindo");
+  setTimeout(() => {
+    modal.classList.remove("show", "saindo");
+    if(typeof aoFechar === "function") aoFechar();
+  }, 190);
+}
+
+function garantirModalExclusaoPaciente(){
+  let modal = document.getElementById("modalExcluirPaciente");
+  if(modal) return modal;
+
+  modal = document.createElement("div");
+  modal.id = "modalExcluirPaciente";
+  modal.className = "modal-fundo animado";
+  modal.innerHTML = `
+    <div class="modal-box modal-excluir-paciente" onclick="event.stopPropagation()">
+      <div class="delete-icon-circle" id="iconeExcluirPaciente">×</div>
+      <h3 id="tituloExcluirPaciente">Excluir paciente?</h3>
+      <p id="textoExcluirPaciente">Essa ação removerá o paciente da lista de pastas.</p>
+      <span class="paciente-alvo" id="alvoExcluirPaciente"></span>
+      <div class="modal-acoes" id="acoesExcluirPaciente" style="margin-top:18px">
+        <button type="button" class="btn-cancelar-exclusao" onclick="cancelarExclusaoPaciente()">Cancelar</button>
+        <button type="button" class="btn-confirmar-exclusao" onclick="confirmarExclusaoPaciente()">Sim, excluir</button>
+      </div>
+    </div>
+  `;
+  modal.addEventListener("click", cancelarExclusaoPaciente);
+  document.body.appendChild(modal);
+  return modal;
+}
+
+let pacientePendenteExclusao = null;
+
+function excluirPaciente(pasta, index){
+  fecharMenusPaciente();
+
   const pastaOriginal = normalizarPasta(pasta);
   const listaPacientes = cadastros[pastaOriginal];
 
@@ -2527,19 +2592,95 @@ async function excluirPaciente(pasta, index){
     return;
   }
 
-  const nomePaciente = listaPacientes[index];
-  const confirmar = confirm(`Deseja realmente excluir "${nomePaciente}" da pasta ${pastaOriginal}?`);
-  if(!confirmar) return;
+  pacientePendenteExclusao = {
+    pasta: pastaOriginal,
+    index: Number(index),
+    nome: listaPacientes[index]
+  };
 
-  cadastros[pastaOriginal].splice(index, 1);
-  if(cadastros[pastaOriginal].length === 0) delete cadastros[pastaOriginal];
+  const modal = garantirModalExclusaoPaciente();
+  const box = modal.querySelector(".modal-excluir-paciente");
+  const icone = document.getElementById("iconeExcluirPaciente");
+  const titulo = document.getElementById("tituloExcluirPaciente");
+  const texto = document.getElementById("textoExcluirPaciente");
+  const alvo = document.getElementById("alvoExcluirPaciente");
+  const acoes = document.getElementById("acoesExcluirPaciente");
+
+  if(box) box.classList.remove("cancelado", "excluido");
+  if(icone){ icone.className = "delete-icon-circle"; icone.textContent = "×"; }
+  if(titulo) titulo.textContent = "Excluir paciente?";
+  if(texto) texto.textContent = "Confirme para remover este paciente da aba Pacientes.";
+  if(alvo) alvo.textContent = `${pacientePendenteExclusao.nome} • Pasta ${pastaOriginal}`;
+  if(acoes) acoes.style.display = "flex";
+
+  modal.classList.remove("saindo");
+  modal.classList.add("show");
+}
+
+function cancelarExclusaoPaciente(){
+  const modal = document.getElementById("modalExcluirPaciente");
+  if(!modal || !modal.classList.contains("show")) return;
+
+  const box = modal.querySelector(".modal-excluir-paciente");
+  const titulo = document.getElementById("tituloExcluirPaciente");
+  const texto = document.getElementById("textoExcluirPaciente");
+  const acoes = document.getElementById("acoesExcluirPaciente");
+
+  if(box) box.classList.add("cancelado");
+  if(titulo) titulo.textContent = "Exclusão cancelada";
+  if(texto) texto.textContent = "Nenhuma alteração foi feita.";
+  if(acoes) acoes.style.display = "none";
+
+  setTimeout(() => {
+    pacientePendenteExclusao = null;
+    fecharModalComAnimacao(modal);
+  }, 520);
+}
+
+async function confirmarExclusaoPaciente(){
+  if(!pacientePendenteExclusao) return;
+
+  const { pasta, index, nome } = pacientePendenteExclusao;
+  const listaPacientes = cadastros[pasta];
+
+  if(!Array.isArray(listaPacientes) || listaPacientes[index] !== nome){
+    pacientePendenteExclusao = null;
+    mostrarErro("Paciente não encontrado ou já foi alterado.");
+    fecharModalComAnimacao(document.getElementById("modalExcluirPaciente"));
+    return;
+  }
+
+  const modal = document.getElementById("modalExcluirPaciente");
+  const box = modal?.querySelector(".modal-excluir-paciente");
+  const icone = document.getElementById("iconeExcluirPaciente");
+  const titulo = document.getElementById("tituloExcluirPaciente");
+  const texto = document.getElementById("textoExcluirPaciente");
+  const acoes = document.getElementById("acoesExcluirPaciente");
+
+  if(acoes) acoes.style.display = "none";
+  if(box) box.classList.add("excluido");
+  if(icone){ icone.className = "delete-icon-circle concluido"; icone.textContent = "×"; }
+  if(titulo) titulo.textContent = "Paciente excluído";
+  if(texto) texto.textContent = "A ação foi concluída com sucesso.";
+
+  const cards = Array.from(document.querySelectorAll("[data-paciente-card]"));
+  const card = cards.find(c => normalizarBusca(c.innerText || "").includes(normalizarBusca(nome)) && normalizarBusca(c.innerText || "").includes(normalizarBusca(pasta)));
+  if(card) card.classList.add("removendo");
+
+  cadastros[pasta].splice(index, 1);
+  if(cadastros[pasta].length === 0) delete cadastros[pasta];
 
   try{
     await salvarCadastrosFirebase();
-    abrirTelaPacientes();
-    mostrarSucesso("Paciente excluído com sucesso.");
+    setTimeout(() => {
+      fecharModalComAnimacao(modal, abrirTelaPacientes);
+      mostrarSucesso("Paciente excluído com sucesso.");
+    }, 650);
   }catch(e){
+    console.error(e);
+    pacientePendenteExclusao = null;
     mostrarErro("Não foi possível excluir o paciente.");
+    fecharModalComAnimacao(modal, abrirTelaPacientes);
   }
 }
 
