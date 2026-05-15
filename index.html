@@ -2273,10 +2273,40 @@ function salvarAtendimentosFirebase(){
 }
 
 async function salvarCadastrosFirebase(){
-  await DOC_ATENDIMENTOS.set({
-    cadastros: cadastros,
+  const cadastrosLimpos = {};
+
+  Object.entries(cadastros).forEach(([pasta, nomes]) => {
+    const pastaLimpa = normalizarPasta(pasta);
+    if(!pastaLimpa) return;
+
+    const listaLimpa = Array.isArray(nomes)
+      ? nomes.map(prepararNomePaciente).filter(Boolean)
+      : [];
+
+    if(listaLimpa.length > 0){
+      cadastrosLimpos[pastaLimpa] = listaLimpa;
+    }
+  });
+
+  Object.keys(cadastros).forEach(pasta => delete cadastros[pasta]);
+  Object.assign(cadastros, cadastrosLimpos);
+
+  const payload = {
+    cadastros: cadastrosLimpos,
     atualizadoEm: new Date().toISOString()
-  }, { merge: true });
+  };
+
+  try{
+    // update substitui o campo cadastros inteiro. Assim, pastas apagadas não voltam ao dar F5.
+    await DOC_ATENDIMENTOS.update(payload);
+  }catch(e){
+    // Se o documento ainda não existir, cria normalmente.
+    if(e && (e.code === "not-found" || String(e.message || "").toLowerCase().includes("no document"))){
+      await DOC_ATENDIMENTOS.set(payload, { merge: true });
+      return;
+    }
+    throw e;
+  }
 }
 
 async function carregarAtendimentosFirebase(){
@@ -2658,28 +2688,40 @@ async function confirmarExclusaoPaciente(){
   const acoes = document.getElementById("acoesExcluirPaciente");
 
   if(acoes) acoes.style.display = "none";
-  if(box) box.classList.add("excluido");
-  if(icone){ icone.className = "delete-icon-circle concluido"; icone.textContent = "×"; }
-  if(titulo) titulo.textContent = "Paciente excluído";
-  if(texto) texto.textContent = "A ação foi concluída com sucesso.";
 
-  const cards = Array.from(document.querySelectorAll("[data-paciente-card]"));
-  const card = cards.find(c => normalizarBusca(c.innerText || "").includes(normalizarBusca(nome)) && normalizarBusca(c.innerText || "").includes(normalizarBusca(pasta)));
-  if(card) card.classList.add("removendo");
+  const cadastrosAntes = JSON.parse(JSON.stringify(cadastros));
 
   cadastros[pasta].splice(index, 1);
   if(cadastros[pasta].length === 0) delete cadastros[pasta];
 
   try{
     await salvarCadastrosFirebase();
+
+    if(box) box.classList.add("excluido");
+    if(icone){ icone.className = "delete-icon-circle concluido"; icone.textContent = "×"; }
+    if(titulo) titulo.textContent = "Paciente excluído";
+    if(texto) texto.textContent = "A ação foi concluída com sucesso.";
+
+    const cards = Array.from(document.querySelectorAll("[data-paciente-card]"));
+    const card = cards.find(c =>
+      normalizarBusca(c.innerText || "").includes(normalizarBusca(nome)) &&
+      normalizarBusca(c.innerText || "").includes(normalizarBusca(pasta))
+    );
+    if(card) card.classList.add("removendo");
+
     setTimeout(() => {
+      pacientePendenteExclusao = null;
       fecharModalComAnimacao(modal, abrirTelaPacientes);
       mostrarSucesso("Paciente excluído com sucesso.");
     }, 650);
   }catch(e){
     console.error(e);
+
+    Object.keys(cadastros).forEach(pastaAtual => delete cadastros[pastaAtual]);
+    Object.assign(cadastros, cadastrosAntes);
+
     pacientePendenteExclusao = null;
-    mostrarErro("Não foi possível excluir o paciente.");
+    mostrarErro("Não foi possível excluir o paciente. Confira a conexão e tente novamente.");
     fecharModalComAnimacao(modal, abrirTelaPacientes);
   }
 }
