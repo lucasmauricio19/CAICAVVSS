@@ -1,31 +1,38 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8"/>
-
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>CAICAVV</title>
-
+    
+    <!-- Caminho do Favicon -->
     <link rel="icon" href="img/favicon.png?v=3" type="image/png">
 
+    <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <!-- Configuração do Firebase -->
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyB5Rvz_snCwJCXwTp3gnpV8fa0K13FcrA",
+            authDomain: "caicavvagendamentos.firebaseapp.com",
+            projectId: "caicavvagendamentos",
+            storageBucket: "caicavvagendamentos.firebasestorage.app",
+            messagingSenderId: "402044173505",
+            appId: "1:402044173505:web:300c6bca3116adc108a840"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        const DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos");
+    </script>
 </head>
+<body>
 
-<script>
-const firebaseConfig = {
-  apiKey: "AIzaSyBSRvz_snCwUCXvWTp3gnpV8fa0K13Fcrc",
-  authDomain: "caicavvagendamentos.firebaseapp.com",
-  projectId: "caicavvagendamentos",
-  storageBucket: "caicavvagendamentos.firebasestorage.app",
-  messagingSenderId: "402044173505",
-  appId: "1:402044173505:web:300c6bca3116adc108a840"
-};
+</body>
+</html>
 
-firebase.initializeApp(firebaseConfig);
-
-const db = firebase.firestore();
-const DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos");
-</script>
 
 <style>
 body{font-family:Arial;background:#f1f5f9;margin:0}
