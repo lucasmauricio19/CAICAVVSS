@@ -10,6 +10,7 @@
     <!-- Firebase SDKs -->
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
     <!-- Configuração do Firebase -->
     <script>
@@ -664,6 +665,21 @@ body.modo-app{
 @keyframes cancelShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 @keyframes pacienteRemove{0%{opacity:1;transform:scale(1);max-height:180px}100%{opacity:0;transform:scale(.96);max-height:0;margin:0;padding-top:0;padding-bottom:0}}
 
+
+
+/* ===== ABA ENTRADAS - acréscimo sem alterar o layout original ===== */
+.entradas-toolbar{display:grid;grid-template-columns:minmax(180px,230px) 1fr auto;gap:12px;align-items:end;margin-bottom:14px}.entradas-toolbar label{font-size:12px;font-weight:900;color:#52699d;display:block;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}.entradas-toolbar input,.entradas-toolbar select{height:40px;border:1px solid #ccd9f5;border-radius:10px;padding:0 12px;background:#fff;color:#071957;font-size:14px;width:100%;box-sizing:border-box}.entradas-btn{height:40px;border:0;border-radius:10px;background:var(--tema,#005bff);color:#fff;font-weight:900;cursor:pointer;padding:0 14px}.entradas-btn.sec{background:#0f766e}.entradas-btn.danger{background:#dc2626}.entradas-btn:disabled{background:#94a3b8;cursor:not-allowed}.entradas-file{display:inline-flex;align-items:center;justify-content:center;height:40px;border-radius:10px;background:var(--tema,#005bff);color:#fff;font-weight:900;padding:0 14px;cursor:pointer}.entradas-file input{display:none}.entradas-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}.entrada-kpi,.entrada-box{background:#fff;border:1px solid #d8e4fa;border-radius:14px;box-shadow:0 10px 24px rgba(23,70,150,.10);padding:14px;color:#071957}.entrada-kpi b{display:block;font-size:22px;color:var(--tema,#005bff);line-height:1.2;word-break:break-word}.entrada-kpi span{font-size:12px;color:#52699d;font-weight:900;text-transform:uppercase;letter-spacing:.04em}.entradas-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}.entrada-form-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.entrada-form-grid input,.entrada-form-grid select{height:40px;border:1px solid #ccd9f5;border-radius:10px;padding:0 12px;background:#fff;color:#071957;font-size:14px;width:100%;box-sizing:border-box}.entrada-box h3{margin:0 0 12px;color:#061852;font-size:16px}.entrada-box p{line-height:1.55;color:#263b73}.entrada-resumo-lista{margin:0;padding-left:18px;color:#071957}.entrada-resumo-lista li{margin:5px 0}.entrada-tabela-wrap{overflow:auto;max-height:430px}.entrada-tabela{width:100%;border-collapse:collapse;background:#fff}.entrada-tabela th,.entrada-tabela td{border:1px solid #e2e8f0;padding:8px;font-size:12px;text-align:left;vertical-align:top}.entrada-tabela th{background:var(--tema,#005bff);color:#fff;position:sticky;top:0;z-index:1}.entrada-grafico{width:100%;height:280px;border:1px solid #e0e9f8;border-radius:12px;background:#f8fbff}.entrada-alerta{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:10px;margin:10px 0;font-size:13px;line-height:1.4}.entrada-permissao{color:#64748b;font-size:13px;margin-top:8px}.entrada-chip{display:inline-block;border-radius:999px;background:var(--tema-claro,#edf3ff);color:var(--tema,#005bff);padding:4px 9px;font-size:12px;font-weight:900;margin:2px}.entrada-acoes{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}@media(max-width:950px){.entradas-toolbar,.entradas-grid,.entrada-form-grid,.entradas-kpis{grid-template-columns:1fr}.entrada-grafico{height:240px}}
+
+
+
+/* ===== IMPRESSÃO E EXPORTAÇÃO DA ABA ENTRADAS ===== */
+.entrada-exportar-acoes{display:flex;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid #d8e4fa;border-radius:14px;padding:14px;margin-bottom:14px;box-shadow:0 10px 24px rgba(23,70,150,.10)}
+.entrada-exportar-acoes .entradas-btn{width:auto!important;min-width:165px;height:40px;border-radius:10px;border:0;background:var(--tema,#005bff);color:#fff;font-weight:900;cursor:pointer;padding:0 14px}
+.entrada-exportar-acoes .entradas-btn.excel{background:#16a34a!important}
+.entrada-exportar-acoes .entradas-btn.backup{background:#475569!important}
+@media(max-width:700px){.entrada-exportar-acoes{display:grid;grid-template-columns:1fr}.entrada-exportar-acoes .entradas-btn{width:100%!important}}
+@media print{.entrada-exportar-acoes,.entradas-toolbar,.entrada-acoes,button{display:none!important}.entrada-box,.entrada-kpi{box-shadow:none!important}.entrada-tabela-wrap{max-height:none!important;overflow:visible!important}}
+
 </style>
 </head>
 
@@ -876,6 +892,13 @@ body.modo-app{
     <div class="nav" data-tela="tecnicos" onclick="abrirTelaTecnicos()">
       <div class="nav-icon">👥</div>
       <span>Técnicos</span>
+    </div>
+
+
+
+    <div class="nav" data-tela="entradas" onclick="abrirTelaEntradas()">
+      <div class="nav-icon">📥</div>
+      <span>Entradas</span>
     </div>
 
     <div class="nav" data-tela="configuracoes" onclick="abrirTelaConfiguracoes()">
@@ -2979,10 +3002,607 @@ window.addEventListener("DOMContentLoaded",()=>{
   }
 });
 
+
+
+/* ===== ABA ENTRADAS - acréscimo integrado sem trocar o layout ===== */
+const entradasBaseCAICAVV = [{"id": "base-1", "pasta": "880", "nome": "CAUÃ ALEXANDER CORDEIRO DA SILVA", "idade": "4", "sexo": "M", "bairro": "VILA GARCIA", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-05", "data_vinculacao": "05/01/2026", "nascimento": "12/08/2021", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-2", "pasta": "881", "nome": "HELOISA FERREIRA MARTINS", "idade": "8", "sexo": "F", "bairro": "COSTEIRA", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-01-07", "data_vinculacao": "07/01/2026", "nascimento": "30/11/2017", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-3", "pasta": "881", "nome": "ANA BEATRIZ FERREIRA MARTINS", "idade": "15", "sexo": "F", "bairro": "", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-03-05", "data_vinculacao": "05/03/2026", "nascimento": "", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-4", "pasta": "883", "nome": "JHENYFER FRANCO DE MELO", "idade": "8", "sexo": "F", "bairro": "JARDIM IGUAÇU", "origem": "CT", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-05", "data_vinculacao": "05/01/2026", "nascimento": "16/12/2017", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-5", "pasta": "884", "nome": "AMANDA VITÓRIA GONÇALVES", "idade": "11", "sexo": "F", "bairro": "JARDIM FIGUEIRA", "origem": "UBS", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-05", "data_vinculacao": "05/01/2026", "nascimento": "05/09/2014", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-6", "pasta": "885", "nome": "MARCEL RITA GALDINO JUNIOR", "idade": "12", "sexo": "M", "bairro": "JARDIM ARAÇA", "origem": "ESCOLA", "violencia": "Violação de Dir-Negligência", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-05", "data_vinculacao": "05/01/2026", "nascimento": "29/03/2014", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-7", "pasta": "886", "nome": "ARTHUR KRUGER DE CRISTO", "idade": "3", "sexo": "M", "bairro": "JARDIM ESPERANÇA", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-06", "data_vinculacao": "06/01/2026", "nascimento": "10/05/2023", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-8", "pasta": "887", "nome": "ENZO GABRIEL FERREIRA LARDINE", "idade": "5", "sexo": "M", "bairro": "VILA DO CAIC", "origem": "", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-05", "data_vinculacao": "05/01/2026", "nascimento": "01/01/2021", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-9", "pasta": "888", "nome": "YASMIN VITÓRIA CALIXTO OLIVEIRA MODESTO", "idade": "12", "sexo": "F", "bairro": "PORTO DOS PADRES", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-01-06", "data_vinculacao": "06/01/2026", "nascimento": "01/01/2014", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-10", "pasta": "889", "nome": "ISABELA SAMPAIO TIZONI", "idade": "10", "sexo": "F", "bairro": "VILA PARANAGUA", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-06", "data_vinculacao": "06/01/2026", "nascimento": "26/08/2015", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-11", "pasta": "889", "nome": "RAEL SAMPAIO TIZONI", "idade": "5", "sexo": "M", "bairro": "VILA PARANAGUA", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-06", "data_vinculacao": "06/01/2026", "nascimento": "18/07/2020", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-12", "pasta": "890", "nome": "VITOR PIERRE BARBOSA DE SOUZA", "idade": "5", "sexo": "M", "bairro": "JARDIM IGUAÇU", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-01-08", "data_vinculacao": "08/01/2026", "nascimento": "02/05/2021", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-13", "pasta": "890", "nome": "MATEUS CAUÂ BARBOSA DE SOUZA", "idade": "4", "sexo": "M", "bairro": "JARDIM IGUAÇU", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-01-08", "data_vinculacao": "08/01/2026", "nascimento": "22/01/2022", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-14", "pasta": "890", "nome": "VALENTIN ANTHONY BARBOSA DE SOUZA", "idade": "5", "sexo": "M", "bairro": "JARDIM IGUAÇU", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-01-08", "data_vinculacao": "08/01/2026", "nascimento": "02/05/2021", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-15", "pasta": "891", "nome": "MATHEUS LIMA DE OLIVEIRA", "idade": "18", "sexo": "M", "bairro": "ALEXANDRA", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-01-12", "data_vinculacao": "12/01/2026", "nascimento": "22/11/2007", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-16", "pasta": "892", "nome": "BEATRIZ DOS SANTOS MOREIRA GRUBE", "idade": "15", "sexo": "F", "bairro": "JARDIM JACARANDÁ", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-14", "data_vinculacao": "14/01/2026", "nascimento": "21/01/2011", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-17", "pasta": "893", "nome": "LUIZA ALEXANDRE MEDEIROS DE OLIVEIRA", "idade": "16", "sexo": "F", "bairro": "ILHA DO MEL", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-01-14", "data_vinculacao": "14/01/2026", "nascimento": "17/05/2010", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-18", "pasta": "894", "nome": "CLAUDIO SEBASTIÃO IZAIAS GARCIA NETO", "idade": "13", "sexo": "M", "bairro": "SANTA HELENA", "origem": "NUCRIA", "violencia": "Violação de Dir-Negligência", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-01-16", "data_vinculacao": "16/01/2026", "nascimento": "22/12/2012", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-19", "pasta": "894", "nome": "JOÃO CARLOS MIRANDA NUNES", "idade": "16", "sexo": "M", "bairro": "SANTA HELENA", "origem": "NUCRIA", "violencia": "Violação de Dir-Negligência", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-01-16", "data_vinculacao": "16/01/2026", "nascimento": "02/10/2009", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-20", "pasta": "895", "nome": "YASMIN TOMAZ ROSA DOS SANTOS", "idade": "11", "sexo": "F", "bairro": "VILA MARINHO", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-18", "data_vinculacao": "18/01/2026", "nascimento": "18/12/2014", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-21", "pasta": "896", "nome": "ISAQUE FREITAS WAGNER DE SOUZA", "idade": "14", "sexo": "M", "bairro": "ILHA DOS VALADARES", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-19", "data_vinculacao": "19/01/2026", "nascimento": "08/12/2011", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-22", "pasta": "897", "nome": "ANA KAROLINA FRANCISCO PEREIRA", "idade": "12", "sexo": "F", "bairro": "EMBOGUAÇU", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-01-19", "data_vinculacao": "19/01/2026", "nascimento": "22/09/2013", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-23", "pasta": "898", "nome": "CARMELA ROSA VIANA", "idade": "14", "sexo": "F", "bairro": "JARDIM ARAÇA", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-01-20", "data_vinculacao": "20/01/2026", "nascimento": "18/05/2012", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-24", "pasta": "899", "nome": "RAVI ARAUJO HULTHMAN", "idade": "1", "sexo": "M", "bairro": "VILA GUARANI", "origem": "NUCRIA", "violencia": "Violação de Dir-Negligência", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-01-20", "data_vinculacao": "20/01/2026", "nascimento": "19/08/2024", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-25", "pasta": "900", "nome": "TIAGO PAES DA SILVA FILHO", "idade": "5", "sexo": "M", "bairro": "VILA PRIMAVERA", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-22", "data_vinculacao": "22/01/2026", "nascimento": "19/05/2021", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-26", "pasta": "901", "nome": "SARAH DA SILVA MENDES", "idade": "12", "sexo": "F", "bairro": "OURO FINO", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-22", "data_vinculacao": "22/01/2026", "nascimento": "17/08/2013", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-27", "pasta": "902", "nome": "MARIANA TAVARES TIGRE", "idade": "7", "sexo": "F", "bairro": "VILA GARCIA", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-23", "data_vinculacao": "23/01/2026", "nascimento": "17/04/2019", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-28", "pasta": "903", "nome": "BENJAMIM OLIVEIRA SIMÔES", "idade": "7", "sexo": "M", "bairro": "JARDIM IGUAÇU", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-27", "data_vinculacao": "27/01/2026", "nascimento": "26/12/2018", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-29", "pasta": "904", "nome": "MIGUEL AMARAL MEDEIROS DE MARINS", "idade": "4", "sexo": "M", "bairro": "OURO FINO", "origem": "CT", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-26", "data_vinculacao": "26/01/2026", "nascimento": "07/09/2021", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-30", "pasta": "904", "nome": "MURILO AMARAL MEDEIROS DE MARINS", "idade": "2", "sexo": "M", "bairro": "OURO FINO", "origem": "CT", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-26", "data_vinculacao": "26/01/2026", "nascimento": "20/08/2023", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-31", "pasta": "905", "nome": "ISABELA NICOLY GRITTEN DA SILVA", "idade": "12", "sexo": "F", "bairro": "ALEXANDRA", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-26", "data_vinculacao": "26/01/2026", "nascimento": "05/02/2014", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-32", "pasta": "905", "nome": "MIRELLA VALENTINA GRITTEN DA SILVA", "idade": "9", "sexo": "F", "bairro": "ALEXANDRA", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-26", "data_vinculacao": "26/01/2026", "nascimento": "01/07/2016", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-33", "pasta": "906", "nome": "EDUARDA VALENTINA FERREIRA FAVARIN", "idade": "6", "sexo": "F", "bairro": "VILA SÃO JORGE", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-27", "data_vinculacao": "27/01/2026", "nascimento": "16/05/2020", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-34", "pasta": "906", "nome": "GABRIELLY FERREIRA FONTANA", "idade": "15", "sexo": "F", "bairro": "VILA SÃO JORGE", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-03-09", "data_vinculacao": "09/03/2026", "nascimento": "03/06/2010", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-35", "pasta": "907", "nome": "FELIPE MARTINSKI", "idade": "17", "sexo": "M", "bairro": "OURO FINO", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-28", "data_vinculacao": "28/01/2026", "nascimento": "19/10/2008", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-36", "pasta": "908", "nome": "LAURA RAPHAELA CELESTINO DOS SANTOS DA SILVA", "idade": "14", "sexo": "F", "bairro": "VILA GUARANI", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-28", "data_vinculacao": "28/01/2026", "nascimento": "26/11/2011", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-37", "pasta": "908", "nome": "LUIZ MIGUEL CELESTINO DOS SANTOS DA SILVA", "idade": "9", "sexo": "M", "bairro": "VILA GUARANI", "origem": "NUCRIA", "violencia": "Violência Psi-Testemunha", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-01-28", "data_vinculacao": "28/01/2026", "nascimento": "08/07/2016", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-38", "pasta": "909", "nome": "NOAH CORDEIRO DA SILVA FERNANDES MARQUES", "idade": "3", "sexo": "M", "bairro": "JARDIM IGUAÇU", "origem": "CT", "violencia": "Violência Sex-Abuso", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-01-28", "data_vinculacao": "28/01/2026", "nascimento": "14/03/2023", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-39", "pasta": "910", "nome": "RICHARD NICOLAS DE CASTRO CARDOSO", "idade": "15", "sexo": "M", "bairro": "EMBOGUAÇU", "origem": "NUCRIA", "violencia": "Violência Psi-Testemunha", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-01-22", "data_vinculacao": "22/01/2026", "nascimento": "30/11/2010", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-40", "pasta": "910", "nome": "MARCIA NICOLLY CASTRO CARDOSO", "idade": "12", "sexo": "F", "bairro": "EMBOGUAÇU", "origem": "NUCRIA", "violencia": "Violência Psi-Testemunha", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-01-22", "data_vinculacao": "22/01/2026", "nascimento": "09/09/2013", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-41", "pasta": "911", "nome": "MELISSA RODRIGUES MARTINS", "idade": "9", "sexo": "F", "bairro": "PORTO SEGURO", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-02-02", "data_vinculacao": "02/02/2026", "nascimento": "08/07/2016", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-42", "pasta": "912", "nome": "HADASSA ESTER DOS SANTOS MARCELO", "idade": "17", "sexo": "F", "bairro": "JARDIM OURO FINO", "origem": "MP", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-02-04", "data_vinculacao": "04/02/2026", "nascimento": "08/02/2009", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-43", "pasta": "913", "nome": "EMANUELA MAIA ROCHA", "idade": "7", "sexo": "F", "bairro": "PONTAL DO PARANÁ", "origem": "NUCRIA", "violencia": "Violação de Dir-Negligência", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-02-06", "data_vinculacao": "06/02/2026", "nascimento": "26/03/2019", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-44", "pasta": "914", "nome": "HALLANA BEATRIZ CORDEIRO DE SOUZA", "idade": "15", "sexo": "F", "bairro": "VILA GARCIA", "origem": "NUCRIA", "violencia": "Violência Psi-Testemunha", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-02-06", "data_vinculacao": "06/02/2026", "nascimento": "15/04/2011", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-45", "pasta": "915", "nome": "VANESSA EMANOELA CALDELAS GONÇALVES", "idade": "15", "sexo": "F", "bairro": "ALEXANDRA", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-02-09", "data_vinculacao": "09/02/2026", "nascimento": "10/05/2011", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-46", "pasta": "916", "nome": "VINICIUS MATOSO CORDEIRO", "idade": "11", "sexo": "M", "bairro": "VILA GARCIA", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-02-12", "data_vinculacao": "12/02/2026", "nascimento": "19/11/2014", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-47", "pasta": "917", "nome": "ADRYAN DOS SANTOS CORDEIRO", "idade": "14", "sexo": "M", "bairro": "VILA DOS COMERCIARIOS", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-02-12", "data_vinculacao": "12/02/2026", "nascimento": "01/02/2012", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-48", "pasta": "917", "nome": "ALESSANDRO DOS SANTOS CORDEIRO", "idade": "16", "sexo": "M", "bairro": "VILA DOS COMERCIARIOS", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-02-12", "data_vinculacao": "12/02/2026", "nascimento": "17/05/2010", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-49", "pasta": "918", "nome": "IGOR GUILHERME DE CASTRO DOS SANTOS", "idade": "2", "sexo": "M", "bairro": "JARDIM JACARANDA", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-02-12", "data_vinculacao": "12/02/2026", "nascimento": "28/01/2024", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-50", "pasta": "918", "nome": "MARIA TEREZA RODRIGUES DE CASTRO DOS SANTOS", "idade": "6", "sexo": "F", "bairro": "JARDIM JACARANDÁ", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-02-12", "data_vinculacao": "12/02/2026", "nascimento": "07/03/2020", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-51", "pasta": "918", "nome": "ENZO GABRIEL RODRIGUES DE CASTRO", "idade": "4", "sexo": "M", "bairro": "JARDIM JACARANDÁ", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-02-19", "data_vinculacao": "19/02/2026", "nascimento": "19/03/2022", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-52", "pasta": "919", "nome": "BENJAMIN COELHO DA SILVA", "idade": "4", "sexo": "M", "bairro": "ILHA DOS VALADARES", "origem": "NUCRIA", "violencia": "Violência Psi-Testemunha", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-02-19", "data_vinculacao": "19/02/2026", "nascimento": "29/05/2021", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-53", "pasta": "919", "nome": "DAVI COELHO DA SILVA", "idade": "9", "sexo": "M", "bairro": "ILHA DOS VALADARES", "origem": "NUCRIA", "violencia": "Violência Psi-Testemunha", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-02-19", "data_vinculacao": "19/02/2026", "nascimento": "17/07/2016", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-54", "pasta": "920", "nome": "RYAN MIRANDA LUIZ", "idade": "11", "sexo": "M", "bairro": "ILHA DOS VALADARES", "origem": "CT", "violencia": "Violência Física", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-04-06", "data_vinculacao": "06/04/2026", "nascimento": "18/07/2014", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-55", "pasta": "920", "nome": "JEAN GUSTAVO MIRANDA LUIZ", "idade": "13", "sexo": "M", "bairro": "ILHA DOS VALADARES", "origem": "NUCRIA", "violencia": "Violência Psi-Testemunha", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-04-06", "data_vinculacao": "06/04/2026", "nascimento": "26/11/2012", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-56", "pasta": "921", "nome": "NOAH LOBO KELEMENTI SANTOS", "idade": "6", "sexo": "M", "bairro": "PARQUE SÃO JOÃO", "origem": "CT", "violencia": "Violência Psi-Testemunha", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-02-19", "data_vinculacao": "19/02/2026", "nascimento": "21/06/2019", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-57", "pasta": "922", "nome": "LORENZO CARVALHO DA CRUZ", "idade": "8", "sexo": "M", "bairro": "VILA GUARANI", "origem": "SUBDIVISÃO PC", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-02-20", "data_vinculacao": "20/02/2026", "nascimento": "08/08/2017", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-58", "pasta": "923", "nome": "KAROLYNE RIBEIRO CONSTANTINO", "idade": "13", "sexo": "F", "bairro": "SANTOS DUMONT", "origem": "", "violencia": "Violação de Dir-Negligência", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-02-20", "data_vinculacao": "20/02/2026", "nascimento": "31/07/2012", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-59", "pasta": "924", "nome": "THEO OSVALDO ARAUJO OYERA VIDAL", "idade": "6", "sexo": "M", "bairro": "ILHA DOS VALADARES", "origem": "NUCRIA", "violencia": "Violação Psi-Alien. Parental", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-02-23", "data_vinculacao": "23/02/2026", "nascimento": "28/10/2019", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-60", "pasta": "925", "nome": "ANA LETÍCIA LOPES DA SILVA", "idade": "16", "sexo": "F", "bairro": "JARDIM IGUAÇU", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-02-24", "data_vinculacao": "24/02/2026", "nascimento": "05/07/2009", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-61", "pasta": "926", "nome": "ENZO MIGUEL MARQUES DOS SANTOS", "idade": "5", "sexo": "M", "bairro": "JARDIM YAMAGUCHI", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-02-25", "data_vinculacao": "25/02/2026", "nascimento": "21/08/2020", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-62", "pasta": "927", "nome": "ANA BEATRIZ GONÇALVES CABRAL", "idade": "9", "sexo": "F", "bairro": "VILA GARCIA", "origem": "CT", "violencia": "Violação de Dir-Negligência", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-02-26", "data_vinculacao": "26/02/2026", "nascimento": "03/10/2016", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-63", "pasta": "928", "nome": "RAYSSA DOS SANTOS CORREA CARDOSO", "idade": "16", "sexo": "F", "bairro": "JARDIM GUARAITUBA", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-02-26", "data_vinculacao": "26/02/2026", "nascimento": "25/07/2009", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-64", "pasta": "929", "nome": "VALENTINA TOMADON SCHMIDT", "idade": "6", "sexo": "F", "bairro": "JARDIM YAMAGUCHI", "origem": "NUCRIA", "violencia": "Violência Psi-Testemunha", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-02-26", "data_vinculacao": "26/02/2026", "nascimento": "09/01/2020", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-65", "pasta": "930", "nome": "MATEUS HENRIQUE CABRAL DIAS", "idade": "16", "sexo": "M", "bairro": "PARQUE AGARI", "origem": "NUCRIA", "violencia": "Violência Psi-Moral (Ameaça,Xing,Const,Hum,Bullying)", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-02-26", "data_vinculacao": "26/02/2026", "nascimento": "08/06/2009", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-66", "pasta": "931", "nome": "JHON GABRIEL REIS PEREIRA", "idade": "14", "sexo": "M", "bairro": "JARDIM DO BOSQUE", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-02-26", "data_vinculacao": "26/02/2026", "nascimento": "23/02/2012", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-67", "pasta": "932", "nome": "MARIANA DIAS DE OLIVEIRA", "idade": "16", "sexo": "F", "bairro": "ILHA DOS VALADARES", "origem": "NUCRIA", "violencia": "Violência Psi-Moral (Ameaça,Xing,Const,Hum,Bullying)", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-03-04", "data_vinculacao": "04/03/2026", "nascimento": "13/08/2009", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-68", "pasta": "933", "nome": "SOPHIA GABRIELLE ADÃO AMORIM", "idade": "11", "sexo": "F", "bairro": "ILHA DOS VALADARES", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-03-12", "data_vinculacao": "12/03/2026", "nascimento": "17/08/2014", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-69", "pasta": "933", "nome": "ARTHUR GABRIEL ADÃO AMORIM", "idade": "10", "sexo": "M", "bairro": "ILHA DOS VALADARES", "origem": "NUCRIA", "violencia": "Violência Psi-Testemunha", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-03-12", "data_vinculacao": "12/03/2026", "nascimento": "13/03/2016", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-70", "pasta": "934", "nome": "ALICE CRISTINA DO CARMO TEODOSIO", "idade": "17", "sexo": "F", "bairro": "NILSON NEVES", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-03-16", "data_vinculacao": "16/03/2026", "nascimento": "11/07/2008", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-71", "pasta": "935", "nome": "MARIANA ALVES JACQUES", "idade": "16", "sexo": "F", "bairro": "PARQUE AGARI", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-03-18", "data_vinculacao": "18/03/2026", "nascimento": "28/07/2009", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-72", "pasta": "936", "nome": "PAOLA CRISTYNA AMARAL GARZARO", "idade": "17", "sexo": "F", "bairro": "LABRA", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-03-23", "data_vinculacao": "23/03/2026", "nascimento": "29/09/2008", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-73", "pasta": "937", "nome": "PATRÍCIA CORDEIRO DOS SANTOS", "idade": "14", "sexo": "F", "bairro": "ILHA DOS VALADARES", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-03-25", "data_vinculacao": "25/03/2026", "nascimento": "11/04/2012", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-74", "pasta": "938", "nome": "KAUAN HENRIQUE ALEXANDRE RODRIGUES", "idade": "9", "sexo": "M", "bairro": "VILA SÃO JORGE", "origem": "CT", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-03-25", "data_vinculacao": "25/03/2026", "nascimento": "07/10/2016", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-75", "pasta": "939", "nome": "LUCAS LEONARDO RODRIGUES BEZERRA DA SILVA", "idade": "10", "sexo": "M", "bairro": "", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-03-26", "data_vinculacao": "26/03/2026", "nascimento": "23/09/2015", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-76", "pasta": "939", "nome": "VITOR GABRIEL BEZERRA DA SILVA", "idade": "8", "sexo": "M", "bairro": "", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-03-26", "data_vinculacao": "26/03/2026", "nascimento": "28/08/2017", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-77", "pasta": "939", "nome": "LUIZ MIGUEL RODRIGUES BEZERRA DA SILVA", "idade": "5", "sexo": "M", "bairro": "", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-03-26", "data_vinculacao": "26/03/2026", "nascimento": "27/01/2021", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-78", "pasta": "940", "nome": "LARA SOPHIA DOS SANTOS NASCIMENTO", "idade": "9", "sexo": "F", "bairro": "", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-03-27", "data_vinculacao": "27/03/2026", "nascimento": "30/05/2016", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-79", "pasta": "941", "nome": "JULIA RYLANDER DORIA", "idade": "15", "sexo": "F", "bairro": "JARDIM ESPERANÇA", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-03-31", "data_vinculacao": "31/03/2026", "nascimento": "10/12/2010", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-80", "pasta": "942", "nome": "NATALY DANIELA ALVES VIEIRA", "idade": "11", "sexo": "F", "bairro": "VILA GARCIA", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-03-31", "data_vinculacao": "31/03/2026", "nascimento": "25/12/2014", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-81", "pasta": "943", "nome": "LUISA VALLENTINA BATISTA DOS SANTOS", "idade": "6", "sexo": "F", "bairro": "CORREIA VELHA", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-06", "data_vinculacao": "06/04/2026", "nascimento": "10/12/2019", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-82", "pasta": "944", "nome": "MARIA ALICE COSTA DE OLIVEIRA", "idade": "7", "sexo": "F", "bairro": "ILHA DOS VALADARES", "origem": "NUCRIA", "violencia": "Violação de Dir-Negligência", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-07", "data_vinculacao": "07/04/2026", "nascimento": "28/05/2018", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-83", "pasta": "945", "nome": "LIVIA DAS NEVES SILVA", "idade": "17", "sexo": "F", "bairro": "COMINESE", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-07", "data_vinculacao": "07/04/2026", "nascimento": "13/07/2008", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-84", "pasta": "946", "nome": "MIGUEL GARCIA MARUJO", "idade": "9", "sexo": "M", "bairro": "CONJUNTO LARANJEIRAS", "origem": "CT", "violencia": "Violência Sex-Abuso", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-04-07", "data_vinculacao": "07/04/2026", "nascimento": "22/09/2016", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-85", "pasta": "947", "nome": "PAULO CESAR NASCIMENTO GARCIA", "idade": "10", "sexo": "M", "bairro": "VILA SÃO VICENTE", "origem": "CT", "violencia": "Violência Inst.", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-09", "data_vinculacao": "09/04/2026", "nascimento": "29/10/2015", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-86", "pasta": "948", "nome": "RHUAN CONSTANTINO DIAS", "idade": "15", "sexo": "M", "bairro": "PORTO DOS PADRES", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-13", "data_vinculacao": "13/04/2026", "nascimento": "29/09/2010", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-87", "pasta": "949", "nome": "ISAAC AUGUSTO BELIZÁRIO DOS SANTOS", "idade": "126", "sexo": "M", "bairro": "VILA PRIMAVERA", "origem": "CRÁS", "violencia": "Violação de Dir-Negligência", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-14", "data_vinculacao": "14/04/2026", "nascimento": "", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-88", "pasta": "950", "nome": "HEILLY GABRIELE DA VEIGA MAXIMO", "idade": "11", "sexo": "F", "bairro": "PRAIA DE LESTE", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-04-14", "data_vinculacao": "14/04/2026", "nascimento": "05/02/2015", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-89", "pasta": "951", "nome": "RAYLA VITÓRIA MARTINS CATANIO", "idade": "8", "sexo": "F", "bairro": "VILA DOS COMERCIARIOS", "origem": "MP", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-14", "data_vinculacao": "14/04/2026", "nascimento": "08/09/2017", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-90", "pasta": "952", "nome": "JHORDAN HENRIQUE DE OLIVEIRA LEAL SOARES", "idade": "4", "sexo": "M", "bairro": "LABRA", "origem": "CT", "violencia": "Violação Psi-Alien. Parental", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-14", "data_vinculacao": "14/04/2026", "nascimento": "02/01/2022", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-91", "pasta": "953", "nome": "CARLA FERNANDA PEREIRA DE JESUS", "idade": "17", "sexo": "F", "bairro": "PARQUE SÃO JOÃO", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-04-15", "data_vinculacao": "15/04/2026", "nascimento": "29/06/2008", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-92", "pasta": "954", "nome": "GIOVANNA WUTKE CORDEIRO", "idade": "11", "sexo": "F", "bairro": "ILHA DOS VALADARES", "origem": "SUBDIVISÃO PC", "violencia": "Violência Sex-Abuso", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-04-16", "data_vinculacao": "16/04/2026", "nascimento": "24/04/2015", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-93", "pasta": "955", "nome": "LARA VALENTINA ROSSI DE SOUZA", "idade": "2", "sexo": "F", "bairro": "VILA SÃO JORGE", "origem": "", "violencia": "Violação de Dir-Negligência", "vinculacao": "INATIVO", "status": "INATIVO", "data": "2026-04-24", "data_vinculacao": "24/04/2026", "nascimento": "16/08/2023", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-94", "pasta": "956", "nome": "MIGUEL ASSAF VIANA AMORIM", "idade": "5", "sexo": "M", "bairro": "ILHA DOS VALADARES", "origem": "MP", "violencia": "Violação de Dir-Negligência", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-24", "data_vinculacao": "24/04/2026", "nascimento": "25/01/2021", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-95", "pasta": "957", "nome": "RAFAELA ASSIS DA SILVA", "idade": "16", "sexo": "F", "bairro": "VILA MARINHO", "origem": "NUCRIA", "violencia": "Violação de Dir-Negligência", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-24", "data_vinculacao": "24/04/2026", "nascimento": "04/12/2009", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-96", "pasta": "958", "nome": "MAITE SOARES LINS", "idade": "4", "sexo": "F", "bairro": "JARDIM OURO FINO", "origem": "NUCRIA", "violencia": "Violação Psi-Alien. Parental", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-27", "data_vinculacao": "27/04/2026", "nascimento": "25/05/2022", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-97", "pasta": "958", "nome": "ANTONELLA SOARES LINS", "idade": "6", "sexo": "F", "bairro": "JARDIM OURO FINO", "origem": "NUCRIA", "violencia": "Violação Psi-Alien. Parental", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-27", "data_vinculacao": "27/04/2026", "nascimento": "05/07/2019", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-98", "pasta": "959", "nome": "SOPHIA VICTÓRIA MELO DA COSTA", "idade": "14", "sexo": "F", "bairro": "JARDIM YAMAGUCHI", "origem": "NUCRIA", "violencia": "Violência Psi-Moral (Ameaça,Xing,Const,Hum,Bullying)", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-27", "data_vinculacao": "27/04/2026", "nascimento": "14/01/2012", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-99", "pasta": "960", "nome": "MATHEUS DO CARMO ALVES", "idade": "11", "sexo": "M", "bairro": "JARDIM IGUAÇU", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-27", "data_vinculacao": "27/04/2026", "nascimento": "25/05/2015", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-100", "pasta": "960", "nome": "MANUELA DO CARMO ALVES", "idade": "3", "sexo": "F", "bairro": "JARDIM IGUAÇU", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-27", "data_vinculacao": "27/04/2026", "nascimento": "16/06/2022", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-101", "pasta": "961", "nome": "NICOLE KATHERINE SOLORZANO BOADA", "idade": "16", "sexo": "F", "bairro": "VILA GARCIA", "origem": "CT", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-28", "data_vinculacao": "28/04/2026", "nascimento": "08/12/2009", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-102", "pasta": "962", "nome": "MARIA KLARA CROZETTA SILVA", "idade": "16", "sexo": "F", "bairro": "COSTEIRA", "origem": "NUCRIA", "violencia": "Violência Inst.", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-28", "data_vinculacao": "28/04/2026", "nascimento": "30/03/2010", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-103", "pasta": "963", "nome": "DAVI LUIS GARCIA NASCIMENTO", "idade": "11", "sexo": "M", "bairro": "", "origem": "", "violencia": "", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-29", "data_vinculacao": "29/04/2026", "nascimento": "05/11/2014", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-104", "pasta": "963", "nome": "PEDRO HENRIQUE GARCIA LOPES", "idade": "9", "sexo": "M", "bairro": "", "origem": "", "violencia": "", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-29", "data_vinculacao": "29/04/2026", "nascimento": "28/06/2016", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-105", "pasta": "963", "nome": "BENJAMIM SOUZA DE OLIVEIRA", "idade": "6", "sexo": "M", "bairro": "", "origem": "", "violencia": "", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-29", "data_vinculacao": "29/04/2026", "nascimento": "26/06/2019", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-106", "pasta": "964", "nome": "LUCAS GABRIEL DA SILVA BORBA", "idade": "7", "sexo": "M", "bairro": "VILA DIVINEIA", "origem": "", "violencia": "Violação de Dir-Negligência", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-04-28", "data_vinculacao": "28/04/2026", "nascimento": "08/03/2019", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-107", "pasta": "965", "nome": "MATHEUS TIBILLETTI", "idade": "126", "sexo": "", "bairro": "", "origem": "CT", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-05", "data_vinculacao": "05/05/2026", "nascimento": "", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-108", "pasta": "966", "nome": "ANGELINA FERRACIOLI", "idade": "16", "sexo": "F", "bairro": "", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-05", "data_vinculacao": "05/05/2026", "nascimento": "20/02/2010", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-109", "pasta": "967", "nome": "MELYSSA CRISTINA CARDOSO RAMOS", "idade": "3", "sexo": "F", "bairro": "VILA DOS COMERCIARIOS", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-07", "data_vinculacao": "07/05/2026", "nascimento": "14/03/2023", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-110", "pasta": "969", "nome": "GABRIEL ALBUQUERQUE RIBEIRO MUNHOZ", "idade": "11", "sexo": "M", "bairro": "CENTRO", "origem": "", "violencia": "", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-11", "data_vinculacao": "11/05/2026", "nascimento": "10/07/2014", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-111", "pasta": "970", "nome": "GABRIEL DE OLIVEIRA ALVES", "idade": "17", "sexo": "M", "bairro": "SERRARIA DO ROCHA", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-12", "data_vinculacao": "12/05/2026", "nascimento": "06/06/2008", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-112", "pasta": "971", "nome": "MATHEUS FREITAS SCHIMIDT", "idade": "15", "sexo": "M", "bairro": "PARQUE AGARI", "origem": "CT", "violencia": "Violação de Dir-Negligência", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-13", "data_vinculacao": "13/05/2026", "nascimento": "10/05/2011", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-113", "pasta": "972", "nome": "ISABELLA DE SOUZA PEREIRA LOPES", "idade": "8", "sexo": "F", "bairro": "VILA GARCIA", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-21", "data_vinculacao": "21/05/2026", "nascimento": "07/06/2017", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-114", "pasta": "973", "nome": "ERICK MATHEUS BARBOSA DA COSTA", "idade": "126", "sexo": "M", "bairro": "", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-18", "data_vinculacao": "18/05/2026", "nascimento": "", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-115", "pasta": "974", "nome": "SOPHIA HERMAN TAKAHARA", "idade": "5", "sexo": "F", "bairro": "PORTO SEGURO", "origem": "CT", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-20", "data_vinculacao": "20/05/2026", "nascimento": "14/04/2021", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-116", "pasta": "974", "nome": "NAYUMI HERMAN TAKAHARA", "idade": "0", "sexo": "F", "bairro": "PORTO SEGURO", "origem": "CT", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-20", "data_vinculacao": "20/05/2026", "nascimento": "28/08/2025", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-117", "pasta": "975", "nome": "MATHEUS HENRIQUE MELCHOR SILVA", "idade": "10", "sexo": "M", "bairro": "", "origem": "NUCRIA", "violencia": "Violência Sex-Abuso", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-21", "data_vinculacao": "21/05/2026", "nascimento": "20/05/2016", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-118", "pasta": "976", "nome": "ISABELLA VITÓRIA VIEIRA VICENTE DAS DORES", "idade": "8", "sexo": "F", "bairro": "BOCKMAN", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-25", "data_vinculacao": "25/05/2026", "nascimento": "31/12/2017", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-119", "pasta": "976", "nome": "LETÍCIA GABRIELY VIEIRA DOS SANTOS", "idade": "11", "sexo": "F", "bairro": "BOCKMANN", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-25", "data_vinculacao": "25/05/2026", "nascimento": "08/07/2014", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-120", "pasta": "977", "nome": "ASAFE NUNES ALVES", "idade": "7", "sexo": "M", "bairro": "EMBOGUAÇU", "origem": "NUCRIA", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-26", "data_vinculacao": "26/05/2026", "nascimento": "01/11/2018", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-121", "pasta": "978", "nome": "SOPHIA FREITAS DOS SANTOS SIGOLO E SILVA", "idade": "12", "sexo": "F", "bairro": "", "origem": "PROJUDE", "violencia": "Violência Física", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-21", "data_vinculacao": "21/05/2026", "nascimento": "29/07/2013", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-122", "pasta": "979", "nome": "LAURA DA FONSECA ERGANG", "idade": "126", "sexo": "F", "bairro": "", "origem": "PROJUDE", "violencia": "", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-25", "data_vinculacao": "25/05/2026", "nascimento": "", "fonte": "Controle de Cadastros 27.05.26.ods"}, {"id": "base-123", "pasta": "979", "nome": "LOUISE DA FONSECA ERGANG", "idade": "126", "sexo": "F", "bairro": "", "origem": "PROJUDE", "violencia": "", "vinculacao": "ATIVO", "status": "ATIVO", "data": "2026-05-25", "data_vinculacao": "25/05/2026", "nascimento": "", "fonte": "Controle de Cadastros 27.05.26.ods"}];
+let entradasManuaisCAICAVV = JSON.parse(localStorage.getItem("entradasManuaisCAICAVV") || "[]");
+
+function salvarEntradasManuaisCAICAVV(){
+  localStorage.setItem("entradasManuaisCAICAVV", JSON.stringify(entradasManuaisCAICAVV));
+}
+
+function todasEntradasCAICAVV(){
+  return [...entradasBaseCAICAVV, ...entradasManuaisCAICAVV];
+}
+
+function podeAlterarEntradasCAICAVV(){
+  const login = typeof loginAtual === "function" ? String(loginAtual() || "") : "";
+  const u = typeof tecnicoLogado === "object" && tecnicoLogado ? tecnicoLogado : {};
+  const texto = (login + " " + JSON.stringify(u)).toLowerCase();
+  return texto.includes("mayara") || texto.includes("maiyara") || texto.includes("coordenacao") || texto.includes("coordenação") || texto.includes("adm.caicavv");
+}
+
+function entradaEscapeCAICAVV(valor){
+  if(typeof escapeHTML === "function") return escapeHTML(valor);
+  return String(valor ?? "").replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+}
+
+function entradaNormalizarCAICAVV(valor){
+  return String(valor || "Não informado").trim() || "Não informado";
+}
+
+function entradaContarPorCAICAVV(lista, campo){
+  const obj = {};
+  lista.forEach(e => {
+    const chave = entradaNormalizarCAICAVV(e[campo]);
+    obj[chave] = (obj[chave] || 0) + 1;
+  });
+  return obj;
+}
+
+function entradaMaiorCAICAVV(obj){
+  const itens = Object.entries(obj).sort((a,b)=>b[1]-a[1]);
+  return itens.length ? itens[0][0] : "Não informado";
+}
+
+function entradaListaResumoCAICAVV(titulo, dados){
+  const linhas = Object.entries(dados).sort((a,b)=>b[1]-a[1]).map(([nome,qtd])=>`<li><b>${entradaEscapeCAICAVV(nome)}:</b> ${qtd}</li>`).join("");
+  return `<div class="entrada-box"><h3>${entradaEscapeCAICAVV(titulo)}</h3><ul class="entrada-resumo-lista">${linhas || "<li>Nenhum dado encontrado.</li>"}</ul></div>`;
+}
+
+function entradaFaixaEtariaCAICAVV(idade){
+  const n = parseInt(idade,10);
+  if(Number.isNaN(n)) return "Não informado";
+  if(n <= 5) return "0 a 5 anos";
+  if(n <= 11) return "6 a 11 anos";
+  if(n <= 17) return "12 a 17 anos";
+  return "18 anos ou mais";
+}
+
+function entradaMesNomeCAICAVV(valor){
+  if(!valor) return "mês selecionado";
+  const [ano, mes] = valor.split("-");
+  const nomes = ["janeiro","fevereiro","março","abril","maio","junho","julho","agosto","setembro","outubro","novembro","dezembro"];
+  return `${nomes[(parseInt(mes,10)||1)-1] || mes}/${ano}`;
+}
+
+function setTelaAtivaEntradasCAICAVV(){
+  if(typeof setTelaAtiva === "function") setTelaAtiva("entradas");
+  else document.querySelectorAll(".app-shell .nav").forEach(nav=>nav.classList.toggle("active", nav.dataset.tela === "entradas"));
+}
+
+function abrirTelaEntradas(){
+  setTelaAtivaEntradasCAICAVV();
+  if(typeof mostrarBlocosAgendamento === "function") mostrarBlocosAgendamento(false);
+  const destino = document.getElementById("lista") || document.querySelector(".content");
+  if(!destino) return;
+  const meses = [...new Set(todasEntradasCAICAVV().map(e => String(e.data || "").slice(0,7)).filter(Boolean))].sort();
+  const mesPadrao = meses.includes("2026-04") ? "2026-04" : (meses[meses.length-1] || new Date().toISOString().slice(0,7));
+  destino.innerHTML = `
+    <div class="pagina-titulo">Entradas</div>
+    <div class="pagina-sub">Relatório mensal de entradas, bairro, origem do caso, idade, sexo, tipo de violência e vinculação.</div>
+
+    <div class="entrada-box">
+      <div class="entradas-toolbar">
+        <div>
+          <label>Mês do relatório</label>
+          <input type="month" id="entradaMesFiltro" value="${mesPadrao}" onchange="renderizarEntradasCAICAVV()">
+        </div>
+        <div>
+          <label>Buscar</label>
+          <input id="entradaBusca" placeholder="Nome, pasta, bairro, origem ou violência" oninput="renderizarEntradasCAICAVV()">
+        </div>
+        <label class="entradas-file">Importar ODS/Excel
+          <input type="file" accept=".ods,.xlsx,.xls" onchange="importarEntradasCAICAVV(event)">
+        </label>
+      </div>
+      <div class="entrada-permissao">${podeAlterarEntradasCAICAVV() ? "Maiyara/coordenação pode cadastrar, importar e excluir entradas." : "Somente Maiyara/coordenação pode alterar. Os demais usuários apenas visualizam."}</div>
+    </div>
+
+    <div id="entradaPainelCAICAVV"></div>
+  `;
+  renderizarEntradasCAICAVV();
+}
+
+function renderizarEntradasCAICAVV(){
+  const painel = document.getElementById("entradaPainelCAICAVV");
+  if(!painel) return;
+  const mes = document.getElementById("entradaMesFiltro")?.value || "";
+  const busca = (document.getElementById("entradaBusca")?.value || "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+  const pode = podeAlterarEntradasCAICAVV();
+  let listaMes = todasEntradasCAICAVV().filter(e => String(e.data || "").startsWith(mes));
+  if(busca){
+    listaMes = listaMes.filter(e => JSON.stringify(e).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").includes(busca));
+  }
+
+  const porBairro = entradaContarPorCAICAVV(listaMes,"bairro");
+  const porOrigem = entradaContarPorCAICAVV(listaMes,"origem");
+  const porSexo = entradaContarPorCAICAVV(listaMes,"sexo");
+  const porViolencia = entradaContarPorCAICAVV(listaMes,"violencia");
+  const porVinculacao = entradaContarPorCAICAVV(listaMes,"vinculacao");
+  const porFaixa = entradaContarPorCAICAVV(listaMes.map(e=>({faixa:entradaFaixaEtariaCAICAVV(e.idade)})),"faixa");
+  const criancasAdolescentes = listaMes.filter(e => { const n=parseInt(e.idade,10); return !Number.isNaN(n) && n < 18; }).length;
+
+  painel.innerHTML = `
+    <div class="entrada-exportar-acoes">
+      <button class="entradas-btn" onclick="imprimirRelatorioEntradasCAICAVV()">🖨️ Imprimir / Salvar PDF</button>
+      <button class="entradas-btn excel" onclick="exportarEntradasCSVCAICAVV()">📊 Exportar Excel</button>
+      <button class="entradas-btn backup" onclick="exportarEntradasJSONCAICAVV()">💾 Exportar Backup</button>
+    </div>
+
+    <div class="entradas-kpis">
+      <div class="entrada-kpi"><b>${listaMes.length}</b><span>Casos em ${entradaMesNomeCAICAVV(mes)}</span></div>
+      <div class="entrada-kpi"><b>${criancasAdolescentes}</b><span>Crianças/adolescentes</span></div>
+      <div class="entrada-kpi"><b>${entradaEscapeCAICAVV(entradaMaiorCAICAVV(porBairro))}</b><span>Bairro mais frequente</span></div>
+      <div class="entrada-kpi"><b>${entradaEscapeCAICAVV(entradaMaiorCAICAVV(porViolencia))}</b><span>Violência mais frequente</span></div>
+    </div>
+
+    <div class="entrada-box">
+      <h3>Relatório mensal de ${entradaMesNomeCAICAVV(mes)}</h3>
+      <p>Foram identificadas <b>${listaMes.length}</b> entradas no mês selecionado. O bairro com maior frequência foi <b>${entradaEscapeCAICAVV(entradaMaiorCAICAVV(porBairro))}</b>. A origem de caso mais recorrente foi <b>${entradaEscapeCAICAVV(entradaMaiorCAICAVV(porOrigem))}</b>. O tipo de violência mais registrado foi <b>${entradaEscapeCAICAVV(entradaMaiorCAICAVV(porViolencia))}</b>. A vinculação/status mais frequente foi <b>${entradaEscapeCAICAVV(entradaMaiorCAICAVV(porVinculacao))}</b>.</p>
+      <div class="entrada-alerta">O relatório de abril/2026 já está carregado a partir do arquivo de cadastros enviado. Os próximos meses aparecem automaticamente conforme houver dados importados ou cadastrados manualmente.</div>
+    </div>
+
+    <div class="entradas-grid">
+      ${entradaListaResumoCAICAVV("Por bairro", porBairro)}
+      ${entradaListaResumoCAICAVV("Por origem do caso", porOrigem)}
+      ${entradaListaResumoCAICAVV("Por sexo", porSexo)}
+      ${entradaListaResumoCAICAVV("Por faixa etária", porFaixa)}
+      ${entradaListaResumoCAICAVV("Por tipo de violência", porViolencia)}
+      ${entradaListaResumoCAICAVV("Por vinculação/status", porVinculacao)}
+    </div>
+
+    <div class="entrada-box">
+      <h3>Gráfico por tipo de violência</h3>
+      <canvas id="graficoEntradasCAICAVV" class="entrada-grafico" width="1000" height="280"></canvas>
+    </div>
+
+    <div class="entrada-box">
+      <h3>Nova entrada manual</h3>
+      <div class="entrada-form-grid">
+        <input id="entradaPasta" placeholder="Nº da pasta">
+        <input id="entradaNome" placeholder="Nome">
+        <input id="entradaIdade" type="number" placeholder="Idade">
+        <select id="entradaSexo"><option value="">Sexo</option><option>F</option><option>M</option><option>Outro</option><option>Não informado</option></select>
+        <input id="entradaBairro" placeholder="Bairro">
+        <input id="entradaOrigem" placeholder="Origem do caso / Encaminhado por">
+        <input id="entradaViolencia" placeholder="Tipo de violência">
+        <input id="entradaVinculacao" placeholder="Vinculação / status">
+        <input id="entradaData" type="date" value="${mes ? mes + "-01" : ""}">
+      </div>
+      <div class="entrada-acoes"><button class="entradas-btn" onclick="adicionarEntradaCAICAVV()" ${pode ? "" : "disabled"}>Salvar entrada</button></div>
+    </div>
+
+    <div class="entrada-box">
+      <h3>Entradas cadastradas</h3>
+      <div class="entrada-tabela-wrap">
+        <table class="entrada-tabela">
+          <thead><tr><th>Pasta</th><th>Nome</th><th>Idade</th><th>Sexo</th><th>Bairro</th><th>Origem</th><th>Violência</th><th>Vinculação</th><th>Data</th><th>Ação</th></tr></thead>
+          <tbody>${listaMes.map(e=>`<tr><td>${entradaEscapeCAICAVV(e.pasta)}</td><td>${entradaEscapeCAICAVV(e.nome)}</td><td>${entradaEscapeCAICAVV(e.idade)}</td><td>${entradaEscapeCAICAVV(e.sexo)}</td><td>${entradaEscapeCAICAVV(e.bairro)}</td><td>${entradaEscapeCAICAVV(e.origem)}</td><td>${entradaEscapeCAICAVV(e.violencia)}</td><td>${entradaEscapeCAICAVV(e.vinculacao)}</td><td>${entradaEscapeCAICAVV(e.data || e.data_vinculacao)}</td><td>${String(e.id).startsWith("manual-") ? `<button class="entradas-btn danger" onclick="excluirEntradaCAICAVV('${entradaEscapeCAICAVV(e.id)}')" ${pode ? "" : "disabled"}>Excluir</button>` : `<span class="entrada-chip">Planilha</span>`}</td></tr>`).join("") || '<tr><td colspan="10">Nenhuma entrada encontrada para o filtro selecionado.</td></tr>'}</tbody>
+        </table>
+      </div>
+    </div>
+  `;
+  desenharGraficoEntradasCAICAVV(porViolencia);
+}
+
+function adicionarEntradaCAICAVV(){
+  if(!podeAlterarEntradasCAICAVV()){ mostrarErro ? mostrarErro("Somente Maiyara/coordenação pode alterar as entradas.") : alert("Somente Maiyara/coordenação pode alterar as entradas."); return; }
+  const nova = {
+    id: "manual-" + Date.now(),
+    pasta: document.getElementById("entradaPasta")?.value.trim() || "",
+    nome: document.getElementById("entradaNome")?.value.trim() || "",
+    idade: document.getElementById("entradaIdade")?.value.trim() || "",
+    sexo: document.getElementById("entradaSexo")?.value || "",
+    bairro: document.getElementById("entradaBairro")?.value.trim() || "",
+    origem: document.getElementById("entradaOrigem")?.value.trim() || "",
+    violencia: document.getElementById("entradaViolencia")?.value.trim() || "",
+    vinculacao: document.getElementById("entradaVinculacao")?.value.trim() || "",
+    data: document.getElementById("entradaData")?.value || new Date().toISOString().slice(0,10),
+    fonte: "Manual"
+  };
+  if(!nova.nome && !nova.pasta){ alert("Informe pelo menos o nome ou o nº da pasta."); return; }
+  entradasManuaisCAICAVV.push(nova);
+  salvarEntradasManuaisCAICAVV();
+  renderizarEntradasCAICAVV();
+}
+
+function excluirEntradaCAICAVV(id){
+  if(!podeAlterarEntradasCAICAVV()){ alert("Somente Maiyara/coordenação pode excluir entradas."); return; }
+  if(!confirm("Excluir esta entrada manual?")) return;
+  entradasManuaisCAICAVV = entradasManuaisCAICAVV.filter(e => String(e.id) !== String(id));
+  salvarEntradasManuaisCAICAVV();
+  renderizarEntradasCAICAVV();
+}
+
+function desenharGraficoEntradasCAICAVV(dados){
+  const canvas = document.getElementById("graficoEntradasCAICAVV");
+  if(!canvas) return;
+  const ctx = canvas.getContext("2d");
+  const w = canvas.width, h = canvas.height;
+  ctx.clearRect(0,0,w,h);
+  const itens = Object.entries(dados).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  ctx.font = "14px Arial";
+  ctx.fillStyle = "#061852";
+  if(!itens.length){ ctx.fillText("Sem dados para gerar gráfico.", 30, 45); return; }
+  const max = Math.max(...itens.map(i=>i[1]));
+  const margem = 42, largura = Math.max(42, (w - 90) / itens.length - 18);
+  itens.forEach(([nome,qtd], i)=>{
+    const x = margem + i * (largura + 18);
+    const altura = Math.max(8, (qtd / max) * 170);
+    const y = 215 - altura;
+    ctx.fillStyle = getComputedStyle(document.body).getPropertyValue("--tema") || "#005bff";
+    ctx.fillRect(x, y, largura, altura);
+    ctx.fillStyle = "#061852";
+    ctx.fillText(String(qtd), x + largura/2 - 5, y - 8);
+    const rotulo = String(nome).slice(0,14);
+    ctx.save();
+    ctx.translate(x + 4, 242);
+    ctx.rotate(-0.22);
+    ctx.fillText(rotulo, 0, 0);
+    ctx.restore();
+  });
+}
+
+function importarEntradasCAICAVV(event){
+  if(!podeAlterarEntradasCAICAVV()){ alert("Somente Maiyara/coordenação pode importar entradas."); event.target.value=""; return; }
+  const arquivo = event.target.files && event.target.files[0];
+  if(!arquivo) return;
+  if(typeof XLSX === "undefined"){ alert("A biblioteca de importação ainda não carregou. Atualize a página e tente novamente."); return; }
+  const leitor = new FileReader();
+  leitor.onload = function(ev){
+    const dados = new Uint8Array(ev.target.result);
+    const wb = XLSX.read(dados, { type:"array" });
+    const aba = wb.SheetNames[0];
+    const linhas = XLSX.utils.sheet_to_json(wb.Sheets[aba], { defval:"" });
+    linhas.forEach(linha => {
+      const nova = normalizarEntradaImportadaCAICAVV(linha);
+      if(nova.nome || nova.pasta) entradasManuaisCAICAVV.push(nova);
+    });
+    salvarEntradasManuaisCAICAVV();
+    renderizarEntradasCAICAVV();
+    alert("Importação concluída: " + linhas.length + " linhas lidas.");
+  };
+  leitor.readAsArrayBuffer(arquivo);
+}
+
+function normalizarEntradaImportadaCAICAVV(linha){
+  const chaves = Object.keys(linha || {});
+  const pegar = (...nomes) => {
+    for(const nome of nomes){
+      const achada = chaves.find(c => String(c).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").includes(String(nome).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"")));
+      if(achada) return linha[achada];
+    }
+    return "";
+  };
+  return {
+    id: "manual-" + Date.now() + "-" + Math.random().toString(36).slice(2),
+    pasta: String(pegar("pasta","nº","numero","número") || "").trim(),
+    nome: String(pegar("nome","criança","crianca","paciente") || "").trim(),
+    idade: String(pegar("idade") || "").trim(),
+    sexo: String(pegar("sexo") || "").trim(),
+    bairro: String(pegar("bairro") || "").trim(),
+    origem: String(pegar("origem","encaminhado","encaminhamento") || "").trim(),
+    violencia: String(pegar("violência","violencia","violação","violacao","tipo") || "").trim(),
+    vinculacao: String(pegar("vinculação","vinculacao","status","vínculo","vinculo") || "").trim(),
+    data: formatarDataEntradaCAICAVV(pegar("data vinculação","data vinculacao","data","entrada")) || new Date().toISOString().slice(0,10),
+    fonte: "Importado"
+  };
+}
+
+function formatarDataEntradaCAICAVV(valor){
+  if(!valor) return "";
+  if(typeof XLSX !== "undefined" && typeof valor === "number"){
+    const d = XLSX.SSF.parse_date_code(valor);
+    if(d) return `${d.y}-${String(d.m).padStart(2,"0")}-${String(d.d).padStart(2,"0")}`;
+  }
+  const texto = String(valor).trim();
+  if(/^\d{4}-\d{2}-\d{2}/.test(texto)) return texto.slice(0,10);
+  if(texto.includes("/")){
+    const [dia,mes,ano] = texto.split("/");
+    if(ano) return `${ano.padStart(4,"20")}-${mes.padStart(2,"0")}-${dia.padStart(2,"0")}`;
+  }
+  return "";
+}
+
+
+/* ===== FUNÇÕES DE IMPRESSÃO E EXPORTAÇÃO DA ABA ENTRADAS ===== */
+function entradasFiltradasMesCAICAVV(){
+  const mes = document.getElementById("entradaMesFiltro")?.value || "";
+  const busca = (document.getElementById("entradaBusca")?.value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  let lista = todasEntradasCAICAVV().filter(e => String(e.data || "").startsWith(mes));
+  if(busca){
+    lista = lista.filter(e => JSON.stringify(e).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").includes(busca));
+  }
+  return lista;
+}
+
+function imprimirRelatorioEntradasCAICAVV(){
+  const painel = document.getElementById("entradaPainelCAICAVV");
+  const mes = document.getElementById("entradaMesFiltro")?.value || "";
+  if(!painel){ alert("Abra a aba Entradas antes de imprimir."); return; }
+
+  const conteudo = painel.innerHTML;
+  const janela = window.open("", "_blank");
+  if(!janela){ alert("O navegador bloqueou a janela de impressão. Permita pop-ups para este site."); return; }
+
+  janela.document.write(`
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8">
+      <title>Relatório de Entradas - ${entradaMesNomeCAICAVV(mes)}</title>
+      <style>
+        body{font-family:Arial,sans-serif;color:#071957;background:#fff;padding:28px}
+        .cabecalho-impressao{border-bottom:3px solid #005bff;margin-bottom:20px;padding-bottom:12px}
+        h1{margin:0 0 6px;color:#005bff;font-size:24px}
+        h2{margin:0;color:#071957;font-size:16px}
+        .entrada-exportar-acoes,.entradas-toolbar,.entrada-acoes,button{display:none!important}
+        .entradas-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+        .entradas-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+        .entrada-kpi,.entrada-box{border:1px solid #d8e4fa;border-radius:10px;padding:10px;margin-bottom:10px;box-shadow:none!important;background:#fff}
+        .entrada-kpi b{display:block;font-size:20px;color:#005bff}.entrada-kpi span{font-size:11px;color:#52699d;font-weight:bold;text-transform:uppercase}
+        .entrada-box h3{margin:0 0 8px;color:#061852;font-size:15px}.entrada-box p{line-height:1.45}
+        .entrada-alerta{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:8px;margin:8px 0;font-size:12px}
+        .entrada-tabela-wrap{max-height:none!important;overflow:visible!important}
+        table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #d8e4fa;padding:5px;text-align:left;vertical-align:top}th{background:#005bff;color:#fff}
+        canvas{max-width:100%;border:1px solid #d8e4fa;border-radius:8px}
+        @media print{body{padding:8px}.entrada-box{break-inside:avoid}.entrada-tabela-wrap{break-inside:auto}}
+      </style>
+    </head>
+    <body>
+      <div class="cabecalho-impressao">
+        <h1>Relatório Mensal de Entradas</h1>
+        <h2>CAICAVV • ${entradaMesNomeCAICAVV(mes)}</h2>
+        <p>Gerado em ${new Date().toLocaleString("pt-BR")}</p>
+      </div>
+      ${conteudo}
+    </body>
+    </html>
+  `);
+  janela.document.close();
+  setTimeout(() => { janela.focus(); janela.print(); }, 500);
+}
+
+function exportarEntradasCSVCAICAVV(){
+  const lista = entradasFiltradasMesCAICAVV();
+  const mes = document.getElementById("entradaMesFiltro")?.value || "relatorio";
+  if(!lista.length){ alert("Não há entradas para exportar neste mês/filtro."); return; }
+
+  const cabecalho = ["Nº da pasta","Nome","Idade","Sexo","Bairro","Origem do caso","Tipo de violência","Vinculação/Status","Data de entrada","Fonte"];
+  const linhas = lista.map(e => [
+    e.pasta || "", e.nome || "", e.idade || "", e.sexo || "", e.bairro || "",
+    e.origem || "", e.violencia || "", e.vinculacao || e.status || "", e.data || e.data_vinculacao || "", e.fonte || ""
+  ]);
+
+  const csv = [cabecalho, ...linhas].map(linha => linha.map(campo => `"${String(campo).replace(/"/g, '""')}"`).join(";")).join("\n");
+  baixarArquivoEntradasCAICAVV("\ufeff" + csv, `relatorio_entradas_${mes}.csv`, "text/csv;charset=utf-8;");
+}
+
+function exportarEntradasJSONCAICAVV(){
+  const lista = entradasFiltradasMesCAICAVV();
+  const mes = document.getElementById("entradaMesFiltro")?.value || "relatorio";
+  if(!lista.length){ alert("Não há entradas para exportar neste mês/filtro."); return; }
+
+  const dados = {
+    sistema: "CAICAVV",
+    tipo: "Relatório mensal de entradas",
+    mes: mes,
+    total: lista.length,
+    geradoEm: new Date().toLocaleString("pt-BR"),
+    entradas: lista
+  };
+  baixarArquivoEntradasCAICAVV(JSON.stringify(dados, null, 2), `backup_entradas_${mes}.json`, "application/json;charset=utf-8;");
+}
+
+function baixarArquivoEntradasCAICAVV(conteudo, nomeArquivo, tipo){
+  const blob = new Blob([conteudo], { type: tipo });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = nomeArquivo;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+
 </script>
 
 
 
 
+
+
+<script>
+/* ===== CORREÇÃO DEFINITIVA: BOTÕES DE EXPORTAR/IMPRIMIR ENTRADAS ===== */
+(function(){
+  function normalizarTexto(v){
+    return String(v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  }
+
+  function mesSelecionado(){
+    return document.getElementById("entradaMesFiltro")?.value || new Date().toISOString().slice(0, 7);
+  }
+
+  function mesNome(mes){
+    if (typeof window.entradaMesNomeCAICAVV === "function") return window.entradaMesNomeCAICAVV(mes);
+    const nomes = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+    const partes = String(mes || "").split("-");
+    const ano = partes[0] || "";
+    const m = parseInt(partes[1], 10);
+    return (nomes[m - 1] || mes || "Mês selecionado") + (ano ? "/" + ano : "");
+  }
+
+  function entradasFiltradas(){
+    if (typeof window.todasEntradasCAICAVV === "function") {
+      const mes = mesSelecionado();
+      const busca = normalizarTexto(document.getElementById("entradaBusca")?.value || "");
+      let lista = window.todasEntradasCAICAVV().filter(e => String(e.data || e.data_vinculacao || "").startsWith(mes));
+      if (busca) lista = lista.filter(e => normalizarTexto(JSON.stringify(e)).includes(busca));
+      return lista;
+    }
+
+    const linhas = Array.from(document.querySelectorAll(".entrada-tabela tbody tr"));
+    return linhas.map(tr => {
+      const td = tr.querySelectorAll("td");
+      return {
+        pasta: td[0]?.innerText.trim() || "",
+        nome: td[1]?.innerText.trim() || "",
+        idade: td[2]?.innerText.trim() || "",
+        sexo: td[3]?.innerText.trim() || "",
+        bairro: td[4]?.innerText.trim() || "",
+        origem: td[5]?.innerText.trim() || "",
+        violencia: td[6]?.innerText.trim() || "",
+        vinculacao: td[7]?.innerText.trim() || "",
+        data: td[8]?.innerText.trim() || "",
+        fonte: "Tabela"
+      };
+    }).filter(e => e.nome || e.pasta || e.bairro);
+  }
+
+  function baixarArquivo(conteudo, nomeArquivo, tipo){
+    try {
+      const blob = new Blob([conteudo], { type: tipo });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nomeArquivo;
+      a.style.display = "none";
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 300);
+      return true;
+    } catch (erro) {
+      console.error(erro);
+      alert("Não foi possível baixar o arquivo. Veja se o navegador permitiu downloads.");
+      return false;
+    }
+  }
+
+  window.imprimirRelatorioEntradasCAICAVV = function(){
+    const painel = document.getElementById("entradaPainelCAICAVV");
+    const mes = mesSelecionado();
+    if (!painel) {
+      alert("Abra a aba Entradas antes de imprimir.");
+      return;
+    }
+
+    const conteudo = painel.cloneNode(true);
+    conteudo.querySelectorAll(".entrada-exportar-acoes,.entradas-toolbar,.entrada-acoes,button").forEach(el => el.remove());
+
+    const janela = window.open("", "_blank");
+    if (!janela) {
+      alert("O navegador bloqueou a impressão. Permita pop-ups para este site e tente novamente.");
+      return;
+    }
+
+    janela.document.open();
+    janela.document.write(`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Relatório de Entradas - ${mesNome(mes)}</title>
+<style>
+  body{font-family:Arial,sans-serif;color:#071957;background:#fff;padding:28px}
+  .cabecalho-impressao{border-bottom:3px solid #005bff;margin-bottom:20px;padding-bottom:12px}
+  h1{margin:0 0 6px;color:#005bff;font-size:24px} h2{margin:0;color:#071957;font-size:16px}
+  .entradas-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+  .entradas-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .entrada-kpi,.entrada-box{border:1px solid #d8e4fa;border-radius:10px;padding:10px;margin-bottom:10px;box-shadow:none!important;background:#fff}
+  .entrada-kpi b{display:block;font-size:20px;color:#005bff}.entrada-kpi span{font-size:11px;color:#52699d;font-weight:bold;text-transform:uppercase}
+  .entrada-box h3{margin:0 0 8px;color:#061852;font-size:15px}.entrada-box p{line-height:1.45}
+  .entrada-alerta{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:8px;margin:8px 0;font-size:12px}
+  .entrada-tabela-wrap{max-height:none!important;overflow:visible!important}
+  table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #d8e4fa;padding:5px;text-align:left;vertical-align:top}th{background:#005bff;color:#fff}
+  canvas{max-width:100%;border:1px solid #d8e4fa;border-radius:8px}
+  @media print{body{padding:8px}.entrada-box{break-inside:avoid}.entrada-tabela-wrap{break-inside:auto}}
+</style>
+</head>
+<body>
+<div class="cabecalho-impressao">
+  <h1>Relatório Mensal de Entradas</h1>
+  <h2>CAICAVV • ${mesNome(mes)}</h2>
+  <p>Gerado em ${new Date().toLocaleString("pt-BR")}</p>
+</div>
+${conteudo.innerHTML}
+</body>
+</html>`);
+    janela.document.close();
+    setTimeout(function(){
+      janela.focus();
+      janela.print();
+    }, 450);
+  };
+
+  window.exportarEntradasCSVCAICAVV = function(){
+    const lista = entradasFiltradas();
+    const mes = mesSelecionado();
+    if (!lista.length) {
+      alert("Não há entradas para exportar neste mês/filtro.");
+      return;
+    }
+
+    const cabecalho = ["Nº da pasta","Nome","Idade","Sexo","Bairro","Origem do caso","Tipo de violência","Vinculação/Status","Data de entrada","Fonte"];
+    const linhas = lista.map(e => [
+      e.pasta || "", e.nome || "", e.idade || "", e.sexo || "", e.bairro || "",
+      e.origem || "", e.violencia || "", e.vinculacao || e.status || "", e.data || e.data_vinculacao || "", e.fonte || ""
+    ]);
+
+    const csv = [cabecalho, ...linhas]
+      .map(linha => linha.map(campo => `"${String(campo).replace(/"/g, '""')}"`).join(";"))
+      .join("\n");
+
+    if (baixarArquivo("\ufeff" + csv, `relatorio_entradas_${mes}.csv`, "text/csv;charset=utf-8;")) {
+      setTimeout(() => alert("Arquivo CSV/Excel gerado. Verifique a pasta de downloads."), 200);
+    }
+  };
+
+  window.exportarEntradasJSONCAICAVV = function(){
+    const lista = entradasFiltradas();
+    const mes = mesSelecionado();
+    if (!lista.length) {
+      alert("Não há entradas para exportar neste mês/filtro.");
+      return;
+    }
+
+    const dados = {
+      sistema: "CAICAVV",
+      tipo: "Relatório mensal de entradas",
+      mes: mes,
+      mesNome: mesNome(mes),
+      total: lista.length,
+      geradoEm: new Date().toLocaleString("pt-BR"),
+      entradas: lista
+    };
+
+    if (baixarArquivo(JSON.stringify(dados, null, 2), `backup_entradas_${mes}.json`, "application/json;charset=utf-8;")) {
+      setTimeout(() => alert("Backup JSON gerado. Verifique a pasta de downloads."), 200);
+    }
+  };
+
+  document.addEventListener("click", function(ev){
+    const botao = ev.target.closest("button");
+    if (!botao) return;
+    const texto = normalizarTexto(botao.innerText);
+    if (texto.includes("imprimir") || texto.includes("salvar pdf")) {
+      ev.preventDefault();
+      window.imprimirRelatorioEntradasCAICAVV();
+    }
+    if (texto.includes("exportar excel")) {
+      ev.preventDefault();
+      window.exportarEntradasCSVCAICAVV();
+    }
+    if (texto.includes("exportar backup")) {
+      ev.preventDefault();
+      window.exportarEntradasJSONCAICAVV();
+    }
+  });
+})();
+</script>
 </body>
 </html>
