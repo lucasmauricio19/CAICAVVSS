@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CAICAVV</title>
+    
+    <!-- Caminho do Favicon -->
+    <link rel="icon" type="image/png" href="./favicon.png">
+    <link rel="stylesheet" href="style.css">
+<!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+
+    <!-- Configuração do Firebase -->
+</head>
+<body>
+<div id="toast" class="toast"></div>
+
+<div id="menuLateralFundo" class="menu-lateral-fundo" onclick="fecharMenuLateral()"></div>
+<aside id="menuLateral" class="menu-lateral" aria-label="Menu lateral">
+  <div class="menu-lateral-topo">
+    <h3>Menu CAICAVV</h3>
+    <button type="button" class="menu-lateral-fechar" onclick="fecharMenuLateral()">×</button>
+  </div>
+
+  <div class="menu-bloco">
+    <h4>Relatório mensal</h4>
+    <p>Gera relatório de todos os técnicos com pasta, dia e status. Sem nome e sem horário.</p>
+    <input id="mesRelatorio" type="month">
+    <button type="button" class="btn-relatorio" onclick="abrirRelatorioMensal()">Abrir relatório mensal</button>
+    <div class="relatorio-permissao">Responsável pelo relatório: Recepção.</div>
+  </div>
+
+  <div class="menu-bloco">
+    <h4>Relatório por dia</h4>
+    <p>Escolha uma data para ver os atendimentos do dia, com totais de presença, falta e pendência.</p>
+    <input id="dataRelatorioDia" type="date">
+    <button type="button" class="btn-relatorio" onclick="abrirRelatorioDia()">Abrir relatório por dia</button>
+  </div>
+
+  <div class="menu-bloco">
+    <h4>Relatório por técnico</h4>
+    <p>Escolha um técnico para gerar o resumo dele em um mês específico.</p>
+    <select id="tecnicoRelatorio"></select>
+    <input id="mesRelatorioTecnico" type="month">
+    <button type="button" class="btn-relatorio" onclick="abrirRelatorioTecnico()">Abrir relatório por técnico</button>
+  </div>
+
+  <div class="menu-bloco">
+    <h4>Lista de faltas</h4>
+    <p>Mostra as pastas com mais faltas no mês selecionado, em ordem do maior para o menor.</p>
+    <input id="mesListaFaltas" type="month">
+    <button type="button" class="btn-relatorio" onclick="abrirListaFaltas()">Abrir lista de faltas</button>
+  </div>
+
+  <div id="avisoDia30" class="alerta-relatorio hidden"></div>
+</aside>
+
+
+
+<div id="modalExcluir" class="modal-fundo">
+  <div class="modal-box">
+    <h3>Excluir agendamento</h3>
+    <p>Deseja realmente excluir esse agendamento?</p>
+    <div class="modal-acoes">
+      <button type="button" class="modal-cancelar" onclick="fecharModalExcluir()">Cancelar</button>
+      <button type="button" class="modal-confirmar" onclick="confirmarExclusao()">Excluir</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalEditar" class="modal-fundo">
+  <div class="modal-box">
+    <h3>Editar agendamento</h3>
+    <p>Altere somente o que estiver errado e depois salve.</p>
+
+    <input id="editPasta" placeholder="Nº pasta" maxlength="30" oninput="editPasta.value=normalizarPasta(editPasta.value)">
+    <button type="button" class="editar" onclick="buscarNomeEdicao()">Buscar nome pela pasta</button>
+
+    <input id="editNome" placeholder="Nome" maxlength="220">
+    <select id="editTecnico"></select>
+    <input type="date" id="editData">
+    <select id="editHora"></select>
+    <input id="editDescricao" placeholder="Descrição" maxlength="250">
+
+    <select id="editStatus">
+      <option value="agendado">Pendente / agendado</option>
+      <option value="compareceu">Compareceu</option>
+      <option value="faltou">Faltou</option>
+    </select>
+
+    <div class="modal-acoes" style="margin-top:12px">
+      <button type="button" class="modal-cancelar" onclick="fecharModalEdicao()">Cancelar</button>
+      <button type="button" class="salvar" onclick="salvarEdicao()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="modalObservacaoRealizado" class="modal-fundo">
+  <div class="modal-box modal-observacao">
+    <h3>Deseja adicionar alguma observação?</h3>
+    <p>Essa observação ficará salva no atendimento realizado. Você pode deixar em branco.</p>
+    <textarea id="observacaoRealizado" placeholder="Digite uma observação opcional..."></textarea>
+    <div class="modal-acoes" style="margin-top:12px">
+      <button type="button" class="modal-cancelar" onclick="cancelarObservacaoRealizado()">Cancelar</button>
+      <button type="button" class="salvar" onclick="confirmarObservacaoRealizado()">Concluir</button>
+    </div>
+  </div>
+</div>
+
+<div id="animacaoAtendimentoRealizado" class="animacao-realizado">
+  <div class="animacao-realizado-card">
+    <div class="animacao-check">✓</div>
+    <h2>Atendimento realizado</h2>
+  </div>
+</div>
+
+<div id="modalHistorico" class="modal-fundo">
+  <div class="modal-box">
+    <h3>Histórico do paciente</h3>
+    <p>Resumo dos atendimentos encontrados para a mesma pasta.</p>
+    <div id="conteudoHistorico"></div>
+    <div class="modal-acoes" style="margin-top:12px">
+      <button type="button" class="modal-cancelar" onclick="fecharModalHistorico()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div id="modalLog" class="modal-fundo">
+  <div class="modal-box">
+    <h3>Log de alterações</h3>
+    <p>Registro de quem alterou, quando alterou e o que foi feito.</p>
+    <div id="conteudoLog"></div>
+    <div class="modal-acoes" style="margin-top:12px">
+      <button type="button" class="modal-cancelar" onclick="fecharModalLog()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+
+
+<div id="loginDiv" class="login-screen">
+  <div class="background">
+    <div class="big-flower-bg"></div>
+    <div class="wave wave1"></div>
+    <div class="wave wave2"></div>
+    <div class="dots dots1"></div>
+    <div class="dots dots2"></div>
+    <div class="orb orb1"></div>
+    <div class="orb orb2"></div>
+  </div>
+
+  <main class="login-area">
+    <section class="login-card">
+      <div class="flower-logo">
+        <span class="petal p1"></span>
+        <span class="petal p2"></span>
+        <span class="petal p3"></span>
+        <span class="petal p4"></span>
+        <span class="petal p5"></span>
+        <span class="petal p6"></span>
+        <span class="petal p7"></span>
+        <span class="petal p8"></span>
+        <span class="flower-center"></span>
+      </div>
+
+      <h1>CAICAVV</h1>
+
+      <div class="system-row">
+        <span></span>
+        <p>SISTEMA INTERNO</p>
+        <span></span>
+      </div>
+
+      <h2>Acesso ao Sistema</h2>
+      <p class="description">Informe suas credenciais para continuar</p>
+
+      <div class="input-group">
+        <div class="icon-box">👤</div>
+        <input id="user" type="text" placeholder="Usuário" autocomplete="username">
+        <span class="side-icon">♙</span>
+      </div>
+
+      <div class="input-group">
+        <div class="icon-box">🔒</div>
+        <input id="pass" type="password" placeholder="Senha" autocomplete="current-password">
+        <button type="button" class="btn-olho login-eye" onclick="alternarSenha()" aria-label="Mostrar ou esconder senha">◉</button>
+      </div>
+
+      <button type="button" class="login-button" onclick="login()">
+        <span>↪</span>
+        Entrar
+      </button>
+
+      <p class="secure">🛡️ Sistema restrito para técnicos autorizados</p>
+
+      <div class="footer">
+        <p>CAICAVV • Sistema Interno</p>
+        <span>Versão 1.10.0</span>
+      </div>
+    </section>
+  </main>
+</div>
+
+
+<div id="app" class="app-shell" style="display:none">
+  <aside class="sidebar">
+    <div class="menu-icon" onclick="toggleMenuLateral()">☰</div>
+
+    <div class="nav active" data-tela="agendamentos" onclick="abrirTelaAgendamentos()">
+      <div class="nav-icon">📅</div>
+      <span>Agendamentos</span>
+    </div>
+
+    <div class="nav" data-tela="pacientes" onclick="abrirTelaPacientes()">
+      <div class="nav-icon">👤</div>
+      <span>Pacientes</span>
+    </div>
+
+    <div class="nav" data-tela="tecnicos" onclick="abrirTelaTecnicos()">
+      <div class="nav-icon">👥</div>
+      <span>Técnicos</span>
+    </div>
+
+    <div class="nav" data-tela="configuracoes" onclick="abrirTelaConfiguracoes()">
+      <div class="nav-icon">⚙️</div>
+      <span>Configurações</span>
+    </div>
+
+    <div class="logout" onclick="logout()">
+      <div>↩</div>
+      <span>Sair</span>
+    </div>
+  </aside>
+
+  <main class="main">
+    <header class="topbar">
+      <div class="brand">
+        <div class="flower">
+          <span></span><span></span><span></span><span></span>
+          <span></span><span></span><span></span><span></span>
+          <b></b>
+        </div>
+
+        <h1>CAICAVV</h1>
+        <div class="divider"></div>
+        <p>Sistema de Agendamentos</p>
+      </div>
+
+      <div class="circle-logo"></div>
+    </header>
+
+    <section class="content">
+      <div id="boasVindas" class="user-card"></div>
+      <div id="menu" class="tabs"></div>
+      <div id="relatorio" class="summary-card"></div>
+
+      <div id="filtrosV6" class="search-card">
+        <h3>BUSCA RÁPIDA</h3>
+        <div class="search-row">
+          <div class="search-box busca-v6">
+            <span>🔍</span>
+            <input id="buscaAtendimento" type="search" placeholder="Buscar por nome, pasta ou descrição" oninput="render()">
+          </div>
+
+          <button type="button" id="btnHoje" onclick="definirFiltroData('hoje')">📅 Hoje</button>
+          <button type="button" id="btnAmanha" onclick="definirFiltroData('amanha')">📅 Amanhã</button>
+          <button type="button" id="btnTodos" class="active-filter ativo" onclick="definirFiltroData('todos')">⚙ Todos</button>
+        </div>
+      </div>
+
+      <div id="formAtendimento" class="form-card form-caicavv">
+        <div class="linha-pasta">
+          <input id="pasta" placeholder="Nº pasta" maxlength="30" oninput="limparConfirmacaoPasta()" onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarPasta();}">
+          <button type="button" id="btnConfirmarPasta" onclick="confirmarPasta()">Confirmar pasta</button>
+        </div>
+
+        <input id="nome" placeholder="Nome preenchido automaticamente" maxlength="220" readonly>
+        <div id="avisoCadastro" class="aviso"></div>
+
+        <input type="date" id="data">
+        <select id="hora"></select>
+        <input id="descricao" placeholder="Descrição" maxlength="250">
+        <button id="btnAdicionar" onclick="add()">Adicionar</button>
+      </div>
+
+      <section id="lista" class="cards"></section>
+    </section>
+  </main>
+</div>
+
+    <script src="script.js"></script>
+</body>
+</html>
