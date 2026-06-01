@@ -3912,5 +3912,310 @@ ${conteudo.innerHTML}
   });
 })();
 </script>
+<script>
+(function(){
+  const ESTADO = window.__caicavvAbasPassadas || { abas: [], carregado: false };
+  window.__caicavvAbasPassadas = ESTADO;
+
+  function abas(){ return ESTADO.abas; }
+  function setAbas(novas){ ESTADO.abas = Array.isArray(novas) ? novas : []; }
+  function el(id){ return document.getElementById(id); }
+  function esc(valor){
+    if(typeof escapeHTML === "function") return escapeHTML(valor == null ? "" : String(valor));
+    return String(valor == null ? "" : valor).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+  }
+  function dataBR(data){
+    if(typeof formatarDataBR === "function") return formatarDataBR(data);
+    if(!data) return "";
+    const p = String(data).split("-");
+    return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : String(data);
+  }
+  function avisarErro(msg){
+    if(typeof mostrarErro === "function") mostrarErro(msg);
+    else alert(msg);
+  }
+  function avisarOk(msg){
+    if(typeof mostrarSucesso === "function") mostrarSucesso(msg);
+    else alert(msg);
+  }
+  function listaTecnicosOptions(){
+    let nomes = [];
+    try{
+      nomes = Object.values(usuarios || {})
+        .filter(u => u && (u.role === "tecnico" || u.role === "adm" || u.role === "coordenacao"))
+        .map(u => u.nome)
+        .filter(Boolean);
+    }catch(e){ nomes = []; }
+    nomes = [...new Set(nomes)].sort((a,b)=>String(a).localeCompare(String(b), "pt-BR"));
+    return `<option value="todos">Todos os técnicos</option>` + nomes.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
+  }
+
+  function inserirBotao(){
+    const btnAdicionar = el("btnAdicionar");
+    if(!btnAdicionar || el("btnCriarAbaPassada")) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "btnCriarAbaPassada";
+    btn.className = "btn-aba-passada";
+    btn.textContent = "Criar aba de agendamentos passados";
+    btn.addEventListener("click", window.abrirModalAbaPassada);
+    btnAdicionar.insertAdjacentElement("afterend", btn);
+  }
+
+  function garantirContainer(){
+    const lista = el("lista");
+    if(!lista || el("abasPassadasContainer")) return;
+    const container = document.createElement("section");
+    container.id = "abasPassadasContainer";
+    container.className = "abas-passadas-container";
+    lista.insertAdjacentElement("beforebegin", container);
+  }
+
+  function garantirModal(){
+    if(el("modalAbaPassada")) return;
+    const modal = document.createElement("div");
+    modal.id = "modalAbaPassada";
+    modal.className = "modal-fundo";
+    modal.innerHTML = `
+      <div class="modal-box modal-aba-passada" onclick="event.stopPropagation()">
+        <h3>Criar aba de agendamentos passados</h3>
+        <p>Informe o nome da aba, o técnico e o intervalo de datas que será puxado.</p>
+
+        <input id="abaPassadaNome" type="text" maxlength="80" placeholder="Nome da aba. Ex: Agendamentos de maio">
+
+        <select id="abaPassadaTecnico">
+          ${listaTecnicosOptions()}
+        </select>
+
+        <input id="abaPassadaDataInicio" type="date" title="Puxar a partir de qual dia">
+        <input id="abaPassadaDataFim" type="date" title="Puxar até qual dia">
+
+        <input id="abaPassadaDescricao" type="text" maxlength="220" placeholder="Descrição">
+
+        <div class="modal-acoes">
+          <button type="button" class="modal-cancelar" onclick="fecharModalAbaPassada()">Cancelar</button>
+          <button type="button" class="salvar" onclick="salvarAbaPassada()">Criar aba</button>
+        </div>
+      </div>`;
+    modal.addEventListener("click", window.fecharModalAbaPassada);
+    document.body.appendChild(modal);
+  }
+
+  function garantirCSS(){
+    if(el("cssAbasPassadas")) return;
+    const style = document.createElement("style");
+    style.id = "cssAbasPassadas";
+    style.textContent = `
+      #btnCriarAbaPassada{height:38px!important;margin-top:8px!important;border-radius:9px!important;background:#0f766e!important;color:#fff!important;font-weight:900!important;font-size:13px!important;}
+      .abas-passadas-container{display:flex;flex-direction:column;gap:10px;margin:0 0 14px 0;}
+      .aba-passada-card{background:#fff;border:1px solid #d8e4fa;border-left:8px solid #0f766e;border-radius:14px;box-shadow:0 12px 28px rgba(23,70,150,.10);overflow:hidden;color:#071957;}
+      .aba-passada-topo{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:#f8fbff;border:0;color:#071957;text-align:left;cursor:pointer;}
+      .aba-passada-topo strong{font-size:17px;font-weight:900;display:block;}
+      .aba-passada-topo span{display:block;margin-top:4px;color:#52699d;font-size:12px;font-weight:700;}
+      .aba-passada-contador{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:28px;border-radius:999px;background:#dcfce7;color:#166534;font-weight:900;padding:0 10px;font-size:13px;}
+      .aba-passada-acoes{display:flex;align-items:center;gap:8px;}
+      .aba-passada-seta{font-size:18px;color:#0f766e;font-weight:900;}
+      .aba-passada-excluir{width:34px!important;min-width:34px!important;height:34px!important;border-radius:10px!important;margin:0!important;padding:0!important;background:#fee2e2!important;color:#991b1b!important;font-weight:900!important;}
+      .aba-passada-corpo{display:none;border-top:1px solid #e0e9f8;padding:12px 14px;background:#fff;}
+      .aba-passada-card.aberta .aba-passada-corpo{display:block;}
+      .aba-passada-lista{display:grid;gap:8px;}
+      .aba-passada-item{border:1px solid #e0e9f8;background:#f8fbff;border-radius:10px;padding:10px 12px;}
+      .aba-passada-item b{display:block;font-size:14px;color:#061852;margin-bottom:5px;}
+      .aba-passada-item span{display:inline-block;margin-right:12px;color:#52699d;font-size:12px;font-weight:700;}
+      .aba-passada-vazia{padding:12px;border-radius:10px;background:#f8fafc;color:#64748b;font-weight:700;text-align:center;}
+      .modal-aba-passada select,.modal-aba-passada input{padding-left:14px!important;}
+      @media(max-width:700px){.aba-passada-topo{align-items:flex-start}.aba-passada-acoes{flex-shrink:0}.aba-passada-topo strong{font-size:15px}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function init(){
+    inserirBotao();
+    garantirContainer();
+    garantirModal();
+    garantirCSS();
+    renderizarAbasPassadas();
+  }
+
+  window.abrirModalAbaPassada = function(){
+    garantirModal();
+    const modal = el("modalAbaPassada");
+    if(!modal) return;
+    const hoje = new Date();
+    const primeiroDiaMesPassado = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+    const ultimoDiaMesPassado = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
+    const iso = d => d.toISOString().slice(0,10);
+    if(el("abaPassadaNome")) el("abaPassadaNome").value = "Agendamentos passados";
+    if(el("abaPassadaTecnico")) el("abaPassadaTecnico").innerHTML = listaTecnicosOptions();
+    if(el("abaPassadaDataInicio")) el("abaPassadaDataInicio").value = iso(primeiroDiaMesPassado);
+    if(el("abaPassadaDataFim")) el("abaPassadaDataFim").value = iso(ultimoDiaMesPassado);
+    if(el("abaPassadaDescricao")) el("abaPassadaDescricao").value = "";
+    modal.classList.add("show");
+  };
+
+  window.fecharModalAbaPassada = function(){
+    const modal = el("modalAbaPassada");
+    if(modal) modal.classList.remove("show");
+  };
+
+  window.salvarAbaPassada = async function(){
+    const nome = String(el("abaPassadaNome")?.value || "").trim();
+    const tecnico = String(el("abaPassadaTecnico")?.value || "todos").trim() || "todos";
+    const dataInicio = String(el("abaPassadaDataInicio")?.value || "").trim();
+    const dataFim = String(el("abaPassadaDataFim")?.value || "").trim();
+    const descricao = String(el("abaPassadaDescricao")?.value || "").trim();
+
+    if(!nome){ avisarErro("Digite o nome da aba."); return; }
+    if(!dataInicio || !dataFim){ avisarErro("Selecione a data inicial e a data final."); return; }
+    if(dataInicio > dataFim){ avisarErro("A data inicial não pode ser maior que a data final."); return; }
+
+    abas().unshift({
+      id: `aba_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+      nome, tecnico, dataInicio, dataFim, descricao,
+      aberta: true,
+      criadoEm: new Date().toISOString()
+    });
+
+    await salvarAbasPassadasFirebase();
+    window.fecharModalAbaPassada();
+    renderizarAbasPassadas();
+    avisarOk("Aba de agendamentos passados criada.");
+  };
+
+  window.alternarAbaPassada = function(id){
+    const aba = abas().find(a => a.id === id);
+    if(!aba) return;
+    aba.aberta = !aba.aberta;
+    salvarAbasPassadasFirebase(false);
+    renderizarAbasPassadas();
+  };
+
+  window.excluirAbaPassada = async function(event, id){
+    if(event) event.stopPropagation();
+    if(!confirm("Excluir esta aba de agendamentos passados? Os agendamentos originais não serão apagados.")) return;
+    setAbas(abas().filter(a => a.id !== id));
+    await salvarAbasPassadasFirebase();
+    renderizarAbasPassadas();
+  };
+
+  function agendamentosDaAba(aba){
+    try{
+      return (atendimentos || []).filter(a => {
+        const data = String(a.data || "");
+        const tecnicoOK = !aba.tecnico || aba.tecnico === "todos" || String(a.tecnico || "") === aba.tecnico;
+        return tecnicoOK && data >= aba.dataInicio && data <= aba.dataFim;
+      }).sort((a,b)=> String(a.data || "").localeCompare(String(b.data || "")) || String(a.hora || "").localeCompare(String(b.hora || "")) || String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"));
+    }catch(e){ return []; }
+  }
+
+  function renderizarAbasPassadas(){
+    garantirContainer();
+    const container = el("abasPassadasContainer");
+    if(!container) return;
+    const listaAbas = abas();
+    if(!listaAbas.length){ container.innerHTML = ""; return; }
+
+    container.innerHTML = listaAbas.map(aba => {
+      const dados = agendamentosDaAba(aba);
+      const tecnicoTexto = aba.tecnico === "todos" ? "Todos os técnicos" : aba.tecnico;
+      const descricao = aba.descricao ? `<span>${esc(aba.descricao)}</span>` : "";
+      const itens = dados.length ? dados.map(a => `
+        <div class="aba-passada-item">
+          <b>${esc(a.nome || "Sem nome")}</b>
+          <span>📁 Pasta ${esc(a.pasta || "—")}</span>
+          <span>👤 ${esc(a.tecnico || "—")}</span>
+          <span>📅 ${esc(dataBR(a.data))} às ${esc(a.hora || "—")}</span>
+          <span>${esc(a.status === "compareceu" ? "Compareceu" : a.status === "faltou" ? "Faltou" : "Agendado")}</span>
+          ${a.descricao ? `<span>📝 ${esc(a.descricao)}</span>` : ""}
+        </div>`).join("") : `<div class="aba-passada-vazia">Nenhum agendamento encontrado nesse intervalo.</div>`;
+
+      return `
+        <article class="aba-passada-card ${aba.aberta ? "aberta" : ""}">
+          <button type="button" class="aba-passada-topo" onclick="alternarAbaPassada('${esc(aba.id)}')">
+            <div>
+              <strong>${esc(aba.nome)}</strong>
+              <span>${esc(dataBR(aba.dataInicio))} até ${esc(dataBR(aba.dataFim))} • ${esc(tecnicoTexto)}</span>
+              ${descricao}
+            </div>
+            <div class="aba-passada-acoes">
+              <span class="aba-passada-contador">${dados.length}</span>
+              <span class="aba-passada-seta">${aba.aberta ? "▲" : "▼"}</span>
+              <button type="button" class="aba-passada-excluir" title="Excluir aba" onclick="excluirAbaPassada(event,'${esc(aba.id)}')">×</button>
+            </div>
+          </button>
+          <div class="aba-passada-corpo"><div class="aba-passada-lista">${itens}</div></div>
+        </article>`;
+    }).join("");
+  }
+
+  async function carregarAbasPassadasFirebase(){
+    try{
+      if(typeof DOC_ATENDIMENTOS === "undefined") return;
+      const snap = await DOC_ATENDIMENTOS.get();
+      if(snap.exists){
+        const dados = snap.data() || {};
+        setAbas(Array.isArray(dados.abasPassadas) ? dados.abasPassadas : []);
+      }
+      ESTADO.carregado = true;
+    }catch(e){
+      console.error(e);
+      avisarErro("Não foi possível carregar as abas de agendamentos passados.");
+    }
+  }
+
+  async function salvarAbasPassadasFirebase(mostrarMensagemErro){
+    try{
+      if(typeof DOC_ATENDIMENTOS === "undefined") return;
+      await DOC_ATENDIMENTOS.set({
+        abasPassadas: abas(),
+        abasPassadasAtualizadasEm: new Date().toISOString()
+      }, { merge: true });
+    }catch(e){
+      console.error(e);
+      if(mostrarMensagemErro !== false) avisarErro("Não foi possível salvar a aba de agendamentos passados.");
+      throw e;
+    }
+  }
+
+  function envolverFuncoesOriginais(){
+    if(window.__caicavvAbasPassadasWrapped) return;
+    window.__caicavvAbasPassadasWrapped = true;
+
+    const renderOriginal = window.render;
+    if(typeof renderOriginal === "function"){
+      window.render = function(){
+        const r = renderOriginal.apply(this, arguments);
+        setTimeout(init, 0);
+        return r;
+      };
+    }
+
+    const carregarOriginal = window.carregarAtendimentosFirebase;
+    if(typeof carregarOriginal === "function"){
+      window.carregarAtendimentosFirebase = async function(){
+        const r = await carregarOriginal.apply(this, arguments);
+        await carregarAbasPassadasFirebase();
+        setTimeout(init, 0);
+        return r;
+      };
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function(){
+    envolverFuncoesOriginais();
+    carregarAbasPassadasFirebase().then(init);
+    let tentativas = 0;
+    const timer = setInterval(function(){
+      envolverFuncoesOriginais();
+      init();
+      tentativas++;
+      if((el("btnCriarAbaPassada") && el("abasPassadasContainer")) || tentativas > 40) clearInterval(timer);
+    }, 300);
+  });
+
+  window.renderizarAbasPassadas = renderizarAbasPassadas;
+})();
+</script>
+
 </body>
 </html>
