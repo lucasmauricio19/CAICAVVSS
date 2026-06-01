@@ -2300,17 +2300,28 @@ function render(){
 
   const termo = textoBusca();
   let dados = atendimentos.filter(a=>{
-    return passaFiltroTecnicoAvancado(a) && passaBusca(a, termo) && passaFiltroData(a) && passaFiltroStatus(a);
+    const arquivadoEmAbaPassada = typeof window.atendimentoEstaEmAbaPassada === "function"
+      ? window.atendimentoEstaEmAbaPassada(a)
+      : false;
+
+    return passaFiltroTecnicoAvancado(a) && passaBusca(a, termo) && passaFiltroData(a) && passaFiltroStatus(a) && !arquivadoEmAbaPassada;
   });
 
   dados.sort((a,b) => {
     const aRealizado = a.status === "compareceu" || a.status === "faltou";
     const bRealizado = b.status === "compareceu" || b.status === "faltou";
 
+    // Agendados continuam acima dos já realizados.
     if(aRealizado !== bRealizado){
       return aRealizado ? 1 : -1;
     }
 
+    // Entre os já realizados, os mais recentes aparecem primeiro.
+    if(aRealizado && bRealizado){
+      return getDataHoraAtendimento(b).localeCompare(getDataHoraAtendimento(a));
+    }
+
+    // Entre os ainda agendados, mantém a ordem normal: os próximos primeiro.
     return getDataHoraAtendimento(a).localeCompare(getDataHoraAtendimento(b));
   });
 
@@ -3930,6 +3941,40 @@ ${conteudo.innerHTML}
     const p = String(data).split("-");
     return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : String(data);
   }
+
+  function tecnicoAtualParaAbas(){
+    try{
+      if(tecnicoLogado && tecnicoLogado.role === "tecnico") return tecnicoLogado.nome || "todos";
+      const select = el("filtroTecnicoAvancado");
+      const valor = select ? String(select.value || "").trim() : String(typeof filtroAtual !== "undefined" ? filtroAtual || "" : "").trim();
+      return valor || "todos";
+    }catch(e){
+      return "todos";
+    }
+  }
+
+  function abaVisivelNoFiltroAtual(aba){
+    const tecnicoAtual = tecnicoAtualParaAbas();
+    const tecnicoAba = String(aba && aba.tecnico ? aba.tecnico : "todos").trim() || "todos";
+    return tecnicoAba === tecnicoAtual;
+  }
+
+  window.atendimentoEstaEmAbaPassada = function(agendamento){
+    try{
+      const data = String(agendamento && agendamento.data ? agendamento.data : "");
+      const tecnico = String(agendamento && agendamento.tecnico ? agendamento.tecnico : "");
+      if(!data) return false;
+
+      return abas().some(aba => {
+        if(!abaVisivelNoFiltroAtual(aba)) return false;
+        const tecnicoAba = String(aba.tecnico || "todos").trim() || "todos";
+        const tecnicoOK = tecnicoAba === "todos" || tecnico === tecnicoAba;
+        return tecnicoOK && data >= aba.dataInicio && data <= aba.dataFim;
+      });
+    }catch(e){
+      return false;
+    }
+  };
   function avisarErro(msg){
     if(typeof mostrarErro === "function") mostrarErro(msg);
     else alert(msg);
@@ -3968,7 +4013,7 @@ ${conteudo.innerHTML}
     const container = document.createElement("section");
     container.id = "abasPassadasContainer";
     container.className = "abas-passadas-container";
-    lista.insertAdjacentElement("beforebegin", container);
+    lista.insertAdjacentElement("afterend", container);
   }
 
   function garantirModal(){
@@ -4007,7 +4052,7 @@ ${conteudo.innerHTML}
     style.id = "cssAbasPassadas";
     style.textContent = `
       #btnCriarAbaPassada{height:38px!important;margin-top:8px!important;border-radius:9px!important;background:#0f766e!important;color:#fff!important;font-weight:900!important;font-size:13px!important;}
-      .abas-passadas-container{display:flex;flex-direction:column;gap:10px;margin:0 0 14px 0;}
+      .abas-passadas-container{display:flex;flex-direction:column;gap:10px;margin:14px 0 0 0;}
       .aba-passada-card{background:#fff;border:1px solid #d8e4fa;border-left:8px solid #0f766e;border-radius:14px;box-shadow:0 12px 28px rgba(23,70,150,.10);overflow:hidden;color:#071957;}
       .aba-passada-topo{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:#f8fbff;border:0;color:#071957;text-align:left;cursor:pointer;}
       .aba-passada-topo strong{font-size:17px;font-weight:900;display:block;}
@@ -4046,7 +4091,10 @@ ${conteudo.innerHTML}
     const ultimoDiaMesPassado = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
     const iso = d => d.toISOString().slice(0,10);
     if(el("abaPassadaNome")) el("abaPassadaNome").value = "Agendamentos passados";
-    if(el("abaPassadaTecnico")) el("abaPassadaTecnico").innerHTML = listaTecnicosOptions();
+    if(el("abaPassadaTecnico")){
+      el("abaPassadaTecnico").innerHTML = listaTecnicosOptions();
+      el("abaPassadaTecnico").value = tecnicoAtualParaAbas();
+    }
     if(el("abaPassadaDataInicio")) el("abaPassadaDataInicio").value = iso(primeiroDiaMesPassado);
     if(el("abaPassadaDataFim")) el("abaPassadaDataFim").value = iso(ultimoDiaMesPassado);
     if(el("abaPassadaDescricao")) el("abaPassadaDescricao").value = "";
@@ -4078,7 +4126,8 @@ ${conteudo.innerHTML}
 
     await salvarAbasPassadasFirebase();
     window.fecharModalAbaPassada();
-    renderizarAbasPassadas();
+    if(typeof render === "function") render();
+    else renderizarAbasPassadas();
     avisarOk("Aba de agendamentos passados criada.");
   };
 
@@ -4095,7 +4144,8 @@ ${conteudo.innerHTML}
     if(!confirm("Excluir esta aba de agendamentos passados? Os agendamentos originais não serão apagados.")) return;
     setAbas(abas().filter(a => a.id !== id));
     await salvarAbasPassadasFirebase();
-    renderizarAbasPassadas();
+    if(typeof render === "function") render();
+    else renderizarAbasPassadas();
   };
 
   function agendamentosDaAba(aba){
@@ -4104,7 +4154,12 @@ ${conteudo.innerHTML}
         const data = String(a.data || "");
         const tecnicoOK = !aba.tecnico || aba.tecnico === "todos" || String(a.tecnico || "") === aba.tecnico;
         return tecnicoOK && data >= aba.dataInicio && data <= aba.dataFim;
-      }).sort((a,b)=> String(a.data || "").localeCompare(String(b.data || "")) || String(a.hora || "").localeCompare(String(b.hora || "")) || String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR"));
+      }).sort((a,b)=> {
+        const aRealizado = a.status === "compareceu" || a.status === "faltou";
+        const bRealizado = b.status === "compareceu" || b.status === "faltou";
+        if(aRealizado !== bRealizado) return aRealizado ? -1 : 1;
+        return String(b.data || "").localeCompare(String(a.data || "")) || String(b.hora || "").localeCompare(String(a.hora || "")) || String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR");
+      });
     }catch(e){ return []; }
   }
 
@@ -4112,7 +4167,9 @@ ${conteudo.innerHTML}
     garantirContainer();
     const container = el("abasPassadasContainer");
     if(!container) return;
-    const listaAbas = abas();
+    const listaAbas = abas()
+      .filter(abaVisivelNoFiltroAtual)
+      .sort((a,b) => String(b.dataInicio || "").localeCompare(String(a.dataInicio || "")) || String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")));
     if(!listaAbas.length){ container.innerHTML = ""; return; }
 
     container.innerHTML = listaAbas.map(aba => {
