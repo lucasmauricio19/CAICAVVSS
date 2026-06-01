@@ -680,6 +680,20 @@ body.modo-app{
 @media(max-width:700px){.entrada-exportar-acoes{display:grid;grid-template-columns:1fr}.entrada-exportar-acoes .entradas-btn{width:100%!important}}
 @media print{.entrada-exportar-acoes,.entradas-toolbar,.entrada-acoes,button{display:none!important}.entrada-box,.entrada-kpi{box-shadow:none!important}.entrada-tabela-wrap{max-height:none!important;overflow:visible!important}}
 
+
+
+/* ===== Ajuste: filtro por calendário e atendimentos antigos recolhidos ===== */
+.search-row{grid-template-columns:1fr 170px 120px!important;}
+.search-row input[type="date"]{height:44px!important;border:1px solid #ccd9f5!important;border-radius:10px!important;background:white!important;color:#071957!important;padding:0 12px!important;font-weight:800!important;margin:0!important;}
+.arquivo-atendimentos{margin-top:18px;border:1px solid #d8e4fa;border-radius:14px;background:#fff;box-shadow:0 14px 32px rgba(23,70,150,.10);overflow:hidden;}
+.arquivo-atendimentos summary{cursor:pointer;padding:14px 18px;font-weight:900;color:#061852;background:#f8fbff;list-style:none;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.arquivo-atendimentos summary::-webkit-details-marker{display:none;}
+.arquivo-atendimentos summary::after{content:"Abrir";font-size:12px;color:var(--tema,#005bff);background:var(--tema-claro,#edf3ff);border-radius:999px;padding:6px 10px;}
+.arquivo-atendimentos[open] summary::after{content:"Fechar";}
+.arquivo-atendimentos .arquivo-conteudo{padding:14px;display:flex;flex-direction:column;gap:12px;}
+.arquivo-titulo-mes{font-size:14px;font-weight:900;color:#52699d;margin-top:4px;}
+@media(max-width:950px){.search-row{grid-template-columns:1fr!important;}.search-row input[type="date"]{width:100%!important;}}
+
 </style>
 </head>
 
@@ -942,8 +956,7 @@ body.modo-app{
             <input id="buscaAtendimento" type="search" placeholder="Buscar por nome, pasta ou descrição" oninput="render()">
           </div>
 
-          <button type="button" id="btnHoje" onclick="definirFiltroData('hoje')">📅 Hoje</button>
-          <button type="button" id="btnAmanha" onclick="definirFiltroData('amanha')">📅 Amanhã</button>
+          <input id="filtroDataEspecifica" type="date" title="Selecionar dia específico" onchange="definirFiltroDataEspecifica(this.value)">
           <button type="button" id="btnTodos" class="active-filter ativo" onclick="definirFiltroData('todos')">⚙ Todos</button>
         </div>
       </div>
@@ -1882,15 +1895,30 @@ function dataLocalISO(offsetDias = 0){
 }
 
 function definirFiltroData(modo){
-  filtroDataModo = modo;
+  filtroDataModo = modo || "todos";
 
-  ["btnHoje", "btnAmanha", "btnTodos"].forEach(id=>{
+  ["btnTodos"].forEach(id=>{
     const btn = document.getElementById(id);
-    if(btn) btn.classList.remove("ativo");
+    if(btn) btn.classList.remove("ativo", "active-filter");
   });
 
-  const ativo = modo === "hoje" ? "btnHoje" : modo === "amanha" ? "btnAmanha" : modo === "todos" ? "btnTodos" : "";
-  if(ativo && document.getElementById(ativo)) document.getElementById(ativo).classList.add("ativo");
+  if(filtroDataModo === "todos"){
+    const btnTodos = document.getElementById("btnTodos");
+    if(btnTodos) btnTodos.classList.add("ativo", "active-filter");
+    const calendario = document.getElementById("filtroDataEspecifica");
+    if(calendario) calendario.value = "";
+  }
+
+  gerarHorarios();
+  render();
+}
+
+function definirFiltroDataEspecifica(data){
+  filtroDataModo = data ? "data" : "todos";
+
+  const btnTodos = document.getElementById("btnTodos");
+  if(btnTodos) btnTodos.classList.toggle("ativo", filtroDataModo === "todos");
+  if(btnTodos) btnTodos.classList.toggle("active-filter", filtroDataModo === "todos");
 
   gerarHorarios();
   render();
@@ -1974,9 +2002,39 @@ function passaBusca(item, termo){
 }
 
 function passaFiltroData(item){
-  if(filtroDataModo === "hoje") return item.data === dataLocalISO(0);
-  if(filtroDataModo === "amanha") return item.data === dataLocalISO(1);
+  if(filtroDataModo === "data"){
+    const calendario = document.getElementById("filtroDataEspecifica");
+    const dataEscolhida = calendario ? calendario.value : "";
+    return dataEscolhida ? item.data === dataEscolhida : true;
+  }
   return true;
+}
+
+function primeiroDiaMesAtualISO(){
+  const hoje = new Date();
+  return `${hoje.getFullYear()}-${String(hoje.getMonth()+1).padStart(2,"0")}-01`;
+}
+
+function chaveMesAtendimento(dataISO){
+  return String(dataISO || "0000-00").slice(0, 7);
+}
+
+function nomeMesArquivoAtendimento(chaveMes){
+  const nomes = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const partes = String(chaveMes || "").split("-");
+  const ano = partes[0] || "";
+  const mes = parseInt(partes[1], 10);
+  const nome = nomes[mes - 1] || chaveMes || "Sem data";
+  return ano ? `${nome}/${ano}` : nome;
+}
+
+function agrupadosPorMesAntigo(listaAtendimentos){
+  return listaAtendimentos.reduce((grupos, item)=>{
+    const chave = chaveMesAtendimento(item.data);
+    if(!grupos[chave]) grupos[chave] = [];
+    grupos[chave].push(item);
+    return grupos;
+  }, {});
 }
 
 function getStatusTempo(item){
@@ -3645,25 +3703,173 @@ ${conteudo.innerHTML}
   window.exportarEntradasCSVCAICAVV = function(){
     const lista = entradasFiltradas();
     const periodoArquivo = periodoArquivoSelecionado();
+    const periodo = periodoNomeSelecionado();
     if (!lista.length) {
       alert("Não há entradas para exportar neste período/filtro.");
       return;
     }
 
-    const cabecalho = ["Nº da pasta","Nome","Idade","Sexo","Bairro","Origem do caso","Tipo de violência","Vinculação/Status","Data de entrada","Fonte"];
-    const linhas = lista.map(e => [
-      e.pasta || "", e.nome || "", e.idade || "", e.sexo || "", e.bairro || "",
-      e.origem || "", e.violencia || "", e.vinculacao || e.status || "", e.data || e.data_vinculacao || "", e.fonte || ""
-    ]);
-
-    const csv = [cabecalho, ...linhas]
-      .map(linha => linha.map(campo => `"${String(campo).replace(/"/g, '""')}"`).join(";"))
-      .join("\n");
-
-    if (baixarArquivo("\ufeff" + csv, `relatorio_entradas_${periodoArquivo}.csv`, "text/csv;charset=utf-8;")) {
-      setTimeout(() => alert("Arquivo CSV/Excel gerado. Verifique a pasta de downloads."), 200);
+    if (typeof XLSX === "undefined") {
+      alert("A biblioteca XLSX não carregou. Confira se o link do XLSX está no <head> do site.");
+      return;
     }
+
+    function campo(e, nomes){
+      for (const nome of nomes) {
+        const valor = e?.[nome];
+        if (valor !== undefined && valor !== null && String(valor).trim() !== "") {
+          return String(valor).trim();
+        }
+      }
+      return "";
+    }
+
+    function idadeNumero(valor){
+      const n = parseInt(String(valor || "").replace(/\D/g, ""), 10);
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function contarPorCampo(nomes){
+      const mapa = {};
+      lista.forEach(e => {
+        const chave = campo(e, nomes) || "Não informado";
+        mapa[chave] = (mapa[chave] || 0) + 1;
+      });
+      return Object.entries(mapa)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([categoria, total]) => ({
+          Categoria: categoria,
+          Total: total,
+          Percentual: lista.length ? Number(((total / lista.length) * 100).toFixed(1)) : 0
+        }));
+    }
+
+    function maiorItem(dados){
+      if (!dados.length) return "Não informado";
+      return `${dados[0].Categoria} (${dados[0].Total})`;
+    }
+
+    function adicionarAba(wb, nome, dados, larguras){
+      const ws = XLSX.utils.json_to_sheet(dados);
+      ws["!cols"] = (larguras || []).map(wch => ({ wch }));
+      XLSX.utils.book_append_sheet(wb, ws, nome);
+      return ws;
+    }
+
+    function criarGraficoVisual(dados, titulo, limite){
+      const recorte = typeof limite === "number" ? dados.slice(0, limite) : dados;
+      const maior = Math.max(...recorte.map(d => d.Total), 1);
+      const linhas = [
+        { Indicador: titulo, Total: "", Percentual: "", Grafico: "" }
+      ];
+      recorte.forEach(d => {
+        const tamanho = Math.max(1, Math.round((d.Total / maior) * 32));
+        linhas.push({
+          Indicador: d.Categoria,
+          Total: d.Total,
+          Percentual: d.Percentual + "%",
+          Grafico: "█".repeat(tamanho)
+        });
+      });
+      linhas.push({ Indicador: "", Total: "", Percentual: "", Grafico: "" });
+      return linhas;
+    }
+
+    const listaPlanilha = lista.map(e => ({
+      "Nº da pasta": campo(e, ["pasta"]),
+      "Nome": campo(e, ["nome"]),
+      "Idade": campo(e, ["idade"]),
+      "Sexo": campo(e, ["sexo"]),
+      "Bairro": campo(e, ["bairro"]),
+      "Origem do caso": campo(e, ["origem", "origemCaso", "origem_do_caso"]),
+      "Tipo de violência": campo(e, ["violencia", "tipoViolencia", "tipo_de_violencia"]),
+      "Vinculação/Status": campo(e, ["vinculacao", "status"]),
+      "Data de entrada": campo(e, ["data", "data_vinculacao"]),
+      "Fonte": campo(e, ["fonte"])
+    }));
+
+    const idades = lista.map(e => idadeNumero(campo(e, ["idade"]))).filter(n => n !== null);
+    const mediaIdade = idades.length ? Number((idades.reduce((s, n) => s + n, 0) / idades.length).toFixed(1)) : "Sem dados";
+    const menoresDe18 = idades.filter(n => n < 18).length;
+    const maioresOuIguais18 = idades.filter(n => n >= 18).length;
+
+    const porOrigem = contarPorCampo(["origem", "origemCaso", "origem_do_caso"]);
+    const porSexo = contarPorCampo(["sexo"]);
+    const porBairro = contarPorCampo(["bairro"]);
+    const porVinculacao = contarPorCampo(["vinculacao", "status"]);
+    const porViolencia = contarPorCampo(["violencia", "tipoViolencia", "tipo_de_violencia"]);
+    const porFaixaEtaria = contarPorCampo(["faixa"]);
+
+    if (!porFaixaEtaria.length || porFaixaEtaria.every(d => d.Categoria === "Não informado")) {
+      const mapaFaixa = {};
+      lista.forEach(e => {
+        const n = idadeNumero(campo(e, ["idade"]));
+        let faixa = "Não informado";
+        if (n !== null) {
+          if (n <= 6) faixa = "0 a 6 anos";
+          else if (n <= 12) faixa = "7 a 12 anos";
+          else if (n <= 17) faixa = "13 a 17 anos";
+          else if (n <= 59) faixa = "18 a 59 anos";
+          else faixa = "60 anos ou mais";
+        }
+        mapaFaixa[faixa] = (mapaFaixa[faixa] || 0) + 1;
+      });
+      porFaixaEtaria.splice(0, porFaixaEtaria.length, ...Object.entries(mapaFaixa).map(([Categoria, Total]) => ({
+        Categoria,
+        Total,
+        Percentual: Number(((Total / lista.length) * 100).toFixed(1))
+      })).sort((a, b) => b.Total - a.Total));
+    }
+
+    const relatorio = [
+      { Indicador: "Sistema", Resultado: "CAICAVV" },
+      { Indicador: "Tipo", Resultado: "Relatório mensal de entradas" },
+      { Indicador: "Período", Resultado: periodo },
+      { Indicador: "Gerado em", Resultado: new Date().toLocaleString("pt-BR") },
+      { Indicador: "", Resultado: "" },
+      { Indicador: "Total de entradas", Resultado: lista.length },
+      { Indicador: "Média de idade", Resultado: mediaIdade },
+      { Indicador: "Menor idade", Resultado: idades.length ? Math.min(...idades) : "Sem dados" },
+      { Indicador: "Maior idade", Resultado: idades.length ? Math.max(...idades) : "Sem dados" },
+      { Indicador: "Crianças/adolescentes", Resultado: menoresDe18 },
+      { Indicador: "Adultos", Resultado: maioresOuIguais18 },
+      { Indicador: "Registros com idade informada", Resultado: idades.length },
+      { Indicador: "Registros sem idade informada", Resultado: lista.length - idades.length },
+      { Indicador: "", Resultado: "" },
+      { Indicador: "Bairro mais frequente", Resultado: maiorItem(porBairro) },
+      { Indicador: "Origem mais frequente", Resultado: maiorItem(porOrigem) },
+      { Indicador: "Violência mais frequente", Resultado: maiorItem(porViolencia) },
+      { Indicador: "Sexo mais frequente", Resultado: maiorItem(porSexo) },
+      { Indicador: "Vinculação/Status mais frequente", Resultado: maiorItem(porVinculacao) }
+    ];
+
+    const graficoVisual = [
+      ...criarGraficoVisual(porOrigem, "Gráfico por origem do caso"),
+      ...criarGraficoVisual(porSexo, "Gráfico por sexo"),
+      ...criarGraficoVisual(porBairro, "Gráfico por bairro - Top 15", 15),
+      ...criarGraficoVisual(porVinculacao, "Gráfico por vinculação/status"),
+      ...criarGraficoVisual(porViolencia, "Gráfico por tipo de violência"),
+      ...criarGraficoVisual(porFaixaEtaria, "Gráfico por faixa etária")
+    ];
+
+    const wb = XLSX.utils.book_new();
+    adicionarAba(wb, "Lista de Entradas", listaPlanilha, [14, 30, 10, 14, 24, 28, 28, 24, 16, 18]);
+    adicionarAba(wb, "Relatório", relatorio, [34, 44]);
+    adicionarAba(wb, "Gráfico Visual", graficoVisual, [34, 12, 14, 42]);
+    adicionarAba(wb, "Dados Origem", porOrigem, [34, 12, 14]);
+    adicionarAba(wb, "Dados Sexo", porSexo, [24, 12, 14]);
+    adicionarAba(wb, "Dados Bairro", porBairro, [34, 12, 14]);
+    adicionarAba(wb, "Dados Vinculação", porVinculacao, [34, 12, 14]);
+    adicionarAba(wb, "Dados Violência", porViolencia, [34, 12, 14]);
+    adicionarAba(wb, "Dados Faixa Etária", porFaixaEtaria, [24, 12, 14]);
+
+    XLSX.writeFile(wb, `relatorio_entradas_${periodoArquivo}.xlsx`);
+
+    setTimeout(() => {
+      alert("Excel gerado com lista, relatório, médias e gráfico visual. Verifique a pasta de downloads.");
+    }, 200);
   };
+
 
   window.exportarEntradasJSONCAICAVV = function(){
     const lista = entradasFiltradas();
