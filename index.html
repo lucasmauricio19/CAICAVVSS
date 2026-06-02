@@ -54,6 +54,46 @@
 .caicavv-excluir-aba{width:34px!important;min-width:34px!important;height:34px!important;margin:0!important;padding:0!important;border-radius:50%!important;background:#fee2e2!important;color:#991b1b!important;font-weight:900!important}
 .caicavv-mini-atendimento{border:1px solid #e0e9f8;background:#f8fbff;border-radius:12px;padding:12px;color:#061852}
 .caicavv-mini-atendimento b{display:block;margin-bottom:4px}.caicavv-mini-atendimento span{display:block;color:#52699d;font-size:12px;font-weight:800;margin-top:3px}
+
+
+/* ===== ABA UPLOAD: importar planilhas ODS/XLSX para relatórios ===== */
+.nav-upload.hidden{display:none!important;}
+.upload-grid-caicavv{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;align-items:start;}
+.upload-card-caicavv{background:#fff;border:1px solid #d8e4fa;border-radius:14px;padding:16px;box-shadow:0 14px 32px rgba(23,70,150,.10);color:#071957;}
+.upload-card-caicavv h3{margin:0 0 8px;font-size:18px;color:#061852;}
+.upload-card-caicavv p{margin:0 0 12px;color:#52699d;font-size:13px;line-height:1.45;}
+.upload-card-caicavv label{display:block;font-size:12px;font-weight:900;color:#52699d;text-transform:uppercase;letter-spacing:.04em;margin-top:10px;}
+.upload-card-caicavv input,.upload-card-caicavv select{width:100%;height:42px;border:1px solid #ccd9f5;border-radius:10px;padding:0 12px;margin-top:6px;font-size:14px;color:#071957;background:#fff;box-sizing:border-box;}
+.upload-card-caicavv input[type="file"]{height:auto;padding:10px;background:#f8fbff;}
+.upload-card-caicavv button{height:42px;border:0;border-radius:10px;background:var(--tema,#005bff);color:#fff;font-weight:900;margin-top:12px;width:100%;cursor:pointer;}
+.upload-card-caicavv button.secundario{background:#0f766e;}
+.upload-card-caicavv button.perigo{background:#b91c1c;}
+.upload-card-caicavv button:disabled{background:#94a3b8;cursor:not-allowed;}
+.upload-resumo-caicavv{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px;}
+.upload-kpi-caicavv{border:1px solid #e4ecfb;background:#f8fbff;border-radius:12px;padding:12px;}
+.upload-kpi-caicavv span{display:block;color:#52699d;font-size:12px;font-weight:900;text-transform:uppercase;}
+.upload-kpi-caicavv b{display:block;color:#061852;font-size:24px;margin-top:4px;}
+.upload-tabela-wrap{max-height:430px;overflow:auto;border:1px solid #e4ecfb;border-radius:12px;margin-top:12px;background:#fff;}
+.upload-tabela-caicavv{width:100%;border-collapse:collapse;font-size:13px;}
+.upload-tabela-caicavv th{position:sticky;top:0;background:#f1f6ff;color:#061852;text-align:left;padding:10px;border-bottom:1px solid #d8e4fa;z-index:1;}
+.upload-tabela-caicavv td{padding:9px 10px;border-bottom:1px solid #eef3fb;color:#071957;vertical-align:top;}
+.upload-status-ok{color:#166534;font-weight:900;}
+.upload-status-falta{color:#991b1b;font-weight:900;}
+.upload-status-pendente{color:#1d4ed8;font-weight:900;}
+.upload-aviso-caicavv{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;margin-top:12px;font-size:13px;line-height:1.45;}
+.upload-sucesso-caicavv{background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;border-radius:12px;padding:12px;margin-top:12px;font-size:13px;line-height:1.45;}
+.upload-pastas-caicavv{margin-top:14px;}
+.upload-pasta-caicavv{border:1px solid #d8e4fa;background:#fff;border-radius:14px;margin-top:12px;overflow:hidden;box-shadow:0 12px 28px rgba(23,70,150,.08);}
+.upload-pasta-caicavv summary{cursor:pointer;list-style:none;padding:14px 16px;background:#f8fbff;display:flex;align-items:center;justify-content:space-between;gap:12px;color:#061852;font-weight:900;}
+.upload-pasta-caicavv summary::-webkit-details-marker{display:none;}
+.upload-pasta-caicavv summary span{display:block;font-size:15px;}
+.upload-pasta-caicavv summary small{display:block;color:#52699d;font-size:12px;font-weight:800;margin-top:3px;}
+.upload-pasta-conteudo{padding:14px 16px;background:#fff;}
+.upload-resumo-final-caicavv{margin-top:12px;border:1px solid #bbf7d0;background:#ecfdf5;border-radius:12px;padding:12px;color:#14532d;}
+.upload-resumo-final-caicavv b{color:#064e3b;}
+.upload-mini-titulo{font-size:13px;color:#52699d;font-weight:900;text-transform:uppercase;letter-spacing:.04em;margin:14px 0 8px;}
+@media(max-width:900px){.upload-grid-caicavv{grid-template-columns:1fr}.upload-resumo-caicavv{grid-template-columns:1fr 1fr;}}
+@media(max-width:620px){.upload-resumo-caicavv{grid-template-columns:1fr}.upload-tabela-caicavv{font-size:12px;}}
 </style>
 
 <script>
@@ -1300,6 +1340,11 @@ body.modo-app{
       <span>Agendamentos</span>
     </div>
 
+    <div class="nav nav-upload hidden" data-tela="upload" onclick="abrirTelaUpload()">
+      <div class="nav-icon">📤</div>
+      <span>Upload</span>
+    </div>
+
     <div class="nav" data-tela="pacientes" onclick="abrirTelaPacientes()">
       <div class="nav-icon">👤</div>
       <span>Pacientes</span>
@@ -1912,6 +1957,14 @@ function aplicarPermissoesNaTela(){
   const menuFundo = document.getElementById("menuLateralFundo");
   if(menuLateral) menuLateral.classList.toggle("hidden", !podeRelatorio);
   if(menuFundo) menuFundo.classList.toggle("hidden", !podeRelatorio);
+
+  document.querySelectorAll(".nav-upload").forEach(nav => {
+    nav.classList.toggle("hidden", !podeAcessarUploadPlanilha());
+  });
+
+  if(!podeAcessarUploadPlanilha() && typeof telaAtualCaicavv !== "undefined" && telaAtualCaicavv === "upload"){
+    abrirTelaAgendamentos();
+  }
 }
 
 async function add(){
@@ -2704,7 +2757,8 @@ function render(){
   const termo = textoBusca();
   let dados = atendimentos.filter(a=>{
     const arquivadoEmAba = typeof atendimentoEstaEmAbaPassada === "function" && atendimentoEstaEmAbaPassada(a);
-    return !arquivadoEmAba && passaFiltroTecnicoAvancado(a) && passaBusca(a, termo) && passaFiltroData(a) && passaFiltroStatus(a);
+    const importadoUpload = a && (a.origem === "upload" || a.tipo === "importado");
+    return !importadoUpload && !arquivadoEmAba && passaFiltroTecnicoAvancado(a) && passaBusca(a, termo) && passaFiltroData(a) && passaFiltroStatus(a);
   });
 
   dados.sort((a,b) => {
@@ -3963,6 +4017,535 @@ function baixarArquivoEntradasCAICAVV(conteudo, nomeArquivo, tipo){
   link.click();
   document.body.removeChild(link);
   URL.revokeObjectURL(url);
+}
+
+
+/* ===== ABA UPLOAD: leitor de SAGENDAMENTO .ODS/.XLSX para relatório ===== */
+let uploadPlanilhaWorkbook = null;
+let uploadPlanilhaArquivoNome = "";
+let uploadPlanilhaLinhas = [];
+let uploadPlanilhaResumo = null;
+
+function podeAcessarUploadPlanilha(){
+  return !!tecnicoLogado && ["recepcao","adm","coordenacao"].includes(tecnicoLogado.role);
+}
+
+function limparTextoUpload(valor){
+  return String(valor || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toUpperCase();
+}
+
+function valorMarcadoUpload(valor){
+  const txt = limparTextoUpload(valor);
+  return !!txt && !["0","-","NAO","NÃO","FALSE","FALSO","N","NO"].includes(txt);
+}
+
+function tecnicoDaAbaUpload(nomeAba){
+  const aba = limparTextoUpload(nomeAba);
+  const tecnicos = getTecnicosDisponiveis ? getTecnicosDisponiveis() : [];
+  return tecnicos.find(t => aba.includes(limparTextoUpload(t))) || "";
+}
+
+function parseDataUpload(valor){
+  if(valor instanceof Date && !isNaN(valor.getTime())){
+    const y = valor.getFullYear();
+    const m = String(valor.getMonth()+1).padStart(2,"0");
+    const d = String(valor.getDate()).padStart(2,"0");
+    return `${y}-${m}-${d}`;
+  }
+
+  if(typeof valor === "number" && isFinite(valor)){
+    try{
+      const obj = XLSX.SSF.parse_date_code(valor);
+      if(obj && obj.y && obj.m && obj.d){
+        return `${String(obj.y).padStart(4,"0")}-${String(obj.m).padStart(2,"0")}-${String(obj.d).padStart(2,"0")}`;
+      }
+    }catch(e){}
+  }
+
+  let txt = String(valor || "").trim();
+  if(!txt) return "";
+
+  txt = txt.replace(/\s+.*$/, "");
+
+  let m = txt.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+  if(m) return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
+
+  m = txt.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+  if(m){
+    let ano = Number(m[3]);
+    if(ano < 100) ano += 2000;
+    return `${String(ano).padStart(4,"0")}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+  }
+
+  return "";
+}
+
+function nomePacientePorPastaUpload(pasta){
+  const p = normalizarPasta(pasta);
+  const nomes = cadastros && cadastros[p] ? cadastros[p] : null;
+  if(Array.isArray(nomes) && nomes.length) return nomes.join(" | ");
+  return "";
+}
+
+function statusTextoUpload(status){
+  if(status === "compareceu") return "Compareceu";
+  if(status === "faltou") return "Não compareceu";
+  return "Sem marcação";
+}
+
+function montarOptionsTecnicosUpload(valor=""){
+  const tecnicos = getTecnicosDisponiveis ? getTecnicosDisponiveis() : [];
+  return `<option value="">Selecione</option>` + tecnicos.map(t => `<option value="${escapeHTML(t)}" ${t===valor?"selected":""}>${escapeHTML(t)}</option>`).join("");
+}
+
+function abrirTelaUpload(){
+  setTelaAtiva("upload");
+  mostrarBlocosAgendamento(false);
+
+  if(!podeAcessarUploadPlanilha()){
+    lista.innerHTML = `<div class="pagina-titulo">Upload</div><div class="upload-aviso-caicavv">Acesso liberado apenas para Recepção, Coordenação e Administração.</div>`;
+    return;
+  }
+
+  const tecnicosOptions = montarOptionsTecnicosUpload();
+
+  lista.innerHTML = `
+    <div class="pagina-titulo">Upload de agendamentos antigos</div>
+    <div class="pagina-sub">Importe planilhas .ods, .xlsx ou .xls para gerar relatório de comparecimento por pasta, data e técnico. Esses registros entram como importados e não aparecem como agendamento comum do dia.</div>
+
+    <div class="upload-grid-caicavv">
+      <div class="upload-card-caicavv">
+        <h3>1. Ler planilha</h3>
+        <p>Envie o arquivo, escolha uma aba da planilha e confira a prévia antes de salvar no Firebase.</p>
+
+        <label>Arquivo</label>
+        <input id="uploadArquivoPlanilha" type="file" accept=".ods,.xlsx,.xls" onchange="lerArquivoUploadPlanilha(event)">
+
+        <label>Aba da planilha</label>
+        <select id="uploadNomeAba" onchange="prepararUploadPlanilha()">
+          <option value="">Envie um arquivo primeiro</option>
+        </select>
+
+        <label>Nome do relatório/importação</label>
+        <input id="uploadNomeRelatorio" placeholder="Ex: Janeiro 2026 - Cláudia">
+
+        <label>Técnico</label>
+        <select id="uploadTecnico">${tecnicosOptions}</select>
+
+        <button type="button" class="secundario" onclick="prepararUploadPlanilha()">Gerar prévia</button>
+        <button type="button" id="btnImportarUpload" onclick="importarUploadPlanilhaFirebase()" disabled>Importar para relatório</button>
+
+        <div class="upload-aviso-caicavv">
+          O leitor procura automaticamente as colunas <b>DATA</b>, <b>PASTA</b>, <b>COMPARECEU</b>, <b>NÃO COMPARECEU</b> e <b>OBSERVAÇÃO</b>.
+        </div>
+      </div>
+
+      <div class="upload-card-caicavv">
+        <h3>2. Resumo</h3>
+        <p id="uploadResumoTexto">Nenhuma planilha lida ainda.</p>
+        <div id="uploadResumoCards" class="upload-resumo-caicavv"></div>
+      </div>
+    </div>
+
+    <div class="upload-card-caicavv" style="margin-top:14px">
+      <h3>Prévia dos registros</h3>
+      <div id="uploadPreview" class="upload-aviso-caicavv">A prévia aparecerá aqui depois da leitura.</div>
+    </div>
+
+    <div class="upload-card-caicavv upload-pastas-caicavv">
+      <h3>Uploads importados</h3>
+      <p>As importações salvas aparecem aqui em formato de pasta. Cada pasta mostra os atendimentos da planilha e o resumo no final.</p>
+      <div id="uploadPastasImportadas"></div>
+    </div>
+  `;
+
+  renderizarPastasUploadImportadas();
+}
+
+async function lerArquivoUploadPlanilha(event){
+  const arquivo = event.target.files && event.target.files[0];
+  uploadPlanilhaWorkbook = null;
+  uploadPlanilhaLinhas = [];
+  uploadPlanilhaResumo = null;
+  uploadPlanilhaArquivoNome = arquivo ? arquivo.name : "";
+
+  const selectAba = document.getElementById("uploadNomeAba");
+  const preview = document.getElementById("uploadPreview");
+  const btn = document.getElementById("btnImportarUpload");
+  if(btn) btn.disabled = true;
+
+  if(!arquivo){
+    if(selectAba) selectAba.innerHTML = `<option value="">Envie um arquivo primeiro</option>`;
+    return;
+  }
+
+  try{
+    const buffer = await arquivo.arrayBuffer();
+    uploadPlanilhaWorkbook = XLSX.read(buffer, { type:"array", cellDates:true, raw:false });
+
+    if(!uploadPlanilhaWorkbook || !uploadPlanilhaWorkbook.SheetNames || !uploadPlanilhaWorkbook.SheetNames.length){
+      throw new Error("Arquivo sem abas legíveis.");
+    }
+
+    if(selectAba){
+      selectAba.innerHTML = uploadPlanilhaWorkbook.SheetNames.map(nome => `<option value="${escapeHTML(nome)}">${escapeHTML(nome)}</option>`).join("");
+    }
+
+    const primeiraAba = uploadPlanilhaWorkbook.SheetNames[0];
+    const tecnicoInferido = tecnicoDaAbaUpload(primeiraAba);
+    const tecnicoSelect = document.getElementById("uploadTecnico");
+    if(tecnicoSelect && tecnicoInferido) tecnicoSelect.value = tecnicoInferido;
+
+    const nomeRelatorio = document.getElementById("uploadNomeRelatorio");
+    if(nomeRelatorio && !nomeRelatorio.value) nomeRelatorio.value = primeiraAba;
+
+    prepararUploadPlanilha();
+  }catch(e){
+    console.error(e);
+    if(preview) preview.innerHTML = "Não foi possível ler esse arquivo. Confirme se ele é .ods, .xlsx ou .xls válido.";
+    mostrarErro("Erro ao ler a planilha.");
+  }
+}
+
+function encontrarCabecalhoUpload(linhas){
+  for(let i=0; i<Math.min(linhas.length, 30); i++){
+    const normalizada = (linhas[i] || []).map(limparTextoUpload);
+    const temData = normalizada.some(c => c === "DATA" || c.includes("DATA"));
+    const temPasta = normalizada.some(c => c === "PASTA" || c.includes("PASTA"));
+    if(temData && temPasta) return i;
+  }
+  return -1;
+}
+
+function indiceColunaUpload(cabecalho, regra){
+  return cabecalho.findIndex(c => regra(limparTextoUpload(c)));
+}
+
+function prepararUploadPlanilha(){
+  const preview = document.getElementById("uploadPreview");
+  const resumoTexto = document.getElementById("uploadResumoTexto");
+  const resumoCards = document.getElementById("uploadResumoCards");
+  const btn = document.getElementById("btnImportarUpload");
+  if(btn) btn.disabled = true;
+
+  uploadPlanilhaLinhas = [];
+  uploadPlanilhaResumo = null;
+
+  if(!uploadPlanilhaWorkbook){
+    if(preview) preview.innerHTML = "Envie uma planilha para começar.";
+    return;
+  }
+
+  const nomeAba = document.getElementById("uploadNomeAba")?.value || uploadPlanilhaWorkbook.SheetNames[0];
+  const sheet = uploadPlanilhaWorkbook.Sheets[nomeAba];
+  if(!sheet){
+    if(preview) preview.innerHTML = "Aba não encontrada no arquivo.";
+    return;
+  }
+
+  const tecnicoInferido = tecnicoDaAbaUpload(nomeAba);
+  const tecnicoSelect = document.getElementById("uploadTecnico");
+  if(tecnicoSelect && tecnicoInferido && !tecnicoSelect.value) tecnicoSelect.value = tecnicoInferido;
+
+  const linhas = XLSX.utils.sheet_to_json(sheet, { header:1, defval:"", raw:false });
+  const idxHeader = encontrarCabecalhoUpload(linhas);
+
+  if(idxHeader < 0){
+    if(preview) preview.innerHTML = "Não encontrei cabeçalho com DATA e PASTA nessa aba.";
+    mostrarErro("Não encontrei as colunas DATA e PASTA.");
+    return;
+  }
+
+  const cab = linhas[idxHeader] || [];
+  const idxData = indiceColunaUpload(cab, c => c === "DATA" || c.includes("DATA"));
+  const idxPasta = indiceColunaUpload(cab, c => c === "PASTA" || c.includes("PASTA"));
+  const idxCompareceu = indiceColunaUpload(cab, c => c.includes("COMPARECEU") && !c.includes("NAO") && !c.includes("NÃO"));
+  const idxFaltou = indiceColunaUpload(cab, c => (c.includes("NAO") || c.includes("NÃO") || c.includes("FALTOU")) && (c.includes("COMPARECEU") || c.includes("FALTOU")));
+  const idxObs = indiceColunaUpload(cab, c => c.includes("OBS"));
+
+  const tecnico = document.getElementById("uploadTecnico")?.value || tecnicoInferido || "";
+  if(!tecnico){
+    if(preview) preview.innerHTML = "Selecione o técnico antes de gerar a prévia.";
+    mostrarErro("Selecione o técnico da planilha.");
+    return;
+  }
+
+  const registros = [];
+  let erros = 0;
+  let semPasta = 0;
+  let semStatus = 0;
+
+  for(let i = idxHeader + 1; i < linhas.length; i++){
+    const row = linhas[i] || [];
+    const dataISO = parseDataUpload(row[idxData]);
+    const pastaValor = normalizarPasta(row[idxPasta]);
+
+    const linhaTemConteudo = row.some(c => String(c || "").trim());
+    if(!linhaTemConteudo) continue;
+    if(!dataISO && !pastaValor) continue;
+
+    if(!dataISO){
+      erros++;
+      continue;
+    }
+
+    if(!pastaValor) semPasta++;
+
+    const marcouCompareceu = idxCompareceu >= 0 && valorMarcadoUpload(row[idxCompareceu]);
+    const marcouFaltou = idxFaltou >= 0 && valorMarcadoUpload(row[idxFaltou]);
+
+    let status = "agendado";
+    if(marcouCompareceu) status = "compareceu";
+    else if(marcouFaltou) status = "faltou";
+    else semStatus++;
+
+    const obs = idxObs >= 0 ? String(row[idxObs] || "").trim() : "";
+    const nome = nomePacientePorPastaUpload(pastaValor);
+
+    registros.push({
+      id: "upload_" + Date.now() + "_" + i + "_" + Math.random().toString(36).slice(2, 7),
+      pasta: pastaValor,
+      nome: nome,
+      tecnico: tecnico,
+      data: dataISO,
+      hora: "",
+      descricao: `Importado da planilha ${nomeAba}`,
+      status: status,
+      observacaoRealizacao: obs,
+      origem: "upload",
+      tipo: "importado",
+      arquivoUpload: uploadPlanilhaArquivoNome,
+      abaUpload: nomeAba,
+      linhaUpload: i + 1,
+      criadoPor: tecnicoLogado ? tecnicoLogado.nome : "Recepção",
+      roleCriador: tecnicoLogado ? tecnicoLogado.role : "recepcao",
+      criadoEm: new Date().toISOString()
+    });
+  }
+
+  const total = registros.length;
+  const compareceu = registros.filter(r => r.status === "compareceu").length;
+  const faltou = registros.filter(r => r.status === "faltou").length;
+  const duplicados = registros.filter(r => atendimentos.some(a =>
+    String(a.origem || "") === "upload" &&
+    String(a.pasta || "") === String(r.pasta || "") &&
+    String(a.data || "") === String(r.data || "") &&
+    String(a.tecnico || "") === String(r.tecnico || "") &&
+    String(a.abaUpload || "") === String(r.abaUpload || "")
+  )).length;
+
+  uploadPlanilhaLinhas = registros;
+  uploadPlanilhaResumo = { total, compareceu, faltou, semPasta, semStatus, erros, duplicados, tecnico, nomeAba };
+
+  if(resumoTexto){
+    resumoTexto.innerHTML = `Arquivo: <b>${escapeHTML(uploadPlanilhaArquivoNome)}</b><br>Aba: <b>${escapeHTML(nomeAba)}</b><br>Técnico: <b>${escapeHTML(tecnico)}</b>`;
+  }
+
+  if(resumoCards){
+    resumoCards.innerHTML = `
+      <div class="upload-kpi-caicavv"><span>Total lido</span><b>${total}</b></div>
+      <div class="upload-kpi-caicavv"><span>Compareceu</span><b>${compareceu}</b></div>
+      <div class="upload-kpi-caicavv"><span>Não compareceu</span><b>${faltou}</b></div>
+      <div class="upload-kpi-caicavv"><span>Duplicados</span><b>${duplicados}</b></div>
+      <div class="upload-kpi-caicavv"><span>Sem pasta</span><b>${semPasta}</b></div>
+      <div class="upload-kpi-caicavv"><span>Sem marcação</span><b>${semStatus}</b></div>
+    `;
+  }
+
+  const linhasHtml = registros.slice(0, 250).map(r => {
+    const classe = r.status === "compareceu" ? "upload-status-ok" : r.status === "faltou" ? "upload-status-falta" : "upload-status-pendente";
+    return `<tr><td>${escapeHTML(formatarDataBR(r.data))}</td><td>${escapeHTML(r.pasta || "—")}</td><td>${escapeHTML(r.nome || "—")}</td><td>${escapeHTML(r.tecnico)}</td><td class="${classe}">${escapeHTML(statusTextoUpload(r.status))}</td><td>${escapeHTML(r.observacaoRealizacao || "")}</td></tr>`;
+  }).join("");
+
+  if(preview){
+    preview.className = "upload-tabela-wrap";
+    preview.innerHTML = `
+      <table class="upload-tabela-caicavv">
+        <thead><tr><th>Data</th><th>Pasta</th><th>Nome encontrado</th><th>Técnico</th><th>Veio?</th><th>Observação</th></tr></thead>
+        <tbody>${linhasHtml || `<tr><td colspan="6">Nenhum registro encontrado.</td></tr>`}</tbody>
+      </table>
+      ${total > 250 ? `<div class="upload-aviso-caicavv">Mostrando apenas os primeiros 250 registros na prévia.</div>` : ""}
+    `;
+  }
+
+  if(btn) btn.disabled = total === 0;
+}
+
+
+function idImportacaoUpload(){
+  return "imp_upload_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
+}
+
+function chaveLegadoImportacaoUpload(a){
+  return [
+    a.importacaoUploadId || "",
+    a.nomeRelatorioUpload || a.abaUpload || "Importação",
+    a.arquivoUpload || "",
+    a.abaUpload || "",
+    a.tecnico || ""
+  ].join("||");
+}
+
+function atendimentosUploadImportados(){
+  return (Array.isArray(atendimentos) ? atendimentos : []).filter(a => a && (a.origem === "upload" || a.tipo === "importado"));
+}
+
+function agruparImportacoesUpload(){
+  const mapa = new Map();
+
+  atendimentosUploadImportados().forEach(a => {
+    const chave = a.importacaoUploadId || chaveLegadoImportacaoUpload(a);
+    if(!mapa.has(chave)){
+      mapa.set(chave, {
+        id: chave,
+        nome: a.nomeRelatorioUpload || a.abaUpload || "Importação de planilha",
+        arquivo: a.arquivoUpload || "Arquivo não informado",
+        aba: a.abaUpload || "Aba não informada",
+        tecnico: a.tecnico || "Técnico não informado",
+        criadoEm: a.importadoEm || a.criadoEm || "",
+        itens: []
+      });
+    }
+    mapa.get(chave).itens.push(a);
+  });
+
+  return Array.from(mapa.values()).sort((a,b) => String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")));
+}
+
+function resumoImportacaoUpload(itens){
+  const total = itens.length;
+  const compareceu = itens.filter(r => r.status === "compareceu").length;
+  const faltou = itens.filter(r => r.status === "faltou").length;
+  const semPasta = itens.filter(r => !normalizarPasta(r.pasta)).length;
+  const semStatus = itens.filter(r => !["compareceu","faltou"].includes(String(r.status || ""))).length;
+  const datas = itens.map(r => String(r.data || "")).filter(Boolean).sort();
+  return {
+    total,
+    compareceu,
+    faltou,
+    semPasta,
+    semStatus,
+    inicio: datas[0] || "",
+    fim: datas[datas.length - 1] || ""
+  };
+}
+
+function renderizarPastasUploadImportadas(){
+  const box = document.getElementById("uploadPastasImportadas");
+  if(!box) return;
+
+  const grupos = agruparImportacoesUpload();
+  if(!grupos.length){
+    box.innerHTML = `<div class="upload-aviso-caicavv">Nenhuma planilha importada ainda.</div>`;
+    return;
+  }
+
+  box.innerHTML = grupos.map((grupo, idx) => {
+    const itens = grupo.itens.slice().sort((a,b) => String(a.data || "").localeCompare(String(b.data || "")) || Number(a.linhaUpload || 0) - Number(b.linhaUpload || 0));
+    const resumo = resumoImportacaoUpload(itens);
+
+    const linhas = itens.map(r => {
+      const classe = r.status === "compareceu" ? "upload-status-ok" : r.status === "faltou" ? "upload-status-falta" : "upload-status-pendente";
+      return `<tr>
+        <td>${escapeHTML(formatarDataBR(r.data))}</td>
+        <td>${escapeHTML(r.pasta || "—")}</td>
+        <td>${escapeHTML(r.nome || "—")}</td>
+        <td>${escapeHTML(r.tecnico || grupo.tecnico || "—")}</td>
+        <td class="${classe}">${escapeHTML(statusTextoUpload(r.status))}</td>
+        <td>${escapeHTML(r.observacaoRealizacao || "")}</td>
+      </tr>`;
+    }).join("");
+
+    const periodo = resumo.inicio && resumo.fim ? `${formatarDataBR(resumo.inicio)} até ${formatarDataBR(resumo.fim)}` : "Período não identificado";
+
+    return `<details class="upload-pasta-caicavv" ${idx === 0 ? "open" : ""}>
+      <summary>
+        <div>
+          <span>📁 ${escapeHTML(grupo.nome)}</span>
+          <small>${escapeHTML(grupo.aba)} · ${escapeHTML(grupo.tecnico)} · ${resumo.total} atendimento(s)</small>
+        </div>
+        <small>${escapeHTML(periodo)}</small>
+      </summary>
+      <div class="upload-pasta-conteudo">
+        <div class="upload-mini-titulo">Atendimentos importados</div>
+        <div class="upload-tabela-wrap">
+          <table class="upload-tabela-caicavv">
+            <thead><tr><th>Data</th><th>Pasta</th><th>Nome encontrado</th><th>Técnico</th><th>Veio?</th><th>Observação</th></tr></thead>
+            <tbody>${linhas || `<tr><td colspan="6">Nenhum atendimento encontrado.</td></tr>`}</tbody>
+          </table>
+        </div>
+
+        <div class="upload-resumo-final-caicavv">
+          <b>Resumo da pasta:</b><br>
+          Total: <b>${resumo.total}</b> · Compareceu: <b>${resumo.compareceu}</b> · Não compareceu: <b>${resumo.faltou}</b> · Sem pasta: <b>${resumo.semPasta}</b> · Sem marcação: <b>${resumo.semStatus}</b><br>
+          Arquivo: <b>${escapeHTML(grupo.arquivo)}</b> · Aba: <b>${escapeHTML(grupo.aba)}</b> · Técnico: <b>${escapeHTML(grupo.tecnico)}</b>
+        </div>
+      </div>
+    </details>`;
+  }).join("");
+}
+
+async function importarUploadPlanilhaFirebase(){
+  if(!podeAcessarUploadPlanilha()){
+    mostrarErro("Sem permissão para importar planilhas.");
+    return;
+  }
+
+  if(!uploadPlanilhaLinhas.length){
+    mostrarErro("Gere a prévia antes de importar.");
+    return;
+  }
+
+  const nomeRelatorio = String(document.getElementById("uploadNomeRelatorio")?.value || uploadPlanilhaResumo?.nomeAba || "Importação").trim();
+  const btn = document.getElementById("btnImportarUpload");
+  if(btn) btn.disabled = true;
+
+  const importacaoId = idImportacaoUpload();
+  const importadoEm = new Date().toISOString();
+
+  const novos = uploadPlanilhaLinhas.filter(r => !atendimentos.some(a =>
+    String(a.origem || "") === "upload" &&
+    String(a.pasta || "") === String(r.pasta || "") &&
+    String(a.data || "") === String(r.data || "") &&
+    String(a.tecnico || "") === String(r.tecnico || "") &&
+    String(a.abaUpload || "") === String(r.abaUpload || "")
+  )).map(r => ({
+    ...r,
+    nomeRelatorioUpload: nomeRelatorio,
+    importacaoUploadId: importacaoId,
+    importadoEm: importadoEm
+  }));
+
+  if(!novos.length){
+    mostrarErro("Todos os registros dessa prévia já foram importados.");
+    if(btn) btn.disabled = false;
+    return;
+  }
+
+  try{
+    atendimentos.unshift(...novos);
+    registrarLog("Upload de planilha", { id:"", pasta:"", nome:nomeRelatorio, tecnico:uploadPlanilhaResumo?.tecnico || "" }, `${novos.length} registro(s) importado(s) de ${uploadPlanilhaArquivoNome} / ${uploadPlanilhaResumo?.nomeAba || "aba"}.`);
+    await salvarAtendimentosFirebase();
+
+    mostrarSucesso(`${novos.length} registro(s) importado(s) com sucesso.`);
+    renderizarPastasUploadImportadas();
+    const preview = document.getElementById("uploadPreview");
+    if(preview){
+      preview.className = "upload-sucesso-caicavv";
+      preview.innerHTML = `<b>Importação concluída.</b><br>${novos.length} registro(s) foram salvos e uma pasta foi criada em <b>Uploads importados</b>. Duplicados foram ignorados.`;
+    }
+    uploadPlanilhaLinhas = [];
+    uploadPlanilhaResumo = null;
+  }catch(e){
+    console.error(e);
+    mostrarErro("Erro ao salvar os registros importados no Firebase.");
+    if(btn) btn.disabled = false;
+  }
 }
 
 </script>
