@@ -92,6 +92,12 @@
 .upload-resumo-final-caicavv{margin-top:12px;border:1px solid #bbf7d0;background:#ecfdf5;border-radius:12px;padding:12px;color:#14532d;}
 .upload-resumo-final-caicavv b{color:#064e3b;}
 .upload-mini-titulo{font-size:13px;color:#52699d;font-weight:900;text-transform:uppercase;letter-spacing:.04em;margin:14px 0 8px;}
+.upload-acoes-pasta-caicavv{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 12px;}
+.upload-acoes-pasta-caicavv button{width:auto!important;min-width:150px!important;height:38px!important;margin:0!important;border-radius:10px!important;padding:0 14px!important;font-size:13px!important;font-weight:900!important;}
+.upload-acoes-pasta-caicavv .imprimir{background:#2563eb!important;}
+.upload-acoes-pasta-caicavv .exportar{background:#0f766e!important;}
+.upload-acoes-pasta-caicavv .excluir{background:#b91c1c!important;}
+@media(max-width:620px){.upload-acoes-pasta-caicavv{display:grid;grid-template-columns:1fr}.upload-acoes-pasta-caicavv button{width:100%!important;}}
 @media(max-width:900px){.upload-grid-caicavv{grid-template-columns:1fr}.upload-resumo-caicavv{grid-template-columns:1fr 1fr;}}
 @media(max-width:620px){.upload-resumo-caicavv{grid-template-columns:1fr}.upload-tabela-caicavv{font-size:12px;}}
 </style>
@@ -4025,6 +4031,7 @@ let uploadPlanilhaWorkbook = null;
 let uploadPlanilhaArquivoNome = "";
 let uploadPlanilhaLinhas = [];
 let uploadPlanilhaResumo = null;
+let uploadPastasCache = [];
 
 function podeAcessarUploadPlanilha(){
   return !!tecnicoLogado && ["recepcao","adm","coordenacao"].includes(tecnicoLogado.role);
@@ -4440,6 +4447,8 @@ function renderizarPastasUploadImportadas(){
   if(!box) return;
 
   const grupos = agruparImportacoesUpload();
+  uploadPastasCache = grupos;
+  window.uploadPastasCache = grupos;
   if(!grupos.length){
     box.innerHTML = `<div class="upload-aviso-caicavv">Nenhuma planilha importada ainda.</div>`;
     return;
@@ -4472,6 +4481,11 @@ function renderizarPastasUploadImportadas(){
         <small>${escapeHTML(periodo)}</small>
       </summary>
       <div class="upload-pasta-conteudo">
+        <div class="upload-acoes-pasta-caicavv">
+          <button type="button" class="imprimir" onclick="imprimirRelatorioUpload(${idx})">Imprimir relatório</button>
+          <button type="button" class="exportar" onclick="exportarRelatorioUpload(${idx})">Exportar Excel</button>
+          <button type="button" class="excluir" onclick="excluirImportacaoUpload(${idx})">Excluir importação</button>
+        </div>
         <div class="upload-mini-titulo">Atendimentos importados</div>
         <div class="upload-tabela-wrap">
           <table class="upload-tabela-caicavv">
@@ -4488,6 +4502,177 @@ function renderizarPastasUploadImportadas(){
       </div>
     </details>`;
   }).join("");
+}
+
+
+function grupoUploadPorIndice(indice){
+  const grupos = Array.isArray(uploadPastasCache) && uploadPastasCache.length ? uploadPastasCache : agruparImportacoesUpload();
+  return grupos[Number(indice)] || null;
+}
+
+function htmlRelatorioUpload(grupo){
+  const itens = (grupo.itens || []).slice().sort((a,b) => String(a.data || "").localeCompare(String(b.data || "")) || Number(a.linhaUpload || 0) - Number(b.linhaUpload || 0));
+  const resumo = resumoImportacaoUpload(itens);
+  const periodo = resumo.inicio && resumo.fim ? `${formatarDataBR(resumo.inicio)} até ${formatarDataBR(resumo.fim)}` : "Período não identificado";
+  const linhas = itens.map(r => `<tr>
+    <td>${escapeHTML(formatarDataBR(r.data))}</td>
+    <td>${escapeHTML(r.pasta || "—")}</td>
+    <td>${escapeHTML(r.nome || "—")}</td>
+    <td>${escapeHTML(r.tecnico || grupo.tecnico || "—")}</td>
+    <td>${escapeHTML(statusTextoUpload(r.status))}</td>
+    <td>${escapeHTML(r.observacaoRealizacao || "")}</td>
+  </tr>`).join("");
+
+  return `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>${escapeHTML(grupo.nome)} - Relatório</title>
+<style>
+  body{font-family:Arial,sans-serif;color:#071957;margin:28px;background:#fff;}
+  h1{margin:0 0 6px;font-size:24px;color:#061852;}
+  .sub{color:#52699d;font-size:13px;margin-bottom:18px;line-height:1.5;}
+  .resumo{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:16px 0 18px;}
+  .kpi{border:1px solid #d8e4fa;border-radius:10px;padding:10px;background:#f8fbff;}
+  .kpi span{display:block;font-size:11px;text-transform:uppercase;color:#52699d;font-weight:900;}
+  .kpi b{display:block;font-size:20px;margin-top:4px;color:#061852;}
+  table{width:100%;border-collapse:collapse;font-size:12px;}
+  th,td{border:1px solid #d8e4fa;padding:7px;text-align:left;vertical-align:top;}
+  th{background:#f1f6ff;color:#061852;}
+  .rodape{margin-top:14px;font-size:12px;color:#52699d;}
+  @media print{body{margin:12mm}.no-print{display:none!important}.resumo{grid-template-columns:repeat(5,1fr)}}
+</style>
+</head>
+<body>
+  <button class="no-print" onclick="window.print()" style="margin-bottom:16px;padding:10px 16px;border:0;border-radius:8px;background:#2563eb;color:white;font-weight:900;cursor:pointer">Imprimir</button>
+  <h1>${escapeHTML(grupo.nome)}</h1>
+  <div class="sub">
+    Arquivo: <b>${escapeHTML(grupo.arquivo)}</b><br>
+    Aba: <b>${escapeHTML(grupo.aba)}</b> · Técnico: <b>${escapeHTML(grupo.tecnico)}</b> · Período: <b>${escapeHTML(periodo)}</b>
+  </div>
+  <div class="resumo">
+    <div class="kpi"><span>Total</span><b>${resumo.total}</b></div>
+    <div class="kpi"><span>Compareceu</span><b>${resumo.compareceu}</b></div>
+    <div class="kpi"><span>Não compareceu</span><b>${resumo.faltou}</b></div>
+    <div class="kpi"><span>Sem pasta</span><b>${resumo.semPasta}</b></div>
+    <div class="kpi"><span>Sem marcação</span><b>${resumo.semStatus}</b></div>
+  </div>
+  <table>
+    <thead><tr><th>Data</th><th>Pasta</th><th>Nome encontrado</th><th>Técnico</th><th>Veio?</th><th>Observação</th></tr></thead>
+    <tbody>${linhas || `<tr><td colspan="6">Nenhum atendimento encontrado.</td></tr>`}</tbody>
+  </table>
+  <div class="rodape">Relatório gerado pelo sistema CAICAVV em ${escapeHTML(new Date().toLocaleString("pt-BR"))}.</div>
+</body>
+</html>`;
+}
+
+function imprimirRelatorioUpload(indice){
+  const grupo = grupoUploadPorIndice(indice);
+  if(!grupo){
+    mostrarErro("Não encontrei essa importação para imprimir.");
+    return;
+  }
+
+  const janela = window.open("", "_blank");
+  if(!janela){
+    mostrarErro("O navegador bloqueou a janela de impressão. Libere pop-ups para este site.");
+    return;
+  }
+
+  janela.document.open();
+  janela.document.write(htmlRelatorioUpload(grupo));
+  janela.document.close();
+  janela.focus();
+  setTimeout(() => janela.print(), 400);
+}
+
+function nomeArquivoSeguroUpload(nome){
+  return String(nome || "relatorio_upload")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-zA-Z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0,80) || "relatorio_upload";
+}
+
+function exportarRelatorioUpload(indice){
+  const grupo = grupoUploadPorIndice(indice);
+  if(!grupo){
+    mostrarErro("Não encontrei essa importação para exportar.");
+    return;
+  }
+
+  const itens = (grupo.itens || []).slice().sort((a,b) => String(a.data || "").localeCompare(String(b.data || "")) || Number(a.linhaUpload || 0) - Number(b.linhaUpload || 0));
+  const resumo = resumoImportacaoUpload(itens);
+
+  const linhas = itens.map(r => ({
+    Data: formatarDataBR(r.data),
+    Pasta: r.pasta || "",
+    "Nome encontrado": r.nome || "",
+    Técnico: r.tecnico || grupo.tecnico || "",
+    "Veio?": statusTextoUpload(r.status),
+    Observação: r.observacaoRealizacao || "",
+    Arquivo: grupo.arquivo || "",
+    Aba: grupo.aba || "",
+    "Linha original": r.linhaUpload || ""
+  }));
+
+  const resumoLinhas = [
+    { Indicador:"Nome do relatório", Valor:grupo.nome || "" },
+    { Indicador:"Arquivo", Valor:grupo.arquivo || "" },
+    { Indicador:"Aba", Valor:grupo.aba || "" },
+    { Indicador:"Técnico", Valor:grupo.tecnico || "" },
+    { Indicador:"Total", Valor:resumo.total },
+    { Indicador:"Compareceu", Valor:resumo.compareceu },
+    { Indicador:"Não compareceu", Valor:resumo.faltou },
+    { Indicador:"Sem pasta", Valor:resumo.semPasta },
+    { Indicador:"Sem marcação", Valor:resumo.semStatus },
+    { Indicador:"Período inicial", Valor:resumo.inicio ? formatarDataBR(resumo.inicio) : "" },
+    { Indicador:"Período final", Valor:resumo.fim ? formatarDataBR(resumo.fim) : "" },
+    { Indicador:"Exportado em", Valor:new Date().toLocaleString("pt-BR") }
+  ];
+
+  const wb = XLSX.utils.book_new();
+  const wsAtend = XLSX.utils.json_to_sheet(linhas);
+  const wsResumo = XLSX.utils.json_to_sheet(resumoLinhas);
+  XLSX.utils.book_append_sheet(wb, wsAtend, "Atendimentos");
+  XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
+  XLSX.writeFile(wb, `${nomeArquivoSeguroUpload(grupo.nome)}.xlsx`);
+}
+
+async function excluirImportacaoUpload(indice){
+  const grupo = grupoUploadPorIndice(indice);
+  if(!grupo){
+    mostrarErro("Não encontrei essa importação para excluir.");
+    return;
+  }
+
+  const qtd = grupo.itens ? grupo.itens.length : 0;
+  const ok = confirm(`Excluir a importação "${grupo.nome}"?\n\nIsso removerá ${qtd} atendimento(s) importado(s) desta pasta. Essa ação não apaga outros agendamentos.`);
+  if(!ok) return;
+
+  const idsRemover = new Set((grupo.itens || []).map(a => a.id));
+  const chaveGrupo = grupo.id;
+  const antes = atendimentos.length;
+
+  atendimentos = atendimentos.filter(a => {
+    if(!a || !(a.origem === "upload" || a.tipo === "importado")) return true;
+    if(idsRemover.has(a.id)) return false;
+    const chave = a.importacaoUploadId || chaveLegadoImportacaoUpload(a);
+    return chave !== chaveGrupo;
+  });
+
+  const removidos = antes - atendimentos.length;
+
+  try{
+    registrarLog("Exclusão de upload", { id:"", pasta:"", nome:grupo.nome, tecnico:grupo.tecnico }, `${removidos} registro(s) importado(s) removido(s).`);
+    await salvarAtendimentosFirebase();
+    mostrarSucesso(`Importação excluída. ${removidos} registro(s) removido(s).`);
+    renderizarPastasUploadImportadas();
+  }catch(e){
+    console.error(e);
+    mostrarErro("Erro ao excluir a importação no Firebase.");
+  }
 }
 
 async function importarUploadPlanilhaFirebase(){
