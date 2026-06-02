@@ -57,40 +57,133 @@
 </style>
 
 <script>
-/* ===== BOTÃO DE CRIAR ABA DE AGENDAMENTOS PASSADOS - RESTAURADO ===== */
+/* ===== ABAS DE AGENDAMENTOS PASSADOS - INTEGRADO E CORRIGIDO ===== */
 (function(){
   window.caicavvAbasPassadas = Array.isArray(window.caicavvAbasPassadas) ? window.caicavvAbasPassadas : [];
 
-  function roleAtual(){
-    try{return tecnicoLogado && tecnicoLogado.role ? String(tecnicoLogado.role).toLowerCase() : "";}catch(e){return "";}
+  function textoLimpoAba(v){
+    return String(v || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toLowerCase();
   }
+
+  function mesmoTecnicoAba(a, b){
+    return textoLimpoAba(a) === textoLimpoAba(b);
+  }
+
+  function roleAtualAba(){
+    try{
+      return tecnicoLogado && tecnicoLogado.role ? String(tecnicoLogado.role).toLowerCase() : "";
+    }catch(e){
+      return "";
+    }
+  }
+
   function podeCriarAbaPassada(){
-    const role = roleAtual();
+    const role = roleAtualAba();
     return role === "adm" || role === "coordenacao";
   }
-  function telaAtual(){
-    try{if(typeof telaAtualCaicavv !== "undefined") return telaAtualCaicavv;}catch(e){}
+
+  function telaAtualAba(){
+    try{
+      if(typeof telaAtualCaicavv !== "undefined") return telaAtualCaicavv;
+    }catch(e){}
+
     const ativa = document.querySelector(".app-shell .nav.active");
     return ativa ? ativa.dataset.tela : "agendamentos";
   }
+
   function tecnicosDisponiveisAbas(){
     try{
       if(typeof getTecnicosDisponiveis === "function") return getTecnicosDisponiveis();
-      return Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);
-    }catch(e){return []}
+      return Object.values(usuarios).filter(u => u.role === "tecnico").map(u => u.nome);
+    }catch(e){
+      return [];
+    }
   }
-  function esc(v){return typeof escapeHTML === "function" ? escapeHTML(v) : String(v ?? "").replace(/[&<>'"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));}
-  function fmt(data){return typeof formatarDataBR === "function" ? formatarDataBR(data) : String(data||"");}
-  function idNovo(){return "aba_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);}
+
+  function escAba(v){
+    return typeof escapeHTML === "function"
+      ? escapeHTML(v)
+      : String(v ?? "").replace(/[&<>'"]/g, c => ({
+          "&":"&amp;",
+          "<":"&lt;",
+          ">":"&gt;",
+          "'":"&#39;",
+          '"':"&quot;"
+        }[c]));
+  }
+
+  function fmtAba(data){
+    return typeof formatarDataBR === "function" ? formatarDataBR(data) : String(data || "");
+  }
+
+  function idNovoAba(){
+    return "aba_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
+  }
+
+  function getAtendimentosAba(){
+    try{
+      if(typeof atendimentos !== "undefined" && Array.isArray(atendimentos)) return atendimentos;
+    }catch(e){}
+    return Array.isArray(window.atendimentos) ? window.atendimentos : [];
+  }
+
+  function getTecnicoFiltroAtualAba(){
+    try{
+      if(tecnicoLogado && tecnicoLogado.role === "tecnico") return tecnicoLogado.nome || "";
+    }catch(e){}
+
+    const select = document.getElementById("filtroTecnicoAvancado");
+    if(select && select.value) return select.value;
+
+    try{
+      if(typeof filtroAtual !== "undefined" && filtroAtual) return filtroAtual;
+    }catch(e){}
+
+    return "";
+  }
+
+  function atendimentoPertenceAbaPassada(atendimento, aba){
+    if(!atendimento || !aba) return false;
+
+    const data = String(atendimento.data || "");
+    if(!data || !aba.inicio || !aba.fim) return false;
+
+    return mesmoTecnicoAba(atendimento.tecnico, aba.tecnico)
+      && data >= String(aba.inicio)
+      && data <= String(aba.fim);
+  }
+
+  function atendimentoEstaEmAbaPassada(atendimento){
+    return (window.caicavvAbasPassadas || []).some(aba => atendimentoPertenceAbaPassada(atendimento, aba));
+  }
+
+  window.atendimentoPertenceAbaPassada = atendimentoPertenceAbaPassada;
+  window.atendimentoEstaEmAbaPassada = atendimentoEstaEmAbaPassada;
+
+  function atualizarAbasPassadasDosDados(dados){
+    window.caicavvAbasPassadas = dados && Array.isArray(dados.abasAgendamentosPassados)
+      ? dados.abasAgendamentosPassados
+      : [];
+  }
+
+  window.caicavvAtualizarAbasPassadasDosDados = atualizarAbasPassadasDosDados;
 
   async function carregarAbasPassadas(){
     try{
       if(typeof DOC_ATENDIMENTOS === "undefined") return;
       const snap = await DOC_ATENDIMENTOS.get();
       const dados = snap.exists ? (snap.data() || {}) : {};
-      window.caicavvAbasPassadas = Array.isArray(dados.abasAgendamentosPassados) ? dados.abasAgendamentosPassados : [];
-    }catch(e){console.error(e)}
+      atualizarAbasPassadasDosDados(dados);
+    }catch(e){
+      console.error(e);
+    }
   }
+
   window.caicavvCarregarAbasPassadas = carregarAbasPassadas;
 
   async function salvarAbasPassadas(){
@@ -98,12 +191,13 @@
     await DOC_ATENDIMENTOS.set({
       abasAgendamentosPassados: window.caicavvAbasPassadas,
       atualizadoEm: new Date().toISOString()
-    }, {merge:true});
+    }, { merge:true });
   }
 
-  function inserirBotao(){
+  function inserirBotaoCriarAbaPassada(){
     const btnAdd = document.getElementById("btnAdicionar");
     if(!btnAdd) return;
+
     let btn = document.getElementById("btnCriarAbaPassada");
     if(!btn){
       btn = document.createElement("button");
@@ -113,14 +207,21 @@
       btn.onclick = abrirModalCriarAbaPassada;
       btnAdd.insertAdjacentElement("afterend", btn);
     }
-    const mostrar = telaAtual() === "agendamentos" && podeCriarAbaPassada();
+
+    const mostrar = telaAtualAba() === "agendamentos" && podeCriarAbaPassada();
     btn.classList.toggle("hidden", !mostrar);
     btn.style.display = mostrar ? "block" : "none";
   }
 
-  function garantirModal(){
+  window.inserirBotaoCriarAbaPassada = inserirBotaoCriarAbaPassada;
+
+  function garantirModalCriarAbaPassada(){
     if(document.getElementById("modalCriarAbaPassada")) return;
-    const opts = tecnicosDisponiveisAbas().map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
+
+    const opts = tecnicosDisponiveisAbas()
+      .map(t => `<option value="${escAba(t)}">${escAba(t)}</option>`)
+      .join("");
+
     document.body.insertAdjacentHTML("beforeend", `
       <div id="modalCriarAbaPassada" class="modal-fundo caicavv-modal-abas">
         <div class="modal-box">
@@ -156,20 +257,29 @@
       else alert("Somente coordenação e administração podem criar abas de agendamentos passados.");
       return;
     }
-    garantirModal();
+
+    garantirModalCriarAbaPassada();
+
     const sel = document.getElementById("abaPassadaTecnico");
     if(sel){
-      const opts = tecnicosDisponiveisAbas().map(t=>`<option value="${esc(t)}">${esc(t)}</option>`).join("");
-      sel.innerHTML = opts;
-      const filtro = document.getElementById("filtroTecnicoAvancado");
-      if(filtro && filtro.value) sel.value = filtro.value;
+      const tecnicos = tecnicosDisponiveisAbas();
+      sel.innerHTML = tecnicos.map(t => `<option value="${escAba(t)}">${escAba(t)}</option>`).join("");
+
+      const tecnicoFiltro = getTecnicoFiltroAtualAba();
+      if(tecnicoFiltro && tecnicos.some(t => mesmoTecnicoAba(t, tecnicoFiltro))){
+        const encontrado = tecnicos.find(t => mesmoTecnicoAba(t, tecnicoFiltro));
+        sel.value = encontrado;
+      }
     }
+
     document.getElementById("modalCriarAbaPassada").classList.add("show");
   }
+
   function fecharModalCriarAbaPassada(){
     const modal = document.getElementById("modalCriarAbaPassada");
     if(modal) modal.classList.remove("show");
   }
+
   async function confirmarCriarAbaPassada(){
     const nome = (document.getElementById("abaPassadaNome")?.value || "").trim();
     const tecnico = document.getElementById("abaPassadaTecnico")?.value || "";
@@ -182,82 +292,124 @@
       else alert("Preencha nome, técnico, data inicial e data final.");
       return;
     }
+
     if(inicio > fim){
       if(typeof mostrarErro === "function") mostrarErro("A data inicial não pode ser depois da data final.");
       else alert("A data inicial não pode ser depois da data final.");
       return;
     }
 
-    window.caicavvAbasPassadas.push({id:idNovo(), nome, tecnico, inicio, fim, descricao, criadoEm:new Date().toISOString()});
+    const novaAba = { id:idNovoAba(), nome, tecnico, inicio, fim, descricao, criadoEm:new Date().toISOString() };
+    const qtd = getAtendimentosAba().filter(a => atendimentoPertenceAbaPassada(a, novaAba)).length;
+
+    window.caicavvAbasPassadas.push(novaAba);
+
     try{
       await salvarAbasPassadas();
       fecharModalCriarAbaPassada();
-      ["abaPassadaNome","abaPassadaInicio","abaPassadaFim","abaPassadaDescricao"].forEach(id=>{const el=document.getElementById(id); if(el) el.value="";});
-      renderizarAbasPassadas();
-      if(typeof mostrarToast === "function") mostrarToast("Aba de agendamentos passados criada com sucesso.", "sucesso");
+
+      ["abaPassadaNome","abaPassadaInicio","abaPassadaFim","abaPassadaDescricao"].forEach(id => {
+        const el = document.getElementById(id);
+        if(el) el.value = "";
+      });
+
+      if(typeof render === "function") render();
+      else renderizarAbasPassadas();
+
+      if(typeof mostrarToast === "function"){
+        mostrarToast(`Aba criada com ${qtd} atendimento(s) guardado(s) no período.`, "sucesso");
+      }
     }catch(e){
       console.error(e);
+      window.caicavvAbasPassadas = window.caicavvAbasPassadas.filter(a => a.id !== novaAba.id);
       if(typeof mostrarErro === "function") mostrarErro("Erro ao salvar a aba no Firebase.");
       else alert("Erro ao salvar a aba no Firebase.");
     }
   }
+
   async function excluirAbaPassada(id){
     if(!podeCriarAbaPassada()) return;
-    if(!confirm("Excluir esta aba de agendamentos passados? Os atendimentos não serão apagados.")) return;
-    window.caicavvAbasPassadas = window.caicavvAbasPassadas.filter(a=>a.id !== id);
+
+    if(!confirm("Excluir esta aba de agendamentos passados? Os atendimentos voltarão para a lista principal.")) return;
+
+    window.caicavvAbasPassadas = window.caicavvAbasPassadas.filter(a => a.id !== id);
     await salvarAbasPassadas();
-    renderizarAbasPassadas();
+
+    if(typeof render === "function") render();
+    else renderizarAbasPassadas();
+
+    if(typeof mostrarToast === "function"){
+      mostrarToast("Aba excluída. Os atendimentos voltaram para a lista principal.", "sucesso");
+    }
   }
 
   function abaVisivelParaFiltro(aba){
-    if(telaAtual() !== "agendamentos") return false;
+    if(telaAtualAba() !== "agendamentos") return false;
     if(!aba || !aba.tecnico) return false;
+
     try{
-      if(tecnicoLogado && tecnicoLogado.role === "tecnico") return aba.tecnico === tecnicoLogado.nome;
+      if(tecnicoLogado && tecnicoLogado.role === "tecnico"){
+        return mesmoTecnicoAba(aba.tecnico, tecnicoLogado.nome);
+      }
     }catch(e){}
-    const filtro = document.getElementById("filtroTecnicoAvancado");
-    if(filtro && filtro.value) return aba.tecnico === filtro.value;
-    return true;
+
+    const tecnicoFiltro = getTecnicoFiltroAtualAba();
+
+    // Para coordenação/adm, a aba só aparece quando aquele técnico está selecionado.
+    // Assim a aba de Josiane não aparece quando estiver vendo Cláudia, Cintya etc.
+    if(!tecnicoFiltro) return false;
+
+    return mesmoTecnicoAba(aba.tecnico, tecnicoFiltro);
   }
 
   function renderizarAbasPassadas(){
-    inserirBotao();
+    inserirBotaoCriarAbaPassada();
+
     const listaEl = document.getElementById("lista");
     if(!listaEl) return;
+
     const antigo = document.getElementById("caicavvAbasPassadasBox");
     if(antigo) antigo.remove();
-    if(telaAtual() !== "agendamentos") return;
+
+    if(telaAtualAba() !== "agendamentos") return;
 
     const abas = (window.caicavvAbasPassadas || []).filter(abaVisivelParaFiltro);
     if(abas.length === 0) return;
 
-    let html = `<div id="caicavvAbasPassadasBox" class="caicavv-arquivos-box">`;
-    abas.forEach(aba=>{
-      const itens = (Array.isArray(window.atendimentos) ? window.atendimentos : atendimentos).filter(a=>{
-        return a && a.tecnico === aba.tecnico && String(a.data||"") >= aba.inicio && String(a.data||"") <= aba.fim;
-      }).sort((a,b)=>String(b.data||"").localeCompare(String(a.data||"")) || String(b.hora||"").localeCompare(String(a.hora||"")));
+    const vazio = listaEl.querySelector(".lista-vazia");
+    if(vazio && listaEl.children.length === 1){
+      listaEl.innerHTML = "";
+    }
 
-      const linhas = itens.map(a=>`
+    let html = `<div id="caicavvAbasPassadasBox" class="caicavv-arquivos-box">`;
+
+    abas.forEach(aba => {
+      const itens = getAtendimentosAba()
+        .filter(a => atendimentoPertenceAbaPassada(a, aba))
+        .sort((a,b) => String(b.data || "").localeCompare(String(a.data || "")) || String(b.hora || "").localeCompare(String(a.hora || "")));
+
+      const linhas = itens.map(a => `
         <div class="caicavv-mini-atendimento">
-          <b>${esc(a.nome || "Sem nome")}</b>
-          <span>📁 Pasta ${esc(a.pasta || "—")} · 👤 ${esc(a.tecnico || "—")}</span>
-          <span>📅 ${esc(fmt(a.data))} às ${esc(a.hora || "—")} · ${esc(a.status || "agendado")}</span>
-          <span>${esc(a.descricao || "Sem descrição")}</span>
+          <b>${escAba(a.nome || "Sem nome")}</b>
+          <span>📁 Pasta ${escAba(a.pasta || "—")} · 👤 ${escAba(a.tecnico || "—")}</span>
+          <span>📅 ${escAba(fmtAba(a.data))} às ${escAba(a.hora || "—")} · ${escAba(a.status || "agendado")}</span>
+          <span>${escAba(a.descricao || "Sem descrição")}</span>
         </div>`).join("") || `<div class="caicavv-mini-atendimento"><b>Nenhum atendimento encontrado neste período.</b></div>`;
 
       html += `
         <details class="arquivo-atendimentos">
           <summary>
-            <span>${esc(String(aba.nome).toUpperCase())}</span>
-            <small>${esc(fmt(aba.inicio))} até ${esc(fmt(aba.fim))} · ${esc(aba.tecnico)} · ${itens.length}</small>
+            <span>${escAba(String(aba.nome || "Aba").toUpperCase())}</span>
+            <small>${escAba(fmtAba(aba.inicio))} até ${escAba(fmtAba(aba.fim))} · ${escAba(aba.tecnico)} · ${itens.length}</small>
           </summary>
           <div class="arquivo-conteudo">
-            ${aba.descricao ? `<div class="pagina-sub">${esc(aba.descricao)}</div>` : ""}
+            ${aba.descricao ? `<div class="pagina-sub">${escAba(aba.descricao)}</div>` : ""}
             ${linhas}
-            ${podeCriarAbaPassada() ? `<button type="button" class="caicavv-excluir-aba" title="Excluir aba" onclick="excluirAbaPassada('${esc(aba.id)}')">×</button>` : ""}
+            ${podeCriarAbaPassada() ? `<button type="button" class="caicavv-excluir-aba" title="Excluir aba" onclick="excluirAbaPassada('${escAba(aba.id)}')">×</button>` : ""}
           </div>
         </details>`;
     });
+
     html += `</div>`;
     listaEl.insertAdjacentHTML("beforeend", html);
   }
@@ -268,40 +420,14 @@
   window.excluirAbaPassada = excluirAbaPassada;
   window.renderizarAbasPassadas = renderizarAbasPassadas;
 
-  const carregarOriginal = window.carregarAtendimentosFirebase;
-  if(typeof carregarOriginal === "function"){
-    window.carregarAtendimentosFirebase = async function(){
-      const r = await carregarOriginal.apply(this, arguments);
-      await carregarAbasPassadas();
-      return r;
-    };
-  }
-
-  const renderOriginal = window.render;
-  if(typeof renderOriginal === "function"){
-    window.render = function(){
-      const r = renderOriginal.apply(this, arguments);
-      setTimeout(renderizarAbasPassadas, 0);
-      return r;
-    };
-  }
-
-  ["abrirTelaAgendamentos","abrirTelaPacientes","abrirTelaTecnicos","abrirTelaConfiguracoes","setTelaAtiva","aplicarPermissoesNaTela"].forEach(nome=>{
-    const original = window[nome];
-    if(typeof original === "function"){
-      window[nome] = function(){
-        const r = original.apply(this, arguments);
-        setTimeout(()=>{inserirBotao();renderizarAbasPassadas();}, 0);
-        return r;
-      };
-    }
-  });
-
   document.addEventListener("DOMContentLoaded", async function(){
-    inserirBotao();
+    inserirBotaoCriarAbaPassada();
     await carregarAbasPassadas();
-    renderizarAbasPassadas();
-    setTimeout(()=>{inserirBotao();renderizarAbasPassadas();}, 700);
+    setTimeout(() => {
+      inserirBotaoCriarAbaPassada();
+      if(typeof render === "function" && telaAtualAba() === "agendamentos") render();
+      else renderizarAbasPassadas();
+    }, 800);
   });
 })();
 </script>
@@ -1292,10 +1418,11 @@ async function carregarAtendimentosFirebase(){
       const dados = snap.data() || {};
       atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
       logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
+      if(typeof caicavvAtualizarAbasPassadasDosDados === "function") caicavvAtualizarAbasPassadasDosDados(dados);
     } else {
       atendimentos = [];
       logsAlteracoes = [];
-      await DOC_ATENDIMENTOS.set({ itens: [], logs: [], criadoEm: new Date().toISOString() }, { merge: true });
+      await DOC_ATENDIMENTOS.set({ itens: [], logs: [], abasAgendamentosPassados: [], criadoEm: new Date().toISOString() }, { merge: true });
     }
   }catch(e){
     console.error(e);
@@ -2130,7 +2257,7 @@ function rel(){
     return;
   }
 
-  let l = atendimentos.filter(a=>a.tecnico===filtroAtual);
+  let l = atendimentos.filter(a=>a.tecnico===filtroAtual && !(typeof atendimentoEstaEmAbaPassada === "function" && atendimentoEstaEmAbaPassada(a)));
   let ag = l.length;
   let ok = l.filter(a=>a.status==="compareceu").length;
   let ft = l.filter(a=>a.status==="faltou").length;
@@ -2576,7 +2703,8 @@ function render(){
 
   const termo = textoBusca();
   let dados = atendimentos.filter(a=>{
-    return passaFiltroTecnicoAvancado(a) && passaBusca(a, termo) && passaFiltroData(a) && passaFiltroStatus(a);
+    const arquivadoEmAba = typeof atendimentoEstaEmAbaPassada === "function" && atendimentoEstaEmAbaPassada(a);
+    return !arquivadoEmAba && passaFiltroTecnicoAvancado(a) && passaBusca(a, termo) && passaFiltroData(a) && passaFiltroStatus(a);
   });
 
   dados.sort((a,b) => {
@@ -2592,6 +2720,7 @@ function render(){
 
   if(dados.length === 0){
     lista.innerHTML = `<div class="app-card lista-vazia"><span class="icone-vazio">▣</span><span>Nenhum atendimento encontrado.</span></div>`;
+    if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();
     return;
   }
 
@@ -2648,7 +2777,10 @@ function render(){
           </div>
         </div>
       </div>
-    `;  });
+    `;
+  });
+
+  if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();
 }
 
 
@@ -2683,7 +2815,7 @@ const getStatusTempoOriginalCaicavv = typeof getStatusTempo === "function" ? get
 getStatusTempo = function(item){ if(!lembreteAtivo()) return ""; return getStatusTempoOriginalCaicavv ? getStatusTempoOriginalCaicavv(item) : ""; };
 function setTelaAtiva(nome){telaAtualCaicavv=nome;document.querySelectorAll(".app-shell .nav").forEach(nav=>nav.classList.toggle("active",nav.dataset.tela===nome));}
 function mostrarBlocosAgendamento(mostrar){["boasVindas","menu","relatorio","filtrosV6","formAtendimento"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("hidden",!mostrar);});}
-function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();}
+function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(typeof inserirBotaoCriarAbaPassada === "function")inserirBotaoCriarAbaPassada();if(renderOriginalCaicavv)renderOriginalCaicavv();if(typeof renderizarAbasPassadas === "function")renderizarAbasPassadas();}
 function abrirTelaPacientes(){setTelaAtiva("pacientes");mostrarBlocosAgendamento(false);const totalPastas=Object.keys(cadastros).length;const totalNomes=Object.values(cadastros).reduce((s,nomes)=>s+nomes.length,0);let cards="";Object.entries(cadastros).forEach(([pasta,nomes])=>{nomes.forEach(nome=>{cards+=`<div class="paciente-card"><strong>${escapeHTML(nome)}</strong><span>📁 Pasta ${escapeHTML(pasta)}</span></div>`;});});lista.innerHTML=`<div class="pagina-titulo">Pastas</div><div class="pagina-sub">Busca rápida por nome ou nº da pasta.</div><div class="search-card" style="margin-bottom:14px"><div class="search-box"><span>🔍</span><input id="buscaPacientes" placeholder="Buscar por nome ou nº" oninput="filtrarPacientes()"></div></div><div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div><div id="listaPacientes" class="pacientes-grid">${cards}</div>`;}
 function filtrarPacientes(){const termo=normalizarBusca(document.getElementById("buscaPacientes")?.value||"");document.querySelectorAll(".paciente-card").forEach(card=>{card.style.display=normalizarBusca(card.innerText).includes(termo)?"block":"none";});}
 function abrirTelaTecnicos(){setTelaAtiva("tecnicos");mostrarBlocosAgendamento(false);const tecnicos=Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);const mesAtual=new Date().toISOString().slice(0,7);lista.innerHTML=`<div class="pagina-titulo">Relatório por técnico</div><div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div><div class="tecnico-relatorio-box"><label><b>Técnico</b></label><select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select><label><b>Mês</b></label><input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}"><button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button></div><div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;}
@@ -2853,6 +2985,7 @@ async function carregarAtendimentosFirebase(){
       const dados = snap.data() || {};
       atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
       logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
+      if(typeof caicavvAtualizarAbasPassadasDosDados === "function") caicavvAtualizarAbasPassadasDosDados(dados);
 
       if(dados.senhas && typeof dados.senhas === "object"){
         senhas = { ...senhasPadrao };
@@ -2882,6 +3015,7 @@ async function carregarAtendimentosFirebase(){
       await DOC_ATENDIMENTOS.set({
         itens: [],
         logs: [],
+        abasAgendamentosPassados: [],
         cadastros: cadastros,
         senhas: senhas,
         criadoEm: new Date().toISOString()
@@ -3307,7 +3441,10 @@ window.addEventListener("DOMContentLoaded",()=>{
     renderOriginalCaicavv = typeof window.render === "function" ? window.render : null;
     window.render = function(){
       if(telaAtualCaicavv !== "agendamentos") return;
-      return renderOriginalCaicavv ? renderOriginalCaicavv() : undefined;
+      const resultado = renderOriginalCaicavv ? renderOriginalCaicavv() : undefined;
+      if(typeof inserirBotaoCriarAbaPassada === "function") inserirBotaoCriarAbaPassada();
+      if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();
+      return resultado;
     };
 
     const menuIcon = document.querySelector(".menu-icon");
