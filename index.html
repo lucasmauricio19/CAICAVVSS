@@ -1855,7 +1855,12 @@ function rel(){
     return;
   }
 
-  let l = atendimentos.filter(a=>a.tecnico===filtroAtual);
+  let l = atendimentos.filter(a=>{
+    const estaArquivado = typeof window.atendimentoEstaEmAbaPassada === "function"
+      ? window.atendimentoEstaEmAbaPassada(a)
+      : false;
+    return a.tecnico === filtroAtual && !estaArquivado;
+  });
   let ag = l.length;
   let ok = l.filter(a=>a.status==="compareceu").length;
   let ft = l.filter(a=>a.status==="faltou").length;
@@ -2422,8 +2427,8 @@ function lembreteAtivo(){
 const getStatusTempoOriginalCaicavv = typeof getStatusTempo === "function" ? getStatusTempo : null;
 getStatusTempo = function(item){ if(!lembreteAtivo()) return ""; return getStatusTempoOriginalCaicavv ? getStatusTempoOriginalCaicavv(item) : ""; };
 function setTelaAtiva(nome){telaAtualCaicavv=nome;document.querySelectorAll(".app-shell .nav").forEach(nav=>nav.classList.toggle("active",nav.dataset.tela===nome));}
-function mostrarBlocosAgendamento(mostrar){["boasVindas","menu","relatorio","filtrosV6","formAtendimento"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("hidden",!mostrar);});}
-function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();}
+function mostrarBlocosAgendamento(mostrar){["boasVindas","menu","relatorio","filtrosV6","formAtendimento","abasPassadasContainer"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("hidden",!mostrar);});}
+function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();}
 function abrirTelaPacientes(){setTelaAtiva("pacientes");mostrarBlocosAgendamento(false);const totalPastas=Object.keys(cadastros).length;const totalNomes=Object.values(cadastros).reduce((s,nomes)=>s+nomes.length,0);let cards="";Object.entries(cadastros).forEach(([pasta,nomes])=>{nomes.forEach(nome=>{cards+=`<div class="paciente-card"><strong>${escapeHTML(nome)}</strong><span>📁 Pasta ${escapeHTML(pasta)}</span></div>`;});});lista.innerHTML=`<div class="pagina-titulo">Pastas</div><div class="pagina-sub">Busca rápida por nome ou nº da pasta.</div><div class="search-card" style="margin-bottom:14px"><div class="search-box"><span>🔍</span><input id="buscaPacientes" placeholder="Buscar por nome ou nº" oninput="filtrarPacientes()"></div></div><div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div><div id="listaPacientes" class="pacientes-grid">${cards}</div>`;}
 function filtrarPacientes(){const termo=normalizarBusca(document.getElementById("buscaPacientes")?.value||"");document.querySelectorAll(".paciente-card").forEach(card=>{card.style.display=normalizarBusca(card.innerText).includes(termo)?"block":"none";});}
 function abrirTelaTecnicos(){setTelaAtiva("tecnicos");mostrarBlocosAgendamento(false);const tecnicos=Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);const mesAtual=new Date().toISOString().slice(0,7);lista.innerHTML=`<div class="pagina-titulo">Relatório por técnico</div><div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div><div class="tecnico-relatorio-box"><label><b>Técnico</b></label><select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select><label><b>Mês</b></label><input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}"><button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button></div><div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;}
@@ -3961,7 +3966,7 @@ ${conteudo.innerHTML}
   function abaVisivelNoFiltroAtual(aba){
     const tecnicoAtual = tecnicoAtualParaAbas();
     const tecnicoAba = String(aba && aba.tecnico ? aba.tecnico : "todos").trim() || "todos";
-    return tecnicoAba === tecnicoAtual;
+    return tecnicoAba === "todos" || tecnicoAba === tecnicoAtual;
   }
 
   window.atendimentoEstaEmAbaPassada = function(agendamento){
@@ -3971,7 +3976,6 @@ ${conteudo.innerHTML}
       if(!data) return false;
 
       return abas().some(aba => {
-        if(!abaVisivelNoFiltroAtual(aba)) return false;
         const tecnicoAba = String(aba.tecnico || "todos").trim() || "todos";
         const tecnicoOK = tecnicoAba === "todos" || tecnico === tecnicoAba;
         return tecnicoOK && data >= aba.dataInicio && data <= aba.dataFim;
@@ -4018,6 +4022,7 @@ ${conteudo.innerHTML}
     const container = document.createElement("section");
     container.id = "abasPassadasContainer";
     container.className = "abas-passadas-container";
+    if(typeof telaAtualCaicavv !== "undefined" && telaAtualCaicavv !== "agendamentos") container.classList.add("hidden");
     lista.insertAdjacentElement("afterend", container);
   }
 
@@ -4172,6 +4177,14 @@ ${conteudo.innerHTML}
     garantirContainer();
     const container = el("abasPassadasContainer");
     if(!container) return;
+
+    if(typeof telaAtualCaicavv !== "undefined" && telaAtualCaicavv !== "agendamentos"){
+      container.innerHTML = "";
+      container.classList.add("hidden");
+      return;
+    }
+
+    container.classList.remove("hidden");
     const listaAbas = abas()
       .filter(abaVisivelNoFiltroAtual)
       .sort((a,b) => String(b.dataInicio || "").localeCompare(String(a.dataInicio || "")) || String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")));
