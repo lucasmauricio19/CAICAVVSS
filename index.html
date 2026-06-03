@@ -30,454 +30,6 @@
 </head>
 <body>
 
-
-
-<style>
-/* ===== BOTÃO E MODAL: criar abas de agendamentos passados ===== */
-#btnCriarAbaPassada{
-  height:38px!important;
-  border-radius:9px!important;
-  background:#0f766e!important;
-  color:#fff!important;
-  font-weight:900!important;
-  margin-top:8px!important;
-}
-.caicavv-modal-abas .modal-box{max-width:520px!important}
-.caicavv-modal-abas label{display:block;margin-top:10px;font-size:13px;font-weight:900;color:#071957}
-.caicavv-modal-abas input,.caicavv-modal-abas select,.caicavv-modal-abas textarea{
-  width:100%;box-sizing:border-box;height:40px;border:1px solid #ccd9f5;border-radius:10px;padding:0 12px;margin-top:6px;font-family:inherit;color:#071957;background:#fff
-}
-.caicavv-modal-abas textarea{height:74px;padding:10px 12px;resize:vertical}
-.caicavv-arquivos-box{margin-top:14px}
-.caicavv-arquivo-top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;background:#f8fbff}
-.caicavv-arquivo-top summary{padding:0!important;background:transparent!important;flex:1}
-.caicavv-excluir-aba{width:34px!important;min-width:34px!important;height:34px!important;margin:0!important;padding:0!important;border-radius:50%!important;background:#fee2e2!important;color:#991b1b!important;font-weight:900!important}
-.caicavv-mini-atendimento{border:1px solid #e0e9f8;background:#f8fbff;border-radius:12px;padding:12px;color:#061852}
-.caicavv-mini-atendimento b{display:block;margin-bottom:4px}.caicavv-mini-atendimento span{display:block;color:#52699d;font-size:12px;font-weight:800;margin-top:3px}
-
-
-/* ===== ABA UPLOAD: importar planilhas ODS/XLSX para relatórios ===== */
-.nav-upload.hidden{display:none!important;}
-.upload-grid-caicavv{display:grid;grid-template-columns:1.15fr .85fr;gap:14px;align-items:start;}
-.upload-card-caicavv{background:#fff;border:1px solid #d8e4fa;border-radius:14px;padding:16px;box-shadow:0 14px 32px rgba(23,70,150,.10);color:#071957;}
-.upload-card-caicavv h3{margin:0 0 8px;font-size:18px;color:#061852;}
-.upload-card-caicavv p{margin:0 0 12px;color:#52699d;font-size:13px;line-height:1.45;}
-.upload-card-caicavv label{display:block;font-size:12px;font-weight:900;color:#52699d;text-transform:uppercase;letter-spacing:.04em;margin-top:10px;}
-.upload-card-caicavv input,.upload-card-caicavv select{width:100%;height:42px;border:1px solid #ccd9f5;border-radius:10px;padding:0 12px;margin-top:6px;font-size:14px;color:#071957;background:#fff;box-sizing:border-box;}
-.upload-card-caicavv input[type="file"]{height:auto;padding:10px;background:#f8fbff;}
-.upload-card-caicavv button{height:42px;border:0;border-radius:10px;background:var(--tema,#005bff);color:#fff;font-weight:900;margin-top:12px;width:100%;cursor:pointer;}
-.upload-card-caicavv button.secundario{background:#0f766e;}
-.upload-card-caicavv button.perigo{background:#b91c1c;}
-.upload-card-caicavv button:disabled{background:#94a3b8;cursor:not-allowed;}
-.upload-resumo-caicavv{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px;}
-.upload-kpi-caicavv{border:1px solid #e4ecfb;background:#f8fbff;border-radius:12px;padding:12px;}
-.upload-kpi-caicavv span{display:block;color:#52699d;font-size:12px;font-weight:900;text-transform:uppercase;}
-.upload-kpi-caicavv b{display:block;color:#061852;font-size:24px;margin-top:4px;}
-.upload-tabela-wrap{max-height:430px;overflow:auto;border:1px solid #e4ecfb;border-radius:12px;margin-top:12px;background:#fff;}
-.upload-tabela-caicavv{width:100%;border-collapse:collapse;font-size:13px;}
-.upload-tabela-caicavv th{position:sticky;top:0;background:#f1f6ff;color:#061852;text-align:left;padding:10px;border-bottom:1px solid #d8e4fa;z-index:1;}
-.upload-tabela-caicavv td{padding:9px 10px;border-bottom:1px solid #eef3fb;color:#071957;vertical-align:top;}
-.upload-status-ok{color:#166534;font-weight:900;}
-.upload-status-falta{color:#991b1b;font-weight:900;}
-.upload-status-pendente{color:#1d4ed8;font-weight:900;}
-.upload-aviso-caicavv{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;margin-top:12px;font-size:13px;line-height:1.45;}
-.upload-sucesso-caicavv{background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;border-radius:12px;padding:12px;margin-top:12px;font-size:13px;line-height:1.45;}
-.upload-pastas-caicavv{margin-top:14px;}
-.upload-pasta-caicavv{border:1px solid #d8e4fa;background:#fff;border-radius:14px;margin-top:12px;overflow:hidden;box-shadow:0 12px 28px rgba(23,70,150,.08);}
-.upload-pasta-caicavv summary{cursor:pointer;list-style:none;padding:14px 16px;background:#f8fbff;display:flex;align-items:center;justify-content:space-between;gap:12px;color:#061852;font-weight:900;}
-.upload-pasta-caicavv summary::-webkit-details-marker{display:none;}
-.upload-pasta-caicavv summary span{display:block;font-size:15px;}
-.upload-pasta-caicavv summary small{display:block;color:#52699d;font-size:12px;font-weight:800;margin-top:3px;}
-.upload-pasta-conteudo{padding:14px 16px;background:#fff;}
-.upload-resumo-final-caicavv{margin-top:12px;border:1px solid #bbf7d0;background:#ecfdf5;border-radius:12px;padding:12px;color:#14532d;}
-.upload-resumo-final-caicavv b{color:#064e3b;}
-.upload-mini-titulo{font-size:13px;color:#52699d;font-weight:900;text-transform:uppercase;letter-spacing:.04em;margin:14px 0 8px;}
-.upload-acoes-pasta-caicavv{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 12px;}
-.upload-acoes-pasta-caicavv button{width:auto!important;min-width:150px!important;height:38px!important;margin:0!important;border-radius:10px!important;padding:0 14px!important;font-size:13px!important;font-weight:900!important;}
-.upload-acoes-pasta-caicavv .imprimir{background:#2563eb!important;}
-.upload-acoes-pasta-caicavv .exportar{background:#0f766e!important;}
-.upload-acoes-pasta-caicavv .excluir{background:#b91c1c!important;}
-@media(max-width:620px){.upload-acoes-pasta-caicavv{display:grid;grid-template-columns:1fr}.upload-acoes-pasta-caicavv button{width:100%!important;}}
-@media(max-width:900px){.upload-grid-caicavv{grid-template-columns:1fr}.upload-resumo-caicavv{grid-template-columns:1fr 1fr;}}
-@media(max-width:620px){.upload-resumo-caicavv{grid-template-columns:1fr}.upload-tabela-caicavv{font-size:12px;}}
-</style>
-
-<script>
-/* ===== ABAS DE AGENDAMENTOS PASSADOS - INTEGRADO E CORRIGIDO ===== */
-(function(){
-  window.caicavvAbasPassadas = Array.isArray(window.caicavvAbasPassadas) ? window.caicavvAbasPassadas : [];
-
-  function textoLimpoAba(v){
-    return String(v || "")
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .replace(/\s+/g, " ")
-      .trim()
-      .toLowerCase();
-  }
-
-  function mesmoTecnicoAba(a, b){
-    return textoLimpoAba(a) === textoLimpoAba(b);
-  }
-
-  function roleAtualAba(){
-    try{
-      return tecnicoLogado && tecnicoLogado.role ? String(tecnicoLogado.role).toLowerCase() : "";
-    }catch(e){
-      return "";
-    }
-  }
-
-  function podeCriarAbaPassada(){
-    const role = roleAtualAba();
-    return role === "adm" || role === "coordenacao";
-  }
-
-  function telaAtualAba(){
-    try{
-      if(typeof telaAtualCaicavv !== "undefined") return telaAtualCaicavv;
-    }catch(e){}
-
-    const ativa = document.querySelector(".app-shell .nav.active");
-    return ativa ? ativa.dataset.tela : "agendamentos";
-  }
-
-  function tecnicosDisponiveisAbas(){
-    try{
-      if(typeof getTecnicosDisponiveis === "function") return getTecnicosDisponiveis();
-      return Object.values(usuarios).filter(u => u.role === "tecnico").map(u => u.nome);
-    }catch(e){
-      return [];
-    }
-  }
-
-  function escAba(v){
-    return typeof escapeHTML === "function"
-      ? escapeHTML(v)
-      : String(v ?? "").replace(/[&<>'"]/g, c => ({
-          "&":"&amp;",
-          "<":"&lt;",
-          ">":"&gt;",
-          "'":"&#39;",
-          '"':"&quot;"
-        }[c]));
-  }
-
-  function fmtAba(data){
-    return typeof formatarDataBR === "function" ? formatarDataBR(data) : String(data || "");
-  }
-
-  function idNovoAba(){
-    return "aba_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
-  }
-
-  function getAtendimentosAba(){
-    try{
-      if(typeof atendimentos !== "undefined" && Array.isArray(atendimentos)) return atendimentos;
-    }catch(e){}
-    return Array.isArray(window.atendimentos) ? window.atendimentos : [];
-  }
-
-  function getTecnicoFiltroAtualAba(){
-    try{
-      if(tecnicoLogado && tecnicoLogado.role === "tecnico") return tecnicoLogado.nome || "";
-    }catch(e){}
-
-    const select = document.getElementById("filtroTecnicoAvancado");
-    if(select && select.value) return select.value;
-
-    try{
-      if(typeof filtroAtual !== "undefined" && filtroAtual) return filtroAtual;
-    }catch(e){}
-
-    return "";
-  }
-
-  function atendimentoPertenceAbaPassada(atendimento, aba){
-    if(!atendimento || !aba) return false;
-
-    const data = String(atendimento.data || "");
-    if(!data || !aba.inicio || !aba.fim) return false;
-
-    return mesmoTecnicoAba(atendimento.tecnico, aba.tecnico)
-      && data >= String(aba.inicio)
-      && data <= String(aba.fim);
-  }
-
-  function atendimentoEstaEmAbaPassada(atendimento){
-    return (window.caicavvAbasPassadas || []).some(aba => atendimentoPertenceAbaPassada(atendimento, aba));
-  }
-
-  window.atendimentoPertenceAbaPassada = atendimentoPertenceAbaPassada;
-  window.atendimentoEstaEmAbaPassada = atendimentoEstaEmAbaPassada;
-
-  function atualizarAbasPassadasDosDados(dados){
-    window.caicavvAbasPassadas = dados && Array.isArray(dados.abasAgendamentosPassados)
-      ? dados.abasAgendamentosPassados
-      : [];
-  }
-
-  window.caicavvAtualizarAbasPassadasDosDados = atualizarAbasPassadasDosDados;
-
-  async function carregarAbasPassadas(){
-    try{
-      if(typeof DOC_ATENDIMENTOS === "undefined") return;
-      const snap = await DOC_ATENDIMENTOS.get();
-      const dados = snap.exists ? (snap.data() || {}) : {};
-      atualizarAbasPassadasDosDados(dados);
-    }catch(e){
-      console.error(e);
-    }
-  }
-
-  window.caicavvCarregarAbasPassadas = carregarAbasPassadas;
-
-  async function salvarAbasPassadas(){
-    if(typeof DOC_ATENDIMENTOS === "undefined") return;
-    await DOC_ATENDIMENTOS.set({
-      abasAgendamentosPassados: window.caicavvAbasPassadas,
-      atualizadoEm: new Date().toISOString()
-    }, { merge:true });
-  }
-
-  function inserirBotaoCriarAbaPassada(){
-    const btnAdd = document.getElementById("btnAdicionar");
-    if(!btnAdd) return;
-
-    let btn = document.getElementById("btnCriarAbaPassada");
-    if(!btn){
-      btn = document.createElement("button");
-      btn.type = "button";
-      btn.id = "btnCriarAbaPassada";
-      btn.textContent = "Criar aba de agendamentos passados";
-      btn.onclick = abrirModalCriarAbaPassada;
-      btnAdd.insertAdjacentElement("afterend", btn);
-    }
-
-    const mostrar = telaAtualAba() === "agendamentos" && podeCriarAbaPassada();
-    btn.classList.toggle("hidden", !mostrar);
-    btn.style.display = mostrar ? "block" : "none";
-  }
-
-  window.inserirBotaoCriarAbaPassada = inserirBotaoCriarAbaPassada;
-
-  function garantirModalCriarAbaPassada(){
-    if(document.getElementById("modalCriarAbaPassada")) return;
-
-    const opts = tecnicosDisponiveisAbas()
-      .map(t => `<option value="${escAba(t)}">${escAba(t)}</option>`)
-      .join("");
-
-    document.body.insertAdjacentHTML("beforeend", `
-      <div id="modalCriarAbaPassada" class="modal-fundo caicavv-modal-abas">
-        <div class="modal-box">
-          <h3>Criar aba de agendamentos passados</h3>
-          <p>Escolha o técnico e o período que a aba deve puxar.</p>
-
-          <label>Nome da aba</label>
-          <input id="abaPassadaNome" placeholder="Ex: Maio">
-
-          <label>Técnico</label>
-          <select id="abaPassadaTecnico">${opts}</select>
-
-          <label>De qual dia vai puxar</label>
-          <input id="abaPassadaInicio" type="date">
-
-          <label>Até qual dia</label>
-          <input id="abaPassadaFim" type="date">
-
-          <label>Descrição</label>
-          <textarea id="abaPassadaDescricao" placeholder="Descrição opcional"></textarea>
-
-          <div class="modal-acoes" style="margin-top:16px">
-            <button type="button" class="modal-cancelar" onclick="fecharModalCriarAbaPassada()">Cancelar</button>
-            <button type="button" class="modal-confirmar" style="background:#0f766e!important" onclick="confirmarCriarAbaPassada()">Criar aba</button>
-          </div>
-        </div>
-      </div>`);
-  }
-
-  function abrirModalCriarAbaPassada(){
-    if(!podeCriarAbaPassada()){
-      if(typeof mostrarErro === "function") mostrarErro("Somente coordenação e administração podem criar abas de agendamentos passados.");
-      else alert("Somente coordenação e administração podem criar abas de agendamentos passados.");
-      return;
-    }
-
-    garantirModalCriarAbaPassada();
-
-    const sel = document.getElementById("abaPassadaTecnico");
-    if(sel){
-      const tecnicos = tecnicosDisponiveisAbas();
-      sel.innerHTML = tecnicos.map(t => `<option value="${escAba(t)}">${escAba(t)}</option>`).join("");
-
-      const tecnicoFiltro = getTecnicoFiltroAtualAba();
-      if(tecnicoFiltro && tecnicos.some(t => mesmoTecnicoAba(t, tecnicoFiltro))){
-        const encontrado = tecnicos.find(t => mesmoTecnicoAba(t, tecnicoFiltro));
-        sel.value = encontrado;
-      }
-    }
-
-    document.getElementById("modalCriarAbaPassada").classList.add("show");
-  }
-
-  function fecharModalCriarAbaPassada(){
-    const modal = document.getElementById("modalCriarAbaPassada");
-    if(modal) modal.classList.remove("show");
-  }
-
-  async function confirmarCriarAbaPassada(){
-    const nome = (document.getElementById("abaPassadaNome")?.value || "").trim();
-    const tecnico = document.getElementById("abaPassadaTecnico")?.value || "";
-    const inicio = document.getElementById("abaPassadaInicio")?.value || "";
-    const fim = document.getElementById("abaPassadaFim")?.value || "";
-    const descricao = (document.getElementById("abaPassadaDescricao")?.value || "").trim();
-
-    if(!nome || !tecnico || !inicio || !fim){
-      if(typeof mostrarErro === "function") mostrarErro("Preencha nome, técnico, data inicial e data final.");
-      else alert("Preencha nome, técnico, data inicial e data final.");
-      return;
-    }
-
-    if(inicio > fim){
-      if(typeof mostrarErro === "function") mostrarErro("A data inicial não pode ser depois da data final.");
-      else alert("A data inicial não pode ser depois da data final.");
-      return;
-    }
-
-    const novaAba = { id:idNovoAba(), nome, tecnico, inicio, fim, descricao, criadoEm:new Date().toISOString() };
-    const qtd = getAtendimentosAba().filter(a => atendimentoPertenceAbaPassada(a, novaAba)).length;
-
-    window.caicavvAbasPassadas.push(novaAba);
-
-    try{
-      await salvarAbasPassadas();
-      fecharModalCriarAbaPassada();
-
-      ["abaPassadaNome","abaPassadaInicio","abaPassadaFim","abaPassadaDescricao"].forEach(id => {
-        const el = document.getElementById(id);
-        if(el) el.value = "";
-      });
-
-      if(typeof render === "function") render();
-      else renderizarAbasPassadas();
-
-      if(typeof mostrarToast === "function"){
-        mostrarToast(`Aba criada com ${qtd} atendimento(s) guardado(s) no período.`, "sucesso");
-      }
-    }catch(e){
-      console.error(e);
-      window.caicavvAbasPassadas = window.caicavvAbasPassadas.filter(a => a.id !== novaAba.id);
-      if(typeof mostrarErro === "function") mostrarErro("Erro ao salvar a aba no Firebase.");
-      else alert("Erro ao salvar a aba no Firebase.");
-    }
-  }
-
-  async function excluirAbaPassada(id){
-    if(!podeCriarAbaPassada()) return;
-
-    if(!confirm("Excluir esta aba de agendamentos passados? Os atendimentos voltarão para a lista principal.")) return;
-
-    window.caicavvAbasPassadas = window.caicavvAbasPassadas.filter(a => a.id !== id);
-    await salvarAbasPassadas();
-
-    if(typeof render === "function") render();
-    else renderizarAbasPassadas();
-
-    if(typeof mostrarToast === "function"){
-      mostrarToast("Aba excluída. Os atendimentos voltaram para a lista principal.", "sucesso");
-    }
-  }
-
-  function abaVisivelParaFiltro(aba){
-    if(telaAtualAba() !== "agendamentos") return false;
-    if(!aba || !aba.tecnico) return false;
-
-    try{
-      if(tecnicoLogado && tecnicoLogado.role === "tecnico"){
-        return mesmoTecnicoAba(aba.tecnico, tecnicoLogado.nome);
-      }
-    }catch(e){}
-
-    const tecnicoFiltro = getTecnicoFiltroAtualAba();
-
-    // Para coordenação/adm, a aba só aparece quando aquele técnico está selecionado.
-    // Assim a aba de Josiane não aparece quando estiver vendo Cláudia, Cintya etc.
-    if(!tecnicoFiltro) return false;
-
-    return mesmoTecnicoAba(aba.tecnico, tecnicoFiltro);
-  }
-
-  function renderizarAbasPassadas(){
-    inserirBotaoCriarAbaPassada();
-
-    const listaEl = document.getElementById("lista");
-    if(!listaEl) return;
-
-    const antigo = document.getElementById("caicavvAbasPassadasBox");
-    if(antigo) antigo.remove();
-
-    if(telaAtualAba() !== "agendamentos") return;
-
-    const abas = (window.caicavvAbasPassadas || []).filter(abaVisivelParaFiltro);
-    if(abas.length === 0) return;
-
-    const vazio = listaEl.querySelector(".lista-vazia");
-    if(vazio && listaEl.children.length === 1){
-      listaEl.innerHTML = "";
-    }
-
-    let html = `<div id="caicavvAbasPassadasBox" class="caicavv-arquivos-box">`;
-
-    abas.forEach(aba => {
-      const itens = getAtendimentosAba()
-        .filter(a => atendimentoPertenceAbaPassada(a, aba))
-        .sort((a,b) => String(b.data || "").localeCompare(String(a.data || "")) || String(b.hora || "").localeCompare(String(a.hora || "")));
-
-      const linhas = itens.map(a => `
-        <div class="caicavv-mini-atendimento">
-          <b>${escAba(a.nome || "Sem nome")}</b>
-          <span>📁 Pasta ${escAba(a.pasta || "—")} · 👤 ${escAba(a.tecnico || "—")}</span>
-          <span>📅 ${escAba(fmtAba(a.data))} às ${escAba(a.hora || "—")} · ${escAba(a.status || "agendado")}</span>
-          <span>${escAba(a.descricao || "Sem descrição")}</span>
-        </div>`).join("") || `<div class="caicavv-mini-atendimento"><b>Nenhum atendimento encontrado neste período.</b></div>`;
-
-      html += `
-        <details class="arquivo-atendimentos">
-          <summary>
-            <span>${escAba(String(aba.nome || "Aba").toUpperCase())}</span>
-            <small>${escAba(fmtAba(aba.inicio))} até ${escAba(fmtAba(aba.fim))} · ${escAba(aba.tecnico)} · ${itens.length}</small>
-          </summary>
-          <div class="arquivo-conteudo">
-            ${aba.descricao ? `<div class="pagina-sub">${escAba(aba.descricao)}</div>` : ""}
-            ${linhas}
-            ${podeCriarAbaPassada() ? `<button type="button" class="caicavv-excluir-aba" title="Excluir aba" onclick="excluirAbaPassada('${escAba(aba.id)}')">×</button>` : ""}
-          </div>
-        </details>`;
-    });
-
-    html += `</div>`;
-    listaEl.insertAdjacentHTML("beforeend", html);
-  }
-
-  window.abrirModalCriarAbaPassada = abrirModalCriarAbaPassada;
-  window.fecharModalCriarAbaPassada = fecharModalCriarAbaPassada;
-  window.confirmarCriarAbaPassada = confirmarCriarAbaPassada;
-  window.excluirAbaPassada = excluirAbaPassada;
-  window.renderizarAbasPassadas = renderizarAbasPassadas;
-
-  document.addEventListener("DOMContentLoaded", async function(){
-    inserirBotaoCriarAbaPassada();
-    await carregarAbasPassadas();
-    setTimeout(() => {
-      inserirBotaoCriarAbaPassada();
-      if(typeof render === "function" && telaAtualAba() === "agendamentos") render();
-      else renderizarAbasPassadas();
-    }, 800);
-  });
-})();
-</script>
-
 </body>
 </html>
 
@@ -1218,6 +770,7 @@ body.modo-app{
 
     <select id="editStatus">
       <option value="agendado">Pendente / agendado</option>
+      <option value="aguardando">Aguardando</option>
       <option value="compareceu">Compareceu</option>
       <option value="faltou">Faltou</option>
     </select>
@@ -1346,11 +899,6 @@ body.modo-app{
       <span>Agendamentos</span>
     </div>
 
-    <div class="nav nav-upload hidden" data-tela="upload" onclick="abrirTelaUpload()">
-      <div class="nav-icon">📤</div>
-      <span>Upload</span>
-    </div>
-
     <div class="nav" data-tela="pacientes" onclick="abrirTelaPacientes()">
       <div class="nav-icon">👤</div>
       <span>Pacientes</span>
@@ -1469,11 +1017,10 @@ async function carregarAtendimentosFirebase(){
       const dados = snap.data() || {};
       atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
       logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
-      if(typeof caicavvAtualizarAbasPassadasDosDados === "function") caicavvAtualizarAbasPassadasDosDados(dados);
     } else {
       atendimentos = [];
       logsAlteracoes = [];
-      await DOC_ATENDIMENTOS.set({ itens: [], logs: [], abasAgendamentosPassados: [], criadoEm: new Date().toISOString() }, { merge: true });
+      await DOC_ATENDIMENTOS.set({ itens: [], logs: [], criadoEm: new Date().toISOString() }, { merge: true });
     }
   }catch(e){
     console.error(e);
@@ -1963,14 +1510,6 @@ function aplicarPermissoesNaTela(){
   const menuFundo = document.getElementById("menuLateralFundo");
   if(menuLateral) menuLateral.classList.toggle("hidden", !podeRelatorio);
   if(menuFundo) menuFundo.classList.toggle("hidden", !podeRelatorio);
-
-  document.querySelectorAll(".nav-upload").forEach(nav => {
-    nav.classList.toggle("hidden", !podeAcessarUploadPlanilha());
-  });
-
-  if(!podeAcessarUploadPlanilha() && typeof telaAtualCaicavv !== "undefined" && telaAtualCaicavv === "upload"){
-    abrirTelaAgendamentos();
-  }
 }
 
 async function add(){
@@ -2206,7 +1745,7 @@ async function salvarEdicao(){
   const podeEditarDados = tecnicoLogado.role === "tecnico" || tecnicoLogado.role === "adm" || tecnicoLogado.role === "coordenacao";
 
   let novoStatus = String(editStatus.value || "agendado");
-  if(!["agendado", "compareceu", "faltou"].includes(novoStatus)){
+  if(!["agendado", "aguardando", "compareceu", "faltou"].includes(novoStatus)){
     mostrarErro("Status inválido.");
     return;
   }
@@ -2316,7 +1855,7 @@ function rel(){
     return;
   }
 
-  let l = atendimentos.filter(a=>a.tecnico===filtroAtual && !(typeof atendimentoEstaEmAbaPassada === "function" && atendimentoEstaEmAbaPassada(a)));
+  let l = atendimentos.filter(a=>a.tecnico===filtroAtual);
   let ag = l.length;
   let ok = l.filter(a=>a.status==="compareceu").length;
   let ft = l.filter(a=>a.status==="faltou").length;
@@ -2422,6 +1961,7 @@ function formatarDataHoraBR(iso){
 function statusBonito(status){
   if(status === "compareceu") return "Compareceu";
   if(status === "faltou") return "Faltou";
+  if(status === "aguardando") return "Aguardando";
   return "Agendado";
 }
 
@@ -2579,6 +2119,7 @@ function getPeriodoMes(yyyyMm){
 function statusRelatorio(status){
   if(status === "compareceu") return "Veio";
   if(status === "faltou") return "Não veio";
+  if(status === "aguardando") return "Aguardando";
   return "Pendente";
 }
 
@@ -2762,38 +2303,47 @@ function render(){
 
   const termo = textoBusca();
   let dados = atendimentos.filter(a=>{
-    const arquivadoEmAba = typeof atendimentoEstaEmAbaPassada === "function" && atendimentoEstaEmAbaPassada(a);
-    const importadoUpload = a && (a.origem === "upload" || a.tipo === "importado");
-    return !importadoUpload && !arquivadoEmAba && passaFiltroTecnicoAvancado(a) && passaBusca(a, termo) && passaFiltroData(a) && passaFiltroStatus(a);
+    const arquivadoEmAbaPassada = typeof window.atendimentoEstaEmAbaPassada === "function"
+      ? window.atendimentoEstaEmAbaPassada(a)
+      : false;
+
+    return passaFiltroTecnicoAvancado(a) && passaBusca(a, termo) && passaFiltroData(a) && passaFiltroStatus(a) && !arquivadoEmAbaPassada;
   });
 
   dados.sort((a,b) => {
     const aRealizado = a.status === "compareceu" || a.status === "faltou";
     const bRealizado = b.status === "compareceu" || b.status === "faltou";
 
+    // Agendados continuam acima dos já realizados.
     if(aRealizado !== bRealizado){
       return aRealizado ? 1 : -1;
     }
 
+    // Entre os já realizados, os mais recentes aparecem primeiro.
+    if(aRealizado && bRealizado){
+      return getDataHoraAtendimento(b).localeCompare(getDataHoraAtendimento(a));
+    }
+
+    // Entre os ainda agendados, mantém a ordem normal: os próximos primeiro.
     return getDataHoraAtendimento(a).localeCompare(getDataHoraAtendimento(b));
   });
 
   if(dados.length === 0){
     lista.innerHTML = `<div class="app-card lista-vazia"><span class="icone-vazio">▣</span><span>Nenhum atendimento encontrado.</span></div>`;
-    if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();
     return;
   }
 
   dados.forEach(a=>{
     const realizado = a.status === "compareceu" || a.status === "faltou";
-    const statusLabel = a.status === "compareceu" ? "Compareceu" : a.status === "faltou" ? "Faltou" : "Agendado";
+    const statusLabel = a.status === "compareceu" ? "Compareceu" : a.status === "faltou" ? "Faltou" : a.status === "aguardando" ? "Aguardando" : "Agendado";
     const statusTempo = getStatusTempo(a);
     const classeTempo = statusTempo === "atrasado" ? "alerta-atrasado" : statusTempo === "proximo" ? "alerta-proximo" : "";
 
-    const chipClass = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : "";
+    const chipClass = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : a.status === "aguardando" ? "aguardando-chip" : "";
     const podeEditar = podeEditarAtendimento(a);
     const podeExcluir = permissoes[role].del;
     const podeMarcar = permissoes[role].marcar && !realizado;
+    const podeAguardando = role === "recepcao" && !realizado && (a.status || "agendado") !== "aguardando";
 
     lista.innerHTML += `
       <div class="card atendimento-card v10-card status-${a.status || 'agendado'} ${realizado ? 'realizado' : ''} ${classeTempo}" onclick="fecharMenusAtendimento()">
@@ -2833,14 +2383,12 @@ function render(){
           ${realizado ? `<div style="margin-top:12px"><span class="selo-realizado">JÁ REALIZADO</span></div>` : ""}
 
           <div class="v10-actions">
+            ${podeAguardando ? `<button class="aguardando" onclick="event.stopPropagation(); marcarAguardando('${a.id}')">🔔 Aguardando</button>` : ""}
             ${podeMarcar ? `<button class="compareceu" onclick="event.stopPropagation(); marcar('${a.id}','compareceu')">✔ Compareceu</button><button class="faltou" onclick="event.stopPropagation(); marcar('${a.id}','faltou')">✖ Faltou</button>` : ""}
           </div>
         </div>
       </div>
-    `;
-  });
-
-  if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();
+    `;  });
 }
 
 
@@ -2875,7 +2423,7 @@ const getStatusTempoOriginalCaicavv = typeof getStatusTempo === "function" ? get
 getStatusTempo = function(item){ if(!lembreteAtivo()) return ""; return getStatusTempoOriginalCaicavv ? getStatusTempoOriginalCaicavv(item) : ""; };
 function setTelaAtiva(nome){telaAtualCaicavv=nome;document.querySelectorAll(".app-shell .nav").forEach(nav=>nav.classList.toggle("active",nav.dataset.tela===nome));}
 function mostrarBlocosAgendamento(mostrar){["boasVindas","menu","relatorio","filtrosV6","formAtendimento"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("hidden",!mostrar);});}
-function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(typeof inserirBotaoCriarAbaPassada === "function")inserirBotaoCriarAbaPassada();if(renderOriginalCaicavv)renderOriginalCaicavv();if(typeof renderizarAbasPassadas === "function")renderizarAbasPassadas();}
+function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();}
 function abrirTelaPacientes(){setTelaAtiva("pacientes");mostrarBlocosAgendamento(false);const totalPastas=Object.keys(cadastros).length;const totalNomes=Object.values(cadastros).reduce((s,nomes)=>s+nomes.length,0);let cards="";Object.entries(cadastros).forEach(([pasta,nomes])=>{nomes.forEach(nome=>{cards+=`<div class="paciente-card"><strong>${escapeHTML(nome)}</strong><span>📁 Pasta ${escapeHTML(pasta)}</span></div>`;});});lista.innerHTML=`<div class="pagina-titulo">Pastas</div><div class="pagina-sub">Busca rápida por nome ou nº da pasta.</div><div class="search-card" style="margin-bottom:14px"><div class="search-box"><span>🔍</span><input id="buscaPacientes" placeholder="Buscar por nome ou nº" oninput="filtrarPacientes()"></div></div><div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div><div id="listaPacientes" class="pacientes-grid">${cards}</div>`;}
 function filtrarPacientes(){const termo=normalizarBusca(document.getElementById("buscaPacientes")?.value||"");document.querySelectorAll(".paciente-card").forEach(card=>{card.style.display=normalizarBusca(card.innerText).includes(termo)?"block":"none";});}
 function abrirTelaTecnicos(){setTelaAtiva("tecnicos");mostrarBlocosAgendamento(false);const tecnicos=Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);const mesAtual=new Date().toISOString().slice(0,7);lista.innerHTML=`<div class="pagina-titulo">Relatório por técnico</div><div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div><div class="tecnico-relatorio-box"><label><b>Técnico</b></label><select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select><label><b>Mês</b></label><input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}"><button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button></div><div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;}
@@ -3045,7 +2593,6 @@ async function carregarAtendimentosFirebase(){
       const dados = snap.data() || {};
       atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
       logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
-      if(typeof caicavvAtualizarAbasPassadasDosDados === "function") caicavvAtualizarAbasPassadasDosDados(dados);
 
       if(dados.senhas && typeof dados.senhas === "object"){
         senhas = { ...senhasPadrao };
@@ -3075,7 +2622,6 @@ async function carregarAtendimentosFirebase(){
       await DOC_ATENDIMENTOS.set({
         itens: [],
         logs: [],
-        abasAgendamentosPassados: [],
         cadastros: cadastros,
         senhas: senhas,
         criadoEm: new Date().toISOString()
@@ -3501,10 +3047,7 @@ window.addEventListener("DOMContentLoaded",()=>{
     renderOriginalCaicavv = typeof window.render === "function" ? window.render : null;
     window.render = function(){
       if(telaAtualCaicavv !== "agendamentos") return;
-      const resultado = renderOriginalCaicavv ? renderOriginalCaicavv() : undefined;
-      if(typeof inserirBotaoCriarAbaPassada === "function") inserirBotaoCriarAbaPassada();
-      if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();
-      return resultado;
+      return renderOriginalCaicavv ? renderOriginalCaicavv() : undefined;
     };
 
     const menuIcon = document.querySelector(".menu-icon");
@@ -4025,714 +3568,6 @@ function baixarArquivoEntradasCAICAVV(conteudo, nomeArquivo, tipo){
   URL.revokeObjectURL(url);
 }
 
-
-/* ===== ABA UPLOAD: leitor de SAGENDAMENTO .ODS/.XLSX para relatório ===== */
-let uploadPlanilhaWorkbook = null;
-let uploadPlanilhaArquivoNome = "";
-let uploadPlanilhaLinhas = [];
-let uploadPlanilhaResumo = null;
-let uploadPastasCache = [];
-
-function podeAcessarUploadPlanilha(){
-  return !!tecnicoLogado && ["recepcao","adm","coordenacao"].includes(tecnicoLogado.role);
-}
-
-function limparTextoUpload(valor){
-  return String(valor || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toUpperCase();
-}
-
-function valorMarcadoUpload(valor){
-  const txt = limparTextoUpload(valor);
-  return !!txt && !["0","-","NAO","NÃO","FALSE","FALSO","N","NO"].includes(txt);
-}
-
-function tecnicoDaAbaUpload(nomeAba){
-  const aba = limparTextoUpload(nomeAba);
-  const tecnicos = getTecnicosDisponiveis ? getTecnicosDisponiveis() : [];
-  return tecnicos.find(t => aba.includes(limparTextoUpload(t))) || "";
-}
-
-function parseDataUpload(valor){
-  if(valor instanceof Date && !isNaN(valor.getTime())){
-    const y = valor.getFullYear();
-    const m = String(valor.getMonth()+1).padStart(2,"0");
-    const d = String(valor.getDate()).padStart(2,"0");
-    return `${y}-${m}-${d}`;
-  }
-
-  if(typeof valor === "number" && isFinite(valor)){
-    try{
-      const obj = XLSX.SSF.parse_date_code(valor);
-      if(obj && obj.y && obj.m && obj.d){
-        return `${String(obj.y).padStart(4,"0")}-${String(obj.m).padStart(2,"0")}-${String(obj.d).padStart(2,"0")}`;
-      }
-    }catch(e){}
-  }
-
-  let txt = String(valor || "").trim();
-  if(!txt) return "";
-
-  txt = txt.replace(/\s+.*$/, "");
-
-  let m = txt.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
-  if(m) return `${m[1]}-${m[2].padStart(2,"0")}-${m[3].padStart(2,"0")}`;
-
-  m = txt.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
-  if(m){
-    let ano = Number(m[3]);
-    if(ano < 100) ano += 2000;
-    return `${String(ano).padStart(4,"0")}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
-  }
-
-  return "";
-}
-
-function nomePacientePorPastaUpload(pasta){
-  const p = normalizarPasta(pasta);
-  const nomes = cadastros && cadastros[p] ? cadastros[p] : null;
-  if(Array.isArray(nomes) && nomes.length) return nomes.join(" | ");
-  return "";
-}
-
-function statusTextoUpload(status){
-  if(status === "compareceu") return "Compareceu";
-  if(status === "faltou") return "Não compareceu";
-  return "Sem marcação";
-}
-
-function montarOptionsTecnicosUpload(valor=""){
-  const tecnicos = getTecnicosDisponiveis ? getTecnicosDisponiveis() : [];
-  return `<option value="">Selecione</option>` + tecnicos.map(t => `<option value="${escapeHTML(t)}" ${t===valor?"selected":""}>${escapeHTML(t)}</option>`).join("");
-}
-
-function abrirTelaUpload(){
-  setTelaAtiva("upload");
-  mostrarBlocosAgendamento(false);
-
-  if(!podeAcessarUploadPlanilha()){
-    lista.innerHTML = `<div class="pagina-titulo">Upload</div><div class="upload-aviso-caicavv">Acesso liberado apenas para Recepção, Coordenação e Administração.</div>`;
-    return;
-  }
-
-  const tecnicosOptions = montarOptionsTecnicosUpload();
-
-  lista.innerHTML = `
-    <div class="pagina-titulo">Upload de agendamentos antigos</div>
-    <div class="pagina-sub">Importe planilhas .ods, .xlsx ou .xls para gerar relatório de comparecimento por pasta, data e técnico. Esses registros entram como importados e não aparecem como agendamento comum do dia.</div>
-
-    <div class="upload-grid-caicavv">
-      <div class="upload-card-caicavv">
-        <h3>1. Ler planilha</h3>
-        <p>Envie o arquivo, escolha uma aba da planilha e confira a prévia antes de salvar no Firebase.</p>
-
-        <label>Arquivo</label>
-        <input id="uploadArquivoPlanilha" type="file" accept=".ods,.xlsx,.xls" onchange="lerArquivoUploadPlanilha(event)">
-
-        <label>Aba da planilha</label>
-        <select id="uploadNomeAba" onchange="prepararUploadPlanilha()">
-          <option value="">Envie um arquivo primeiro</option>
-        </select>
-
-        <label>Nome do relatório/importação</label>
-        <input id="uploadNomeRelatorio" placeholder="Ex: Janeiro 2026 - Cláudia">
-
-        <label>Técnico</label>
-        <select id="uploadTecnico">${tecnicosOptions}</select>
-
-        <button type="button" class="secundario" onclick="prepararUploadPlanilha()">Gerar prévia</button>
-        <button type="button" id="btnImportarUpload" onclick="importarUploadPlanilhaFirebase()" disabled>Importar para relatório</button>
-
-        <div class="upload-aviso-caicavv">
-          O leitor procura automaticamente as colunas <b>DATA</b>, <b>PASTA</b>, <b>COMPARECEU</b>, <b>NÃO COMPARECEU</b> e <b>OBSERVAÇÃO</b>.
-        </div>
-      </div>
-
-      <div class="upload-card-caicavv">
-        <h3>2. Resumo</h3>
-        <p id="uploadResumoTexto">Nenhuma planilha lida ainda.</p>
-        <div id="uploadResumoCards" class="upload-resumo-caicavv"></div>
-      </div>
-    </div>
-
-    <div class="upload-card-caicavv" style="margin-top:14px">
-      <h3>Prévia dos registros</h3>
-      <div id="uploadPreview" class="upload-aviso-caicavv">A prévia aparecerá aqui depois da leitura.</div>
-    </div>
-
-    <div class="upload-card-caicavv upload-pastas-caicavv">
-      <h3>Uploads importados</h3>
-      <p>As importações salvas aparecem aqui em formato de pasta. Cada pasta mostra os atendimentos da planilha e o resumo no final.</p>
-      <div id="uploadPastasImportadas"></div>
-    </div>
-  `;
-
-  renderizarPastasUploadImportadas();
-}
-
-async function lerArquivoUploadPlanilha(event){
-  const arquivo = event.target.files && event.target.files[0];
-  uploadPlanilhaWorkbook = null;
-  uploadPlanilhaLinhas = [];
-  uploadPlanilhaResumo = null;
-  uploadPlanilhaArquivoNome = arquivo ? arquivo.name : "";
-
-  const selectAba = document.getElementById("uploadNomeAba");
-  const preview = document.getElementById("uploadPreview");
-  const btn = document.getElementById("btnImportarUpload");
-  if(btn) btn.disabled = true;
-
-  if(!arquivo){
-    if(selectAba) selectAba.innerHTML = `<option value="">Envie um arquivo primeiro</option>`;
-    return;
-  }
-
-  try{
-    const buffer = await arquivo.arrayBuffer();
-    uploadPlanilhaWorkbook = XLSX.read(buffer, { type:"array", cellDates:true, raw:false });
-
-    if(!uploadPlanilhaWorkbook || !uploadPlanilhaWorkbook.SheetNames || !uploadPlanilhaWorkbook.SheetNames.length){
-      throw new Error("Arquivo sem abas legíveis.");
-    }
-
-    if(selectAba){
-      selectAba.innerHTML = uploadPlanilhaWorkbook.SheetNames.map(nome => `<option value="${escapeHTML(nome)}">${escapeHTML(nome)}</option>`).join("");
-    }
-
-    const primeiraAba = uploadPlanilhaWorkbook.SheetNames[0];
-    const tecnicoInferido = tecnicoDaAbaUpload(primeiraAba);
-    const tecnicoSelect = document.getElementById("uploadTecnico");
-    if(tecnicoSelect && tecnicoInferido) tecnicoSelect.value = tecnicoInferido;
-
-    const nomeRelatorio = document.getElementById("uploadNomeRelatorio");
-    if(nomeRelatorio && !nomeRelatorio.value) nomeRelatorio.value = primeiraAba;
-
-    prepararUploadPlanilha();
-  }catch(e){
-    console.error(e);
-    if(preview) preview.innerHTML = "Não foi possível ler esse arquivo. Confirme se ele é .ods, .xlsx ou .xls válido.";
-    mostrarErro("Erro ao ler a planilha.");
-  }
-}
-
-function encontrarCabecalhoUpload(linhas){
-  for(let i=0; i<Math.min(linhas.length, 30); i++){
-    const normalizada = (linhas[i] || []).map(limparTextoUpload);
-    const temData = normalizada.some(c => c === "DATA" || c.includes("DATA"));
-    const temPasta = normalizada.some(c => c === "PASTA" || c.includes("PASTA"));
-    if(temData && temPasta) return i;
-  }
-  return -1;
-}
-
-function indiceColunaUpload(cabecalho, regra){
-  return cabecalho.findIndex(c => regra(limparTextoUpload(c)));
-}
-
-function prepararUploadPlanilha(){
-  const preview = document.getElementById("uploadPreview");
-  const resumoTexto = document.getElementById("uploadResumoTexto");
-  const resumoCards = document.getElementById("uploadResumoCards");
-  const btn = document.getElementById("btnImportarUpload");
-  if(btn) btn.disabled = true;
-
-  uploadPlanilhaLinhas = [];
-  uploadPlanilhaResumo = null;
-
-  if(!uploadPlanilhaWorkbook){
-    if(preview) preview.innerHTML = "Envie uma planilha para começar.";
-    return;
-  }
-
-  const nomeAba = document.getElementById("uploadNomeAba")?.value || uploadPlanilhaWorkbook.SheetNames[0];
-  const sheet = uploadPlanilhaWorkbook.Sheets[nomeAba];
-  if(!sheet){
-    if(preview) preview.innerHTML = "Aba não encontrada no arquivo.";
-    return;
-  }
-
-  const tecnicoInferido = tecnicoDaAbaUpload(nomeAba);
-  const tecnicoSelect = document.getElementById("uploadTecnico");
-  if(tecnicoSelect && tecnicoInferido && !tecnicoSelect.value) tecnicoSelect.value = tecnicoInferido;
-
-  const linhas = XLSX.utils.sheet_to_json(sheet, { header:1, defval:"", raw:false });
-  const idxHeader = encontrarCabecalhoUpload(linhas);
-
-  if(idxHeader < 0){
-    if(preview) preview.innerHTML = "Não encontrei cabeçalho com DATA e PASTA nessa aba.";
-    mostrarErro("Não encontrei as colunas DATA e PASTA.");
-    return;
-  }
-
-  const cab = linhas[idxHeader] || [];
-  const idxData = indiceColunaUpload(cab, c => c === "DATA" || c.includes("DATA"));
-  const idxPasta = indiceColunaUpload(cab, c => c === "PASTA" || c.includes("PASTA"));
-  const idxCompareceu = indiceColunaUpload(cab, c => c.includes("COMPARECEU") && !c.includes("NAO") && !c.includes("NÃO"));
-  const idxFaltou = indiceColunaUpload(cab, c => (c.includes("NAO") || c.includes("NÃO") || c.includes("FALTOU")) && (c.includes("COMPARECEU") || c.includes("FALTOU")));
-  const idxObs = indiceColunaUpload(cab, c => c.includes("OBS"));
-
-  const tecnico = document.getElementById("uploadTecnico")?.value || tecnicoInferido || "";
-  if(!tecnico){
-    if(preview) preview.innerHTML = "Selecione o técnico antes de gerar a prévia.";
-    mostrarErro("Selecione o técnico da planilha.");
-    return;
-  }
-
-  const registros = [];
-  let erros = 0;
-  let semPasta = 0;
-  let semStatus = 0;
-
-  for(let i = idxHeader + 1; i < linhas.length; i++){
-    const row = linhas[i] || [];
-    const dataISO = parseDataUpload(row[idxData]);
-    const pastaValor = normalizarPasta(row[idxPasta]);
-
-    const linhaTemConteudo = row.some(c => String(c || "").trim());
-    if(!linhaTemConteudo) continue;
-    if(!dataISO && !pastaValor) continue;
-
-    if(!dataISO){
-      erros++;
-      continue;
-    }
-
-    if(!pastaValor) semPasta++;
-
-    const marcouCompareceu = idxCompareceu >= 0 && valorMarcadoUpload(row[idxCompareceu]);
-    const marcouFaltou = idxFaltou >= 0 && valorMarcadoUpload(row[idxFaltou]);
-
-    let status = "agendado";
-    if(marcouCompareceu) status = "compareceu";
-    else if(marcouFaltou) status = "faltou";
-    else semStatus++;
-
-    const obs = idxObs >= 0 ? String(row[idxObs] || "").trim() : "";
-    const nome = nomePacientePorPastaUpload(pastaValor);
-
-    registros.push({
-      id: "upload_" + Date.now() + "_" + i + "_" + Math.random().toString(36).slice(2, 7),
-      pasta: pastaValor,
-      nome: nome,
-      tecnico: tecnico,
-      data: dataISO,
-      hora: "",
-      descricao: `Importado da planilha ${nomeAba}`,
-      status: status,
-      observacaoRealizacao: obs,
-      origem: "upload",
-      tipo: "importado",
-      arquivoUpload: uploadPlanilhaArquivoNome,
-      abaUpload: nomeAba,
-      linhaUpload: i + 1,
-      criadoPor: tecnicoLogado ? tecnicoLogado.nome : "Recepção",
-      roleCriador: tecnicoLogado ? tecnicoLogado.role : "recepcao",
-      criadoEm: new Date().toISOString()
-    });
-  }
-
-  const total = registros.length;
-  const compareceu = registros.filter(r => r.status === "compareceu").length;
-  const faltou = registros.filter(r => r.status === "faltou").length;
-  const duplicados = registros.filter(r => atendimentos.some(a =>
-    String(a.origem || "") === "upload" &&
-    String(a.pasta || "") === String(r.pasta || "") &&
-    String(a.data || "") === String(r.data || "") &&
-    String(a.tecnico || "") === String(r.tecnico || "") &&
-    String(a.abaUpload || "") === String(r.abaUpload || "")
-  )).length;
-
-  uploadPlanilhaLinhas = registros;
-  uploadPlanilhaResumo = { total, compareceu, faltou, semPasta, semStatus, erros, duplicados, tecnico, nomeAba };
-
-  if(resumoTexto){
-    resumoTexto.innerHTML = `Arquivo: <b>${escapeHTML(uploadPlanilhaArquivoNome)}</b><br>Aba: <b>${escapeHTML(nomeAba)}</b><br>Técnico: <b>${escapeHTML(tecnico)}</b>`;
-  }
-
-  if(resumoCards){
-    resumoCards.innerHTML = `
-      <div class="upload-kpi-caicavv"><span>Total lido</span><b>${total}</b></div>
-      <div class="upload-kpi-caicavv"><span>Compareceu</span><b>${compareceu}</b></div>
-      <div class="upload-kpi-caicavv"><span>Não compareceu</span><b>${faltou}</b></div>
-      <div class="upload-kpi-caicavv"><span>Duplicados</span><b>${duplicados}</b></div>
-      <div class="upload-kpi-caicavv"><span>Sem pasta</span><b>${semPasta}</b></div>
-      <div class="upload-kpi-caicavv"><span>Sem marcação</span><b>${semStatus}</b></div>
-    `;
-  }
-
-  const linhasHtml = registros.slice(0, 250).map(r => {
-    const classe = r.status === "compareceu" ? "upload-status-ok" : r.status === "faltou" ? "upload-status-falta" : "upload-status-pendente";
-    return `<tr><td>${escapeHTML(formatarDataBR(r.data))}</td><td>${escapeHTML(r.pasta || "—")}</td><td>${escapeHTML(r.nome || "—")}</td><td>${escapeHTML(r.tecnico)}</td><td class="${classe}">${escapeHTML(statusTextoUpload(r.status))}</td><td>${escapeHTML(r.observacaoRealizacao || "")}</td></tr>`;
-  }).join("");
-
-  if(preview){
-    preview.className = "upload-tabela-wrap";
-    preview.innerHTML = `
-      <table class="upload-tabela-caicavv">
-        <thead><tr><th>Data</th><th>Pasta</th><th>Nome encontrado</th><th>Técnico</th><th>Veio?</th><th>Observação</th></tr></thead>
-        <tbody>${linhasHtml || `<tr><td colspan="6">Nenhum registro encontrado.</td></tr>`}</tbody>
-      </table>
-      ${total > 250 ? `<div class="upload-aviso-caicavv">Mostrando apenas os primeiros 250 registros na prévia.</div>` : ""}
-    `;
-  }
-
-  if(btn) btn.disabled = total === 0;
-}
-
-
-function idImportacaoUpload(){
-  return "imp_upload_" + Date.now() + "_" + Math.random().toString(36).slice(2, 8);
-}
-
-function chaveLegadoImportacaoUpload(a){
-  return [
-    a.importacaoUploadId || "",
-    a.nomeRelatorioUpload || a.abaUpload || "Importação",
-    a.arquivoUpload || "",
-    a.abaUpload || "",
-    a.tecnico || ""
-  ].join("||");
-}
-
-function atendimentosUploadImportados(){
-  return (Array.isArray(atendimentos) ? atendimentos : []).filter(a => a && (a.origem === "upload" || a.tipo === "importado"));
-}
-
-function agruparImportacoesUpload(){
-  const mapa = new Map();
-
-  atendimentosUploadImportados().forEach(a => {
-    const chave = a.importacaoUploadId || chaveLegadoImportacaoUpload(a);
-    if(!mapa.has(chave)){
-      mapa.set(chave, {
-        id: chave,
-        nome: a.nomeRelatorioUpload || a.abaUpload || "Importação de planilha",
-        arquivo: a.arquivoUpload || "Arquivo não informado",
-        aba: a.abaUpload || "Aba não informada",
-        tecnico: a.tecnico || "Técnico não informado",
-        criadoEm: a.importadoEm || a.criadoEm || "",
-        itens: []
-      });
-    }
-    mapa.get(chave).itens.push(a);
-  });
-
-  return Array.from(mapa.values()).sort((a,b) => String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")));
-}
-
-function resumoImportacaoUpload(itens){
-  const total = itens.length;
-  const compareceu = itens.filter(r => r.status === "compareceu").length;
-  const faltou = itens.filter(r => r.status === "faltou").length;
-  const semPasta = itens.filter(r => !normalizarPasta(r.pasta)).length;
-  const semStatus = itens.filter(r => !["compareceu","faltou"].includes(String(r.status || ""))).length;
-  const datas = itens.map(r => String(r.data || "")).filter(Boolean).sort();
-  return {
-    total,
-    compareceu,
-    faltou,
-    semPasta,
-    semStatus,
-    inicio: datas[0] || "",
-    fim: datas[datas.length - 1] || ""
-  };
-}
-
-function renderizarPastasUploadImportadas(){
-  const box = document.getElementById("uploadPastasImportadas");
-  if(!box) return;
-
-  const grupos = agruparImportacoesUpload();
-  uploadPastasCache = grupos;
-  window.uploadPastasCache = grupos;
-  if(!grupos.length){
-    box.innerHTML = `<div class="upload-aviso-caicavv">Nenhuma planilha importada ainda.</div>`;
-    return;
-  }
-
-  box.innerHTML = grupos.map((grupo, idx) => {
-    const itens = grupo.itens.slice().sort((a,b) => String(a.data || "").localeCompare(String(b.data || "")) || Number(a.linhaUpload || 0) - Number(b.linhaUpload || 0));
-    const resumo = resumoImportacaoUpload(itens);
-
-    const linhas = itens.map(r => {
-      const classe = r.status === "compareceu" ? "upload-status-ok" : r.status === "faltou" ? "upload-status-falta" : "upload-status-pendente";
-      return `<tr>
-        <td>${escapeHTML(formatarDataBR(r.data))}</td>
-        <td>${escapeHTML(r.pasta || "—")}</td>
-        <td>${escapeHTML(r.nome || "—")}</td>
-        <td>${escapeHTML(r.tecnico || grupo.tecnico || "—")}</td>
-        <td class="${classe}">${escapeHTML(statusTextoUpload(r.status))}</td>
-        <td>${escapeHTML(r.observacaoRealizacao || "")}</td>
-      </tr>`;
-    }).join("");
-
-    const periodo = resumo.inicio && resumo.fim ? `${formatarDataBR(resumo.inicio)} até ${formatarDataBR(resumo.fim)}` : "Período não identificado";
-
-    return `<details class="upload-pasta-caicavv" ${idx === 0 ? "open" : ""}>
-      <summary>
-        <div>
-          <span>📁 ${escapeHTML(grupo.nome)}</span>
-          <small>${escapeHTML(grupo.aba)} · ${escapeHTML(grupo.tecnico)} · ${resumo.total} atendimento(s)</small>
-        </div>
-        <small>${escapeHTML(periodo)}</small>
-      </summary>
-      <div class="upload-pasta-conteudo">
-        <div class="upload-acoes-pasta-caicavv">
-          <button type="button" class="imprimir" onclick="imprimirRelatorioUpload(${idx})">Imprimir relatório</button>
-          <button type="button" class="exportar" onclick="exportarRelatorioUpload(${idx})">Exportar Excel</button>
-          <button type="button" class="excluir" onclick="excluirImportacaoUpload(${idx})">Excluir importação</button>
-        </div>
-        <div class="upload-mini-titulo">Atendimentos importados</div>
-        <div class="upload-tabela-wrap">
-          <table class="upload-tabela-caicavv">
-            <thead><tr><th>Data</th><th>Pasta</th><th>Nome encontrado</th><th>Técnico</th><th>Veio?</th><th>Observação</th></tr></thead>
-            <tbody>${linhas || `<tr><td colspan="6">Nenhum atendimento encontrado.</td></tr>`}</tbody>
-          </table>
-        </div>
-
-        <div class="upload-resumo-final-caicavv">
-          <b>Resumo da pasta:</b><br>
-          Total: <b>${resumo.total}</b> · Compareceu: <b>${resumo.compareceu}</b> · Não compareceu: <b>${resumo.faltou}</b> · Sem pasta: <b>${resumo.semPasta}</b> · Sem marcação: <b>${resumo.semStatus}</b><br>
-          Arquivo: <b>${escapeHTML(grupo.arquivo)}</b> · Aba: <b>${escapeHTML(grupo.aba)}</b> · Técnico: <b>${escapeHTML(grupo.tecnico)}</b>
-        </div>
-      </div>
-    </details>`;
-  }).join("");
-}
-
-
-function grupoUploadPorIndice(indice){
-  const grupos = Array.isArray(uploadPastasCache) && uploadPastasCache.length ? uploadPastasCache : agruparImportacoesUpload();
-  return grupos[Number(indice)] || null;
-}
-
-function htmlRelatorioUpload(grupo){
-  const itens = (grupo.itens || []).slice().sort((a,b) => String(a.data || "").localeCompare(String(b.data || "")) || Number(a.linhaUpload || 0) - Number(b.linhaUpload || 0));
-  const resumo = resumoImportacaoUpload(itens);
-  const periodo = resumo.inicio && resumo.fim ? `${formatarDataBR(resumo.inicio)} até ${formatarDataBR(resumo.fim)}` : "Período não identificado";
-  const linhas = itens.map(r => `<tr>
-    <td>${escapeHTML(formatarDataBR(r.data))}</td>
-    <td>${escapeHTML(r.pasta || "—")}</td>
-    <td>${escapeHTML(r.nome || "—")}</td>
-    <td>${escapeHTML(r.tecnico || grupo.tecnico || "—")}</td>
-    <td>${escapeHTML(statusTextoUpload(r.status))}</td>
-    <td>${escapeHTML(r.observacaoRealizacao || "")}</td>
-  </tr>`).join("");
-
-  return `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-<meta charset="UTF-8">
-<title>${escapeHTML(grupo.nome)} - Relatório</title>
-<style>
-  body{font-family:Arial,sans-serif;color:#071957;margin:28px;background:#fff;}
-  h1{margin:0 0 6px;font-size:24px;color:#061852;}
-  .sub{color:#52699d;font-size:13px;margin-bottom:18px;line-height:1.5;}
-  .resumo{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:16px 0 18px;}
-  .kpi{border:1px solid #d8e4fa;border-radius:10px;padding:10px;background:#f8fbff;}
-  .kpi span{display:block;font-size:11px;text-transform:uppercase;color:#52699d;font-weight:900;}
-  .kpi b{display:block;font-size:20px;margin-top:4px;color:#061852;}
-  table{width:100%;border-collapse:collapse;font-size:12px;}
-  th,td{border:1px solid #d8e4fa;padding:7px;text-align:left;vertical-align:top;}
-  th{background:#f1f6ff;color:#061852;}
-  .rodape{margin-top:14px;font-size:12px;color:#52699d;}
-  @media print{body{margin:12mm}.no-print{display:none!important}.resumo{grid-template-columns:repeat(5,1fr)}}
-</style>
-</head>
-<body>
-  <button class="no-print" onclick="window.print()" style="margin-bottom:16px;padding:10px 16px;border:0;border-radius:8px;background:#2563eb;color:white;font-weight:900;cursor:pointer">Imprimir</button>
-  <h1>${escapeHTML(grupo.nome)}</h1>
-  <div class="sub">
-    Arquivo: <b>${escapeHTML(grupo.arquivo)}</b><br>
-    Aba: <b>${escapeHTML(grupo.aba)}</b> · Técnico: <b>${escapeHTML(grupo.tecnico)}</b> · Período: <b>${escapeHTML(periodo)}</b>
-  </div>
-  <div class="resumo">
-    <div class="kpi"><span>Total</span><b>${resumo.total}</b></div>
-    <div class="kpi"><span>Compareceu</span><b>${resumo.compareceu}</b></div>
-    <div class="kpi"><span>Não compareceu</span><b>${resumo.faltou}</b></div>
-    <div class="kpi"><span>Sem pasta</span><b>${resumo.semPasta}</b></div>
-    <div class="kpi"><span>Sem marcação</span><b>${resumo.semStatus}</b></div>
-  </div>
-  <table>
-    <thead><tr><th>Data</th><th>Pasta</th><th>Nome encontrado</th><th>Técnico</th><th>Veio?</th><th>Observação</th></tr></thead>
-    <tbody>${linhas || `<tr><td colspan="6">Nenhum atendimento encontrado.</td></tr>`}</tbody>
-  </table>
-  <div class="rodape">Relatório gerado pelo sistema CAICAVV em ${escapeHTML(new Date().toLocaleString("pt-BR"))}.</div>
-</body>
-</html>`;
-}
-
-function imprimirRelatorioUpload(indice){
-  const grupo = grupoUploadPorIndice(indice);
-  if(!grupo){
-    mostrarErro("Não encontrei essa importação para imprimir.");
-    return;
-  }
-
-  const janela = window.open("", "_blank");
-  if(!janela){
-    mostrarErro("O navegador bloqueou a janela de impressão. Libere pop-ups para este site.");
-    return;
-  }
-
-  janela.document.open();
-  janela.document.write(htmlRelatorioUpload(grupo));
-  janela.document.close();
-  janela.focus();
-  setTimeout(() => janela.print(), 400);
-}
-
-function nomeArquivoSeguroUpload(nome){
-  return String(nome || "relatorio_upload")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-zA-Z0-9_-]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0,80) || "relatorio_upload";
-}
-
-function exportarRelatorioUpload(indice){
-  const grupo = grupoUploadPorIndice(indice);
-  if(!grupo){
-    mostrarErro("Não encontrei essa importação para exportar.");
-    return;
-  }
-
-  const itens = (grupo.itens || []).slice().sort((a,b) => String(a.data || "").localeCompare(String(b.data || "")) || Number(a.linhaUpload || 0) - Number(b.linhaUpload || 0));
-  const resumo = resumoImportacaoUpload(itens);
-
-  const linhas = itens.map(r => ({
-    Data: formatarDataBR(r.data),
-    Pasta: r.pasta || "",
-    "Nome encontrado": r.nome || "",
-    Técnico: r.tecnico || grupo.tecnico || "",
-    "Veio?": statusTextoUpload(r.status),
-    Observação: r.observacaoRealizacao || "",
-    Arquivo: grupo.arquivo || "",
-    Aba: grupo.aba || "",
-    "Linha original": r.linhaUpload || ""
-  }));
-
-  const resumoLinhas = [
-    { Indicador:"Nome do relatório", Valor:grupo.nome || "" },
-    { Indicador:"Arquivo", Valor:grupo.arquivo || "" },
-    { Indicador:"Aba", Valor:grupo.aba || "" },
-    { Indicador:"Técnico", Valor:grupo.tecnico || "" },
-    { Indicador:"Total", Valor:resumo.total },
-    { Indicador:"Compareceu", Valor:resumo.compareceu },
-    { Indicador:"Não compareceu", Valor:resumo.faltou },
-    { Indicador:"Sem pasta", Valor:resumo.semPasta },
-    { Indicador:"Sem marcação", Valor:resumo.semStatus },
-    { Indicador:"Período inicial", Valor:resumo.inicio ? formatarDataBR(resumo.inicio) : "" },
-    { Indicador:"Período final", Valor:resumo.fim ? formatarDataBR(resumo.fim) : "" },
-    { Indicador:"Exportado em", Valor:new Date().toLocaleString("pt-BR") }
-  ];
-
-  const wb = XLSX.utils.book_new();
-  const wsAtend = XLSX.utils.json_to_sheet(linhas);
-  const wsResumo = XLSX.utils.json_to_sheet(resumoLinhas);
-  XLSX.utils.book_append_sheet(wb, wsAtend, "Atendimentos");
-  XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
-  XLSX.writeFile(wb, `${nomeArquivoSeguroUpload(grupo.nome)}.xlsx`);
-}
-
-async function excluirImportacaoUpload(indice){
-  const grupo = grupoUploadPorIndice(indice);
-  if(!grupo){
-    mostrarErro("Não encontrei essa importação para excluir.");
-    return;
-  }
-
-  const qtd = grupo.itens ? grupo.itens.length : 0;
-  const ok = confirm(`Excluir a importação "${grupo.nome}"?\n\nIsso removerá ${qtd} atendimento(s) importado(s) desta pasta. Essa ação não apaga outros agendamentos.`);
-  if(!ok) return;
-
-  const idsRemover = new Set((grupo.itens || []).map(a => a.id));
-  const chaveGrupo = grupo.id;
-  const antes = atendimentos.length;
-
-  atendimentos = atendimentos.filter(a => {
-    if(!a || !(a.origem === "upload" || a.tipo === "importado")) return true;
-    if(idsRemover.has(a.id)) return false;
-    const chave = a.importacaoUploadId || chaveLegadoImportacaoUpload(a);
-    return chave !== chaveGrupo;
-  });
-
-  const removidos = antes - atendimentos.length;
-
-  try{
-    registrarLog("Exclusão de upload", { id:"", pasta:"", nome:grupo.nome, tecnico:grupo.tecnico }, `${removidos} registro(s) importado(s) removido(s).`);
-    await salvarAtendimentosFirebase();
-    mostrarSucesso(`Importação excluída. ${removidos} registro(s) removido(s).`);
-    renderizarPastasUploadImportadas();
-  }catch(e){
-    console.error(e);
-    mostrarErro("Erro ao excluir a importação no Firebase.");
-  }
-}
-
-async function importarUploadPlanilhaFirebase(){
-  if(!podeAcessarUploadPlanilha()){
-    mostrarErro("Sem permissão para importar planilhas.");
-    return;
-  }
-
-  if(!uploadPlanilhaLinhas.length){
-    mostrarErro("Gere a prévia antes de importar.");
-    return;
-  }
-
-  const nomeRelatorio = String(document.getElementById("uploadNomeRelatorio")?.value || uploadPlanilhaResumo?.nomeAba || "Importação").trim();
-  const btn = document.getElementById("btnImportarUpload");
-  if(btn) btn.disabled = true;
-
-  const importacaoId = idImportacaoUpload();
-  const importadoEm = new Date().toISOString();
-
-  const novos = uploadPlanilhaLinhas.filter(r => !atendimentos.some(a =>
-    String(a.origem || "") === "upload" &&
-    String(a.pasta || "") === String(r.pasta || "") &&
-    String(a.data || "") === String(r.data || "") &&
-    String(a.tecnico || "") === String(r.tecnico || "") &&
-    String(a.abaUpload || "") === String(r.abaUpload || "")
-  )).map(r => ({
-    ...r,
-    nomeRelatorioUpload: nomeRelatorio,
-    importacaoUploadId: importacaoId,
-    importadoEm: importadoEm
-  }));
-
-  if(!novos.length){
-    mostrarErro("Todos os registros dessa prévia já foram importados.");
-    if(btn) btn.disabled = false;
-    return;
-  }
-
-  try{
-    atendimentos.unshift(...novos);
-    registrarLog("Upload de planilha", { id:"", pasta:"", nome:nomeRelatorio, tecnico:uploadPlanilhaResumo?.tecnico || "" }, `${novos.length} registro(s) importado(s) de ${uploadPlanilhaArquivoNome} / ${uploadPlanilhaResumo?.nomeAba || "aba"}.`);
-    await salvarAtendimentosFirebase();
-
-    mostrarSucesso(`${novos.length} registro(s) importado(s) com sucesso.`);
-    renderizarPastasUploadImportadas();
-    const preview = document.getElementById("uploadPreview");
-    if(preview){
-      preview.className = "upload-sucesso-caicavv";
-      preview.innerHTML = `<b>Importação concluída.</b><br>${novos.length} registro(s) foram salvos e uma pasta foi criada em <b>Uploads importados</b>. Duplicados foram ignorados.`;
-    }
-    uploadPlanilhaLinhas = [];
-    uploadPlanilhaResumo = null;
-  }catch(e){
-    console.error(e);
-    mostrarErro("Erro ao salvar os registros importados no Firebase.");
-    if(btn) btn.disabled = false;
-  }
-}
-
 </script>
 
 
@@ -5093,164 +3928,670 @@ ${conteudo.innerHTML}
   });
 })();
 </script>
-
-
 <script>
-/* ===== CORREÇÃO INTEGRADA - ENTRADAS RESTRITA + ARQUIVOS SÓ EM AGENDAMENTOS =====
-   Entradas: aparece e abre apenas para adm e coordenação.
-   Arquivos/abas de atendimentos passados: aparecem apenas na tela Agendamentos. */
 (function(){
-  function caicavvRoleAtual(){
+  const ESTADO = window.__caicavvAbasPassadas || { abas: [], carregado: false };
+  window.__caicavvAbasPassadas = ESTADO;
+
+  function abas(){ return ESTADO.abas; }
+  function setAbas(novas){ ESTADO.abas = Array.isArray(novas) ? novas : []; }
+  function el(id){ return document.getElementById(id); }
+  function esc(valor){
+    if(typeof escapeHTML === "function") return escapeHTML(valor == null ? "" : String(valor));
+    return String(valor == null ? "" : valor).replace(/[&<>'"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+  }
+  function dataBR(data){
+    if(typeof formatarDataBR === "function") return formatarDataBR(data);
+    if(!data) return "";
+    const p = String(data).split("-");
+    return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : String(data);
+  }
+
+  function tecnicoAtualParaAbas(){
     try{
-      return tecnicoLogado && tecnicoLogado.role ? String(tecnicoLogado.role).toLowerCase() : "";
+      if(tecnicoLogado && tecnicoLogado.role === "tecnico") return tecnicoLogado.nome || "todos";
+      const select = el("filtroTecnicoAvancado");
+      const valor = select ? String(select.value || "").trim() : String(typeof filtroAtual !== "undefined" ? filtroAtual || "" : "").trim();
+      return valor || "todos";
     }catch(e){
-      return "";
+      return "todos";
     }
   }
 
-  function caicavvPodeEntradas(){
-    const role = caicavvRoleAtual();
-    return role === "adm" || role === "coordenacao";
+  function abaVisivelNoFiltroAtual(aba){
+    const tecnicoAtual = tecnicoAtualParaAbas();
+    const tecnicoAba = String(aba && aba.tecnico ? aba.tecnico : "todos").trim() || "todos";
+    return tecnicoAba === tecnicoAtual;
   }
 
-  window.podeAcessarEntradasCAICAVV = caicavvPodeEntradas;
-  window.podeAlterarEntradasCAICAVV = caicavvPodeEntradas;
-
-  function caicavvTelaAtual(){
+  window.atendimentoEstaEmAbaPassada = function(agendamento){
     try{
-      if(typeof telaAtualCaicavv !== "undefined") return telaAtualCaicavv;
-    }catch(e){}
-    const ativa = document.querySelector(".app-shell .nav.active");
-    return ativa ? ativa.dataset.tela : "agendamentos";
+      const data = String(agendamento && agendamento.data ? agendamento.data : "");
+      const tecnico = String(agendamento && agendamento.tecnico ? agendamento.tecnico : "");
+      if(!data) return false;
+
+      return abas().some(aba => {
+        if(!abaVisivelNoFiltroAtual(aba)) return false;
+        const tecnicoAba = String(aba.tecnico || "todos").trim() || "todos";
+        const tecnicoOK = tecnicoAba === "todos" || tecnico === tecnicoAba;
+        return tecnicoOK && data >= aba.dataInicio && data <= aba.dataFim;
+      });
+    }catch(e){
+      return false;
+    }
+  };
+  function avisarErro(msg){
+    if(typeof mostrarErro === "function") mostrarErro(msg);
+    else alert(msg);
+  }
+  function avisarOk(msg){
+    if(typeof mostrarSucesso === "function") mostrarSucesso(msg);
+    else alert(msg);
+  }
+  function listaTecnicosOptions(){
+    let nomes = [];
+    try{
+      nomes = Object.values(usuarios || {})
+        .filter(u => u && (u.role === "tecnico" || u.role === "adm" || u.role === "coordenacao"))
+        .map(u => u.nome)
+        .filter(Boolean);
+    }catch(e){ nomes = []; }
+    nomes = [...new Set(nomes)].sort((a,b)=>String(a).localeCompare(String(b), "pt-BR"));
+    return `<option value="todos">Todos os técnicos</option>` + nomes.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join("");
   }
 
-  function caicavvAtualizarMenuEntradas(){
-    const pode = caicavvPodeEntradas();
+  function inserirBotao(){
+    const btnAdicionar = el("btnAdicionar");
+    if(!btnAdicionar || el("btnCriarAbaPassada")) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "btnCriarAbaPassada";
+    btn.className = "btn-aba-passada";
+    btn.textContent = "Criar aba de agendamentos passados";
+    btn.addEventListener("click", window.abrirModalAbaPassada);
+    btnAdicionar.insertAdjacentElement("afterend", btn);
+  }
 
-    document.querySelectorAll('[data-tela="entradas"]').forEach(function(item){
-      item.classList.toggle("hidden", !pode);
-      item.style.display = pode ? "" : "none";
-      item.setAttribute("aria-hidden", pode ? "false" : "true");
+  function garantirContainer(){
+    const lista = el("lista");
+    if(!lista || el("abasPassadasContainer")) return;
+    const container = document.createElement("section");
+    container.id = "abasPassadasContainer";
+    container.className = "abas-passadas-container";
+    lista.insertAdjacentElement("afterend", container);
+  }
+
+  function garantirModal(){
+    if(el("modalAbaPassada")) return;
+    const modal = document.createElement("div");
+    modal.id = "modalAbaPassada";
+    modal.className = "modal-fundo";
+    modal.innerHTML = `
+      <div class="modal-box modal-aba-passada" onclick="event.stopPropagation()">
+        <h3>Criar aba de agendamentos passados</h3>
+        <p>Informe o nome da aba, o técnico e o intervalo de datas que será puxado.</p>
+
+        <input id="abaPassadaNome" type="text" maxlength="80" placeholder="Nome da aba. Ex: Agendamentos de maio">
+
+        <select id="abaPassadaTecnico">
+          ${listaTecnicosOptions()}
+        </select>
+
+        <input id="abaPassadaDataInicio" type="date" title="Puxar a partir de qual dia">
+        <input id="abaPassadaDataFim" type="date" title="Puxar até qual dia">
+
+        <input id="abaPassadaDescricao" type="text" maxlength="220" placeholder="Descrição">
+
+        <div class="modal-acoes">
+          <button type="button" class="modal-cancelar" onclick="fecharModalAbaPassada()">Cancelar</button>
+          <button type="button" class="salvar" onclick="salvarAbaPassada()">Criar aba</button>
+        </div>
+      </div>`;
+    modal.addEventListener("click", window.fecharModalAbaPassada);
+    document.body.appendChild(modal);
+  }
+
+  function garantirCSS(){
+    if(el("cssAbasPassadas")) return;
+    const style = document.createElement("style");
+    style.id = "cssAbasPassadas";
+    style.textContent = `
+      #btnCriarAbaPassada{height:38px!important;margin-top:8px!important;border-radius:9px!important;background:#0f766e!important;color:#fff!important;font-weight:900!important;font-size:13px!important;}
+      .abas-passadas-container{display:flex;flex-direction:column;gap:10px;margin:14px 0 0 0;}
+      .aba-passada-card{background:#fff;border:1px solid #d8e4fa;border-left:8px solid #0f766e;border-radius:14px;box-shadow:0 12px 28px rgba(23,70,150,.10);overflow:hidden;color:#071957;}
+      .aba-passada-topo{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;background:#f8fbff;border:0;color:#071957;text-align:left;cursor:pointer;}
+      .aba-passada-topo strong{font-size:17px;font-weight:900;display:block;}
+      .aba-passada-topo span{display:block;margin-top:4px;color:#52699d;font-size:12px;font-weight:700;}
+      .aba-passada-contador{display:inline-flex;align-items:center;justify-content:center;min-width:34px;height:28px;border-radius:999px;background:#dcfce7;color:#166534;font-weight:900;padding:0 10px;font-size:13px;}
+      .aba-passada-acoes{display:flex;align-items:center;gap:8px;}
+      .aba-passada-seta{font-size:18px;color:#0f766e;font-weight:900;}
+      .aba-passada-excluir{width:34px!important;min-width:34px!important;height:34px!important;border-radius:10px!important;margin:0!important;padding:0!important;background:#fee2e2!important;color:#991b1b!important;font-weight:900!important;}
+      .aba-passada-corpo{display:none;border-top:1px solid #e0e9f8;padding:12px 14px;background:#fff;}
+      .aba-passada-card.aberta .aba-passada-corpo{display:block;}
+      .aba-passada-lista{display:grid;gap:8px;}
+      .aba-passada-item{border:1px solid #e0e9f8;background:#f8fbff;border-radius:10px;padding:10px 12px;}
+      .aba-passada-item b{display:block;font-size:14px;color:#061852;margin-bottom:5px;}
+      .aba-passada-item span{display:inline-block;margin-right:12px;color:#52699d;font-size:12px;font-weight:700;}
+      .aba-passada-vazia{padding:12px;border-radius:10px;background:#f8fafc;color:#64748b;font-weight:700;text-align:center;}
+      .modal-aba-passada select,.modal-aba-passada input{padding-left:14px!important;}
+      @media(max-width:700px){.aba-passada-topo{align-items:flex-start}.aba-passada-acoes{flex-shrink:0}.aba-passada-topo strong{font-size:15px}}
+    `;
+    document.head.appendChild(style);
+  }
+
+  function init(){
+    inserirBotao();
+    garantirContainer();
+    garantirModal();
+    garantirCSS();
+    renderizarAbasPassadas();
+  }
+
+  window.abrirModalAbaPassada = function(){
+    garantirModal();
+    const modal = el("modalAbaPassada");
+    if(!modal) return;
+    const hoje = new Date();
+    const primeiroDiaMesPassado = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 1);
+    const ultimoDiaMesPassado = new Date(hoje.getFullYear(), hoje.getMonth(), 0);
+    const iso = d => d.toISOString().slice(0,10);
+    if(el("abaPassadaNome")) el("abaPassadaNome").value = "Agendamentos passados";
+    if(el("abaPassadaTecnico")){
+      el("abaPassadaTecnico").innerHTML = listaTecnicosOptions();
+      el("abaPassadaTecnico").value = tecnicoAtualParaAbas();
+    }
+    if(el("abaPassadaDataInicio")) el("abaPassadaDataInicio").value = iso(primeiroDiaMesPassado);
+    if(el("abaPassadaDataFim")) el("abaPassadaDataFim").value = iso(ultimoDiaMesPassado);
+    if(el("abaPassadaDescricao")) el("abaPassadaDescricao").value = "";
+    modal.classList.add("show");
+  };
+
+  window.fecharModalAbaPassada = function(){
+    const modal = el("modalAbaPassada");
+    if(modal) modal.classList.remove("show");
+  };
+
+  window.salvarAbaPassada = async function(){
+    const nome = String(el("abaPassadaNome")?.value || "").trim();
+    const tecnico = String(el("abaPassadaTecnico")?.value || "todos").trim() || "todos";
+    const dataInicio = String(el("abaPassadaDataInicio")?.value || "").trim();
+    const dataFim = String(el("abaPassadaDataFim")?.value || "").trim();
+    const descricao = String(el("abaPassadaDescricao")?.value || "").trim();
+
+    if(!nome){ avisarErro("Digite o nome da aba."); return; }
+    if(!dataInicio || !dataFim){ avisarErro("Selecione a data inicial e a data final."); return; }
+    if(dataInicio > dataFim){ avisarErro("A data inicial não pode ser maior que a data final."); return; }
+
+    abas().unshift({
+      id: `aba_${Date.now()}_${Math.random().toString(36).slice(2,8)}`,
+      nome, tecnico, dataInicio, dataFim, descricao,
+      aberta: true,
+      criadoEm: new Date().toISOString()
     });
 
-    if(!pode && caicavvTelaAtual() === "entradas"){
-      if(typeof abrirTelaAgendamentos === "function") abrirTelaAgendamentos();
+    await salvarAbasPassadasFirebase();
+    window.fecharModalAbaPassada();
+    if(typeof render === "function") render();
+    else renderizarAbasPassadas();
+    avisarOk("Aba de agendamentos passados criada.");
+  };
+
+  window.alternarAbaPassada = function(id){
+    const aba = abas().find(a => a.id === id);
+    if(!aba) return;
+    aba.aberta = !aba.aberta;
+    salvarAbasPassadasFirebase(false);
+    renderizarAbasPassadas();
+  };
+
+  window.excluirAbaPassada = async function(event, id){
+    if(event) event.stopPropagation();
+    if(!confirm("Excluir esta aba de agendamentos passados? Os agendamentos originais não serão apagados.")) return;
+    setAbas(abas().filter(a => a.id !== id));
+    await salvarAbasPassadasFirebase();
+    if(typeof render === "function") render();
+    else renderizarAbasPassadas();
+  };
+
+  function agendamentosDaAba(aba){
+    try{
+      return (atendimentos || []).filter(a => {
+        const data = String(a.data || "");
+        const tecnicoOK = !aba.tecnico || aba.tecnico === "todos" || String(a.tecnico || "") === aba.tecnico;
+        return tecnicoOK && data >= aba.dataInicio && data <= aba.dataFim;
+      }).sort((a,b)=> {
+        const aRealizado = a.status === "compareceu" || a.status === "faltou";
+        const bRealizado = b.status === "compareceu" || b.status === "faltou";
+        if(aRealizado !== bRealizado) return aRealizado ? -1 : 1;
+        return String(b.data || "").localeCompare(String(a.data || "")) || String(b.hora || "").localeCompare(String(a.hora || "")) || String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR");
+      });
+    }catch(e){ return []; }
+  }
+
+  function renderizarAbasPassadas(){
+    garantirContainer();
+    const container = el("abasPassadasContainer");
+    if(!container) return;
+    const listaAbas = abas()
+      .filter(abaVisivelNoFiltroAtual)
+      .sort((a,b) => String(b.dataInicio || "").localeCompare(String(a.dataInicio || "")) || String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")));
+    if(!listaAbas.length){ container.innerHTML = ""; return; }
+
+    container.innerHTML = listaAbas.map(aba => {
+      const dados = agendamentosDaAba(aba);
+      const tecnicoTexto = aba.tecnico === "todos" ? "Todos os técnicos" : aba.tecnico;
+      const descricao = aba.descricao ? `<span>${esc(aba.descricao)}</span>` : "";
+      const itens = dados.length ? dados.map(a => `
+        <div class="aba-passada-item">
+          <b>${esc(a.nome || "Sem nome")}</b>
+          <span>📁 Pasta ${esc(a.pasta || "—")}</span>
+          <span>👤 ${esc(a.tecnico || "—")}</span>
+          <span>📅 ${esc(dataBR(a.data))} às ${esc(a.hora || "—")}</span>
+          <span>${esc(a.status === "compareceu" ? "Compareceu" : a.status === "faltou" ? "Faltou" : a.status === "aguardando" ? "Aguardando" : "Agendado")}</span>
+          ${a.descricao ? `<span>📝 ${esc(a.descricao)}</span>` : ""}
+        </div>`).join("") : `<div class="aba-passada-vazia">Nenhum agendamento encontrado nesse intervalo.</div>`;
+
+      return `
+        <article class="aba-passada-card ${aba.aberta ? "aberta" : ""}">
+          <button type="button" class="aba-passada-topo" onclick="alternarAbaPassada('${esc(aba.id)}')">
+            <div>
+              <strong>${esc(aba.nome)}</strong>
+              <span>${esc(dataBR(aba.dataInicio))} até ${esc(dataBR(aba.dataFim))} • ${esc(tecnicoTexto)}</span>
+              ${descricao}
+            </div>
+            <div class="aba-passada-acoes">
+              <span class="aba-passada-contador">${dados.length}</span>
+              <span class="aba-passada-seta">${aba.aberta ? "▲" : "▼"}</span>
+              <button type="button" class="aba-passada-excluir" title="Excluir aba" onclick="excluirAbaPassada(event,'${esc(aba.id)}')">×</button>
+            </div>
+          </button>
+          <div class="aba-passada-corpo"><div class="aba-passada-lista">${itens}</div></div>
+        </article>`;
+    }).join("");
+  }
+
+  async function carregarAbasPassadasFirebase(){
+    try{
+      if(typeof DOC_ATENDIMENTOS === "undefined") return;
+      const snap = await DOC_ATENDIMENTOS.get();
+      if(snap.exists){
+        const dados = snap.data() || {};
+        setAbas(Array.isArray(dados.abasPassadas) ? dados.abasPassadas : []);
+      }
+      ESTADO.carregado = true;
+    }catch(e){
+      console.error(e);
+      avisarErro("Não foi possível carregar as abas de agendamentos passados.");
     }
   }
 
-  function caicavvCorrigirArquivosPassados(){
-    const emAgendamentos = caicavvTelaAtual() === "agendamentos";
-
-    document.querySelectorAll(".arquivo-atendimentos").forEach(function(aba){
-      aba.classList.toggle("hidden", !emAgendamentos);
-      aba.style.display = emAgendamentos ? "" : "none";
-    });
+  async function salvarAbasPassadasFirebase(mostrarMensagemErro){
+    try{
+      if(typeof DOC_ATENDIMENTOS === "undefined") return;
+      await DOC_ATENDIMENTOS.set({
+        abasPassadas: abas(),
+        abasPassadasAtualizadasEm: new Date().toISOString()
+      }, { merge: true });
+    }catch(e){
+      console.error(e);
+      if(mostrarMensagemErro !== false) avisarErro("Não foi possível salvar a aba de agendamentos passados.");
+      throw e;
+    }
   }
 
-  function caicavvAplicarCorrecoes(){
-    caicavvAtualizarMenuEntradas();
-    caicavvCorrigirArquivosPassados();
-  }
+  function envolverFuncoesOriginais(){
+    if(window.__caicavvAbasPassadasWrapped) return;
+    window.__caicavvAbasPassadasWrapped = true;
 
-  const aplicarPermissoesOriginal = window.aplicarPermissoesNaTela;
-  if(typeof aplicarPermissoesOriginal === "function"){
-    window.aplicarPermissoesNaTela = function(){
-      const retorno = aplicarPermissoesOriginal.apply(this, arguments);
-      caicavvAplicarCorrecoes();
-      return retorno;
-    };
-  }
-
-  const setTelaAtivaOriginal = window.setTelaAtiva;
-  if(typeof setTelaAtivaOriginal === "function"){
-    window.setTelaAtiva = function(nome){
-      const retorno = setTelaAtivaOriginal.apply(this, arguments);
-      caicavvAplicarCorrecoes();
-      return retorno;
-    };
-  }
-
-  const abrirTelaEntradasOriginal = window.abrirTelaEntradas;
-  if(typeof abrirTelaEntradasOriginal === "function"){
-    window.abrirTelaEntradas = function(){
-      if(!caicavvPodeEntradas()){
-        if(typeof mostrarErro === "function"){
-          mostrarErro("A aba Entradas é restrita à coordenação e à administração.");
-        }else{
-          alert("A aba Entradas é restrita à coordenação e à administração.");
-        }
-        if(typeof abrirTelaAgendamentos === "function") abrirTelaAgendamentos();
-        return;
-      }
-      return abrirTelaEntradasOriginal.apply(this, arguments);
-    };
-  }
-
-  const abrirTelaAgendamentosOriginal = window.abrirTelaAgendamentos;
-  if(typeof abrirTelaAgendamentosOriginal === "function"){
-    window.abrirTelaAgendamentos = function(){
-      const retorno = abrirTelaAgendamentosOriginal.apply(this, arguments);
-      caicavvAplicarCorrecoes();
-      return retorno;
-    };
-  }
-
-  ["abrirTelaPacientes","abrirTelaTecnicos","abrirTelaConfiguracoes"].forEach(function(nomeFuncao){
-    const original = window[nomeFuncao];
-    if(typeof original === "function"){
-      window[nomeFuncao] = function(){
-        const retorno = original.apply(this, arguments);
-        caicavvAplicarCorrecoes();
-        return retorno;
+    const renderOriginal = window.render;
+    if(typeof renderOriginal === "function"){
+      window.render = function(){
+        const r = renderOriginal.apply(this, arguments);
+        setTimeout(init, 0);
+        return r;
       };
     }
+
+    const carregarOriginal = window.carregarAtendimentosFirebase;
+    if(typeof carregarOriginal === "function"){
+      window.carregarAtendimentosFirebase = async function(){
+        const r = await carregarOriginal.apply(this, arguments);
+        await carregarAbasPassadasFirebase();
+        setTimeout(init, 0);
+        return r;
+      };
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function(){
+    envolverFuncoesOriginais();
+    carregarAbasPassadasFirebase().then(init);
+    let tentativas = 0;
+    const timer = setInterval(function(){
+      envolverFuncoesOriginais();
+      init();
+      tentativas++;
+      if((el("btnCriarAbaPassada") && el("abasPassadasContainer")) || tentativas > 40) clearInterval(timer);
+    }, 300);
   });
 
-  const renderOriginalProtegido = window.render;
-  if(typeof renderOriginalProtegido === "function"){
-    window.render = function(){
-      if(caicavvTelaAtual() !== "agendamentos"){
-        caicavvAplicarCorrecoes();
-        return;
-      }
-      const retorno = renderOriginalProtegido.apply(this, arguments);
-      caicavvAplicarCorrecoes();
-      return retorno;
+  window.renderizarAbasPassadas = renderizarAbasPassadas;
+})();
+</script>
+
+</body>
+</html>
+
+<style id="caicavv-aguardando-style">
+/* ===== Integração: Aguardando + campainha dos técnicos ===== */
+.v10-actions .aguardando{
+  background:linear-gradient(180deg,#f59e0b,#d97706)!important;
+  color:#fff!important;
+}
+.status-chip.aguardando-chip,
+.status-chip.v10-pendente.aguardando-chip{
+  background:#fef3c7!important;
+  color:#92400e!important;
+}
+.card.atendimento-card.v10-card.status-aguardando{
+  border-left-color:#f59e0b!important;
+}
+.card.atendimento-card.v10-card.status-aguardando::before{
+  background:#f59e0b!important;
+}
+.caicavv-ativar-som{
+  position:fixed;
+  right:18px;
+  bottom:18px;
+  width:auto!important;
+  min-width:180px;
+  z-index:99999;
+  border-radius:999px!important;
+  background:linear-gradient(135deg,#f59e0b,#d97706)!important;
+  color:#fff!important;
+  font-weight:900!important;
+  box-shadow:0 16px 36px rgba(15,23,42,.22)!important;
+}
+.config-som-card select{margin-top:8px!important}
+.config-som-card .linha-botoes-som{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.config-som-card .linha-botoes-som button{margin-top:0!important}
+@media(max-width:650px){.caicavv-ativar-som{left:12px;right:12px;bottom:12px;width:calc(100% - 24px)!important}.config-som-card .linha-botoes-som{grid-template-columns:1fr}}
+</style>
+
+<script id="caicavv-aguardando-script">
+/* ===== Integração: botão Aguardando, campainha e escolha de som ===== */
+(function(){
+  const TECNICOS_COM_CAMPAINHA = ["Angélica", "Josiane", "Cintya", "Cláudia"];
+  const SONS_AGUARDANDO = [
+    {id:"som1", nome:"Som 1 - Campainha leve", tipo:"sine", f1:880, f2:1175, dur:0.16, repeticoes:2},
+    {id:"som2", nome:"Som 2 - Ding dong", tipo:"triangle", f1:784, f2:523, dur:0.22, repeticoes:1},
+    {id:"som3", nome:"Som 3 - Aviso curto", tipo:"square", f1:988, f2:740, dur:0.11, repeticoes:3},
+    {id:"som4", nome:"Som 4 - Sino suave", tipo:"sine", f1:659, f2:1047, dur:0.18, repeticoes:2},
+    {id:"som5", nome:"Som 5 - Beep duplo", tipo:"square", f1:740, f2:740, dur:0.12, repeticoes:2},
+    {id:"som6", nome:"Som 6 - Alerta discreto", tipo:"triangle", f1:587, f2:880, dur:0.15, repeticoes:3},
+    {id:"som7", nome:"Som 7 - Campainha alta", tipo:"sine", f1:1047, f2:1319, dur:0.14, repeticoes:3},
+    {id:"som8", nome:"Som 8 - Chamada rápida", tipo:"sawtooth", f1:698, f2:932, dur:0.10, repeticoes:4},
+    {id:"som9", nome:"Som 9 - Sino grave", tipo:"triangle", f1:440, f2:660, dur:0.24, repeticoes:2},
+    {id:"som10", nome:"Som 10 - Notificação", tipo:"sine", f1:1200, f2:900, dur:0.10, repeticoes:2}
+  ];
+
+  window.preferenciasSons = window.preferenciasSons || {};
+  let audioCtxAguardando = null;
+  let audioLiberadoAguardando = false;
+  let unsubscribeAguardando = null;
+  let primeiraLeituraAguardando = true;
+  let statusMonitorAguardando = {};
+
+  function normalizarTextoAguardando(valor){
+    return String(valor || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
+  }
+
+  function loginAtualAguardando(){
+    try{
+      if(typeof loginAtual === "function") return loginAtual();
+      if(typeof lerSessao === "function") return lerSessao() || "";
+    }catch(e){}
+    return "";
+  }
+
+  function tecnicoPodeOuvirAguardando(){
+    if(!window.tecnicoLogado && typeof tecnicoLogado === "undefined") return false;
+    const usuario = typeof tecnicoLogado !== "undefined" ? tecnicoLogado : null;
+    if(!usuario || usuario.role !== "tecnico") return false;
+    const nome = normalizarTextoAguardando(usuario.nome);
+    return TECNICOS_COM_CAMPAINHA.some(t => normalizarTextoAguardando(t) === nome);
+  }
+
+  function atendimentoEParaTecnicoLogado(item){
+    const usuario = typeof tecnicoLogado !== "undefined" ? tecnicoLogado : null;
+    if(!usuario || !item) return false;
+    return normalizarTextoAguardando(item.tecnico) === normalizarTextoAguardando(usuario.nome);
+  }
+
+  function somSelecionadoAguardando(){
+    const login = loginAtualAguardando();
+    const salvoFirebase = window.preferenciasSons && window.preferenciasSons[login] && window.preferenciasSons[login].somAguardando;
+    const salvoLocal = localStorage.getItem("caicavv_som_aguardando_" + login);
+    return salvoFirebase || salvoLocal || "som1";
+  }
+
+  function obterSom(id){
+    return SONS_AGUARDANDO.find(s => s.id === id) || SONS_AGUARDANDO[0];
+  }
+
+  async function garantirAudioAguardando(){
+    const AudioContextSeguro = window.AudioContext || window.webkitAudioContext;
+    if(!AudioContextSeguro) return false;
+    if(!audioCtxAguardando) audioCtxAguardando = new AudioContextSeguro();
+    if(audioCtxAguardando.state === "suspended") await audioCtxAguardando.resume();
+    audioLiberadoAguardando = audioCtxAguardando.state === "running";
+    return audioLiberadoAguardando;
+  }
+
+  function tocarTom(ctx, inicio, freq, tipo, dur, volume){
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = tipo;
+    osc.frequency.setValueAtTime(freq, inicio);
+    gain.gain.setValueAtTime(0.0001, inicio);
+    gain.gain.exponentialRampToValueAtTime(volume, inicio + 0.015);
+    gain.gain.exponentialRampToValueAtTime(0.0001, inicio + dur);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(inicio);
+    osc.stop(inicio + dur + 0.03);
+  }
+
+  async function tocarSomAguardando(forcarTeste=false){
+    const ok = await garantirAudioAguardando();
+    if(!ok) return;
+    const cfg = obterSom(somSelecionadoAguardando());
+    const ctx = audioCtxAguardando;
+    const agora = ctx.currentTime + 0.03;
+    for(let i=0;i<cfg.repeticoes;i++){
+      const base = agora + i * (cfg.dur * 2.35);
+      tocarTom(ctx, base, cfg.f1, cfg.tipo, cfg.dur, forcarTeste ? 0.18 : 0.14);
+      tocarTom(ctx, base + cfg.dur * 0.95, cfg.f2, cfg.tipo, cfg.dur, forcarTeste ? 0.16 : 0.12);
+    }
+  }
+
+  window.caicavvAtivarSonsAguardando = async function(){
+    const ok = await garantirAudioAguardando();
+    if(ok){
+      await tocarSomAguardando(true);
+      const btn = document.getElementById("btnAtivarSomAguardando");
+      if(btn) btn.remove();
+      if(typeof mostrarSucesso === "function") mostrarSucesso("Avisos sonoros ativados neste computador.");
+    }else{
+      if(typeof mostrarErro === "function") mostrarErro("Este navegador não permitiu ativar o som.");
+    }
+  };
+
+  window.testarSomAguardando = async function(){
+    await window.caicavvAtivarSonsAguardando();
+  };
+
+  window.salvarSomAguardando = async function(){
+    const select = document.getElementById("configSomAguardando");
+    const valor = select ? select.value : "som1";
+    const login = loginAtualAguardando();
+    if(!login){
+      if(typeof mostrarErro === "function") mostrarErro("Login não encontrado.");
+      return;
+    }
+    window.preferenciasSons = window.preferenciasSons || {};
+    window.preferenciasSons[login] = Object.assign({}, window.preferenciasSons[login] || {}, { somAguardando: valor });
+    localStorage.setItem("caicavv_som_aguardando_" + login, valor);
+
+    try{
+      await DOC_ATENDIMENTOS.set({
+        preferenciasSons: window.preferenciasSons,
+        preferenciasSonsAtualizadasEm: new Date().toISOString(),
+        atualizadoEm: new Date().toISOString()
+      }, { merge:true });
+      if(typeof mostrarSucesso === "function") mostrarSucesso("Som de Aguardando salvo para este login.");
+    }catch(e){
+      console.error(e);
+      if(typeof mostrarErro === "function") mostrarErro("Não foi possível salvar no Firebase. A escolha ficou salva neste computador.");
+    }
+  };
+
+  window.marcarAguardando = async function(id){
+    if(!tecnicoLogado || tecnicoLogado.role !== "recepcao"){
+      if(typeof mostrarErro === "function") mostrarErro("Esse botão é liberado apenas para a recepção.");
+      return;
+    }
+
+    const item = atendimentos.find(a => a.id === id);
+    if(!item){
+      if(typeof mostrarErro === "function") mostrarErro("Atendimento não encontrado.");
+      return;
+    }
+
+    if(item.status === "compareceu" || item.status === "faltou"){
+      if(typeof mostrarErro === "function") mostrarErro("Atendimentos já realizados não podem voltar para Aguardando.");
+      return;
+    }
+
+    const statusAnterior = item.status || "agendado";
+    item.status = "aguardando";
+    item.aguardandoEm = new Date().toISOString();
+    item.aguardandoPor = tecnicoLogado.nome;
+    item.atualizadoPor = tecnicoLogado.nome;
+    item.atualizadoEm = new Date().toISOString();
+
+    if(typeof registrarLog === "function"){
+      registrarLog("Paciente aguardando", item, `Status alterado de ${statusBonito(statusAnterior)} para Aguardando pela recepção.`);
+    }
+
+    await salvarAtendimentosFirebase();
+    if(typeof render === "function") render();
+    if(typeof mostrarSucesso === "function") mostrarSucesso("Status alterado para Aguardando. O técnico responsável será avisado.");
+  };
+
+  function garantirBotaoAtivarSons(){
+    if(!tecnicoPodeOuvirAguardando() || audioLiberadoAguardando) return;
+    if(document.getElementById("btnAtivarSomAguardando")) return;
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "btnAtivarSomAguardando";
+    btn.className = "caicavv-ativar-som";
+    btn.textContent = "🔔 Ativar avisos sonoros";
+    btn.onclick = window.caicavvAtivarSonsAguardando;
+    document.body.appendChild(btn);
+  }
+
+  function atualizarDadosMonitor(dados){
+    if(Array.isArray(dados.itens)) atendimentos = dados.itens;
+    if(Array.isArray(dados.logs)) logsAlteracoes = dados.logs;
+    if(dados.preferenciasSons && typeof dados.preferenciasSons === "object") window.preferenciasSons = dados.preferenciasSons;
+  }
+
+  function verificarCampainha(listaNova){
+    const novoMapa = {};
+    listaNova.forEach(item => { if(item && item.id) novoMapa[item.id] = item.status || "agendado"; });
+
+    if(!primeiraLeituraAguardando && tecnicoPodeOuvirAguardando()){
+      const deveTocar = listaNova.some(item => {
+        if(!item || !item.id) return false;
+        const statusAntes = statusMonitorAguardando[item.id] || "agendado";
+        const statusAgora = item.status || "agendado";
+        return statusAntes !== "aguardando" && statusAgora === "aguardando" && atendimentoEParaTecnicoLogado(item);
+      });
+      if(deveTocar) tocarSomAguardando(false);
+    }
+
+    statusMonitorAguardando = novoMapa;
+    primeiraLeituraAguardando = false;
+  }
+
+  function iniciarMonitorAguardando(){
+    if(!tecnicoLogado || typeof DOC_ATENDIMENTOS === "undefined" || unsubscribeAguardando) return;
+    garantirBotaoAtivarSons();
+    try{
+      unsubscribeAguardando = DOC_ATENDIMENTOS.onSnapshot(snap => {
+        if(!snap.exists) return;
+        const dados = snap.data() || {};
+        const listaNova = Array.isArray(dados.itens) ? dados.itens : [];
+        atualizarDadosMonitor(dados);
+        verificarCampainha(listaNova);
+        if(typeof telaAtualCaicavv === "undefined" || telaAtualCaicavv === "agendamentos"){
+          if(typeof render === "function") render();
+        }
+      }, erro => console.error("Erro no monitor de Aguardando:", erro));
+    }catch(e){
+      console.error(e);
+    }
+  }
+
+  function inserirConfiguracaoSom(){
+    if(!tecnicoPodeOuvirAguardando()) return;
+    const grid = document.querySelector(".config-grid");
+    if(!grid || document.getElementById("configSomAguardando")) return;
+    const valorAtual = somSelecionadoAguardando();
+    const options = SONS_AGUARDANDO.map(s => `<option value="${s.id}" ${s.id === valorAtual ? "selected" : ""}>${s.nome}</option>`).join("");
+    grid.insertAdjacentHTML("beforeend", `
+      <div class="config-card config-som-card">
+        <h3>Som do status Aguardando</h3>
+        <p class="pagina-sub">Escolha qual campainha tocará quando a recepção colocar um atendimento seu como <b>Aguardando</b>.</p>
+        <label><b>Som da campainha</b></label>
+        <select id="configSomAguardando">${options}</select>
+        <div class="linha-botoes-som">
+          <button type="button" onclick="salvarSomAguardando()">Salvar som</button>
+          <button type="button" class="btn-secundario" onclick="testarSomAguardando()">Testar som</button>
+        </div>
+        <p class="pagina-sub" style="margin-top:10px">Para o navegador permitir a campainha, clique em “Ativar avisos sonoros” ou teste um som uma vez.</p>
+      </div>
+    `);
+  }
+
+  const abrirTelaConfiguracoesOriginal = window.abrirTelaConfiguracoes;
+  if(typeof abrirTelaConfiguracoesOriginal === "function"){
+    window.abrirTelaConfiguracoes = function(){
+      const r = abrirTelaConfiguracoesOriginal.apply(this, arguments);
+      setTimeout(inserirConfiguracaoSom, 0);
+      return r;
     };
   }
 
-  document.addEventListener("click", function(event){
-    const botaoEntradas = event.target.closest('[data-tela="entradas"]');
-    if(botaoEntradas && !caicavvPodeEntradas()){
-      event.preventDefault();
-      event.stopPropagation();
-      caicavvAplicarCorrecoes();
-      if(typeof mostrarErro === "function") mostrarErro("A aba Entradas é restrita à coordenação e à administração.");
-    }
-  }, true);
-
-  function iniciarCorrecao(){
-    caicavvAplicarCorrecoes();
-
-    const observador = new MutationObserver(function(){
-      caicavvAplicarCorrecoes();
-    });
-
-    if(document.body){
-      observador.observe(document.body, { childList:true, subtree:true });
-    }
-
-    [100, 300, 700, 1200].forEach(function(ms){
-      setTimeout(caicavvAplicarCorrecoes, ms);
-    });
+  const loginOriginalAguardando = window.login;
+  if(typeof loginOriginalAguardando === "function"){
+    window.login = async function(){
+      const r = await loginOriginalAguardando.apply(this, arguments);
+      setTimeout(iniciarMonitorAguardando, 300);
+      return r;
+    };
   }
 
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", iniciarCorrecao);
-  }else{
-    iniciarCorrecao();
+  const carregarOriginalAguardando = window.carregar;
+  if(typeof carregarOriginalAguardando === "function"){
+    window.carregar = async function(){
+      const r = await carregarOriginalAguardando.apply(this, arguments);
+      setTimeout(iniciarMonitorAguardando, 300);
+      return r;
+    };
   }
+
+  setTimeout(iniciarMonitorAguardando, 1200);
 })();
 </script>
-</body>
-</html>
