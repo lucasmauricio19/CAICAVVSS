@@ -30,6 +30,37 @@
 </head>
 <body>
 
+
+<!-- ===== AJUSTE FINO: PEÃO NO RELATÓRIO + AGENDA DECORATIVA MAIOR ===== -->
+<style id="caicavv-ajuste-peao-agenda">
+  .relatorio-card .rel-icone.caicavv-relatorio-peao{
+    background-image:url("img/peao.png")!important;
+    background-size:70%!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    font-size:0!important;
+    color:transparent!important;
+  }
+
+  .caicavv-agenda-decorativa{
+    right:190px!important;
+    top:-42px!important;
+    width:155px!important;
+    height:155px!important;
+    opacity:.24!important;
+  }
+
+  @media(max-width:760px){
+    .caicavv-agenda-decorativa{
+      right:16px!important;
+      top:-20px!important;
+      width:105px!important;
+      height:105px!important;
+      opacity:.16!important;
+    }
+  }
+</style>
+
 </body>
 </html>
 
@@ -3781,6 +3812,37 @@ function baixarArquivoEntradasCAICAVV(conteudo, nomeArquivo, tipo){
   <p>Gerado em ${new Date().toLocaleString("pt-BR")}</p>
 </div>
 ${conteudo.innerHTML}
+
+<!-- ===== AJUSTE FINO: PEÃO NO RELATÓRIO + AGENDA DECORATIVA MAIOR ===== -->
+<style id="caicavv-ajuste-peao-agenda">
+  .relatorio-card .rel-icone.caicavv-relatorio-peao{
+    background-image:url("img/peao.png")!important;
+    background-size:70%!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    font-size:0!important;
+    color:transparent!important;
+  }
+
+  .caicavv-agenda-decorativa{
+    right:190px!important;
+    top:-42px!important;
+    width:155px!important;
+    height:155px!important;
+    opacity:.24!important;
+  }
+
+  @media(max-width:760px){
+    .caicavv-agenda-decorativa{
+      right:16px!important;
+      top:-20px!important;
+      width:105px!important;
+      height:105px!important;
+      opacity:.16!important;
+    }
+  }
+</style>
+
 </body>
 </html>`);
     janela.document.close();
@@ -4376,6 +4438,269 @@ ${conteudo.innerHTML}
   window.renderizarAbasPassadas = renderizarAbasPassadas;
 })();
 </script>
+
+
+<!-- ===== TROCA DE ÍCONES POR PNG - CAICAVV ===== -->
+<style id="caicavv-png-icons-style">
+  :root{
+    --img-flor-caicavv: url("img/flor-amarela.png");
+    --img-usuario-caicavv: url("img/usuario.png");
+    --img-peao-caicavv: url("img/peao.png");
+    --img-paciente-caicavv: url("img/paciente-coracao.png");
+    --img-tecnicos-caicavv: url("img/tecnicos.png");
+    --img-entradas-caicavv: url("img/bandeja-entrada.png");
+    --img-agenda-caicavv: url("img/agenda.png");
+    --img-engrenagem-caicavv: url("img/engrenagem.png");
+    --img-agenda-decorativa-caicavv: url("img/agenda-decorativa.png");
+  }
+
+  .caicavv-png-icon{
+    display:inline-block!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    background-size:contain!important;
+    line-height:0!important;
+    font-size:0!important;
+    color:transparent!important;
+    flex:0 0 auto;
+  }
+
+  .caicavv-flor-img{
+    width:100%!important;
+    height:100%!important;
+    object-fit:contain!important;
+    display:block!important;
+    filter:drop-shadow(0 0 8px rgba(250,204,21,.28));
+  }
+
+  .flower-logo,
+  .app-shell .flower{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    background:none!important;
+  }
+
+  .flower-logo .petal,
+  .flower-logo .flower-center,
+  .app-shell .flower span,
+  .app-shell .flower b{
+    display:none!important;
+  }
+
+  .big-flower-bg{
+    background-image:var(--img-flor-caicavv)!important;
+    background-size:contain!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    opacity:.10!important;
+  }
+  .big-flower-bg::before{content:""!important;}
+
+  .icon-box.caicavv-usuario-login,
+  .user-panel .avatar.caicavv-avatar-usuario{
+    background-image:var(--img-usuario-caicavv)!important;
+    background-size:72%!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    font-size:0!important;
+    color:transparent!important;
+  }
+
+  .relatorio-card .rel-icone.caicavv-relatorio-peao{
+    background-image:var(--img-peao-caicavv)!important;
+    background-size:70%!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    font-size:0!important;
+    color:transparent!important;
+  }
+
+  .side-icon.caicavv-peao-login{
+    width:24px!important;
+    height:24px!important;
+    background-image:var(--img-peao-caicavv)!important;
+    background-repeat:no-repeat!important;
+    background-size:contain!important;
+    background-position:center!important;
+    font-size:0!important;
+  }
+
+  .menu button::before{
+    content:""!important;
+    width:20px!important;
+    height:20px!important;
+    display:inline-block!important;
+    background-image:var(--img-peao-caicavv)!important;
+    background-repeat:no-repeat!important;
+    background-size:contain!important;
+    background-position:center!important;
+    filter:none!important;
+  }
+
+  .app-shell .nav-icon.caicavv-nav-img{
+    width:30px!important;
+    height:30px!important;
+    background-repeat:no-repeat!important;
+    background-size:contain!important;
+    background-position:center!important;
+    font-size:0!important;
+    color:transparent!important;
+  }
+
+  .app-shell .nav[data-tela="agendamentos"] .nav-icon{background-image:var(--img-agenda-caicavv)!important;}
+  .app-shell .nav[data-tela="pacientes"] .nav-icon{background-image:var(--img-paciente-caicavv)!important;}
+  .app-shell .nav[data-tela="tecnicos"] .nav-icon{background-image:var(--img-tecnicos-caicavv)!important;}
+  .app-shell .nav[data-tela="entradas"] .nav-icon{background-image:var(--img-entradas-caicavv)!important;}
+  .app-shell .nav[data-tela="configuracoes"] .nav-icon{background-image:var(--img-engrenagem-caicavv)!important;}
+
+  .search-card{
+    position:relative!important;
+    overflow:hidden!important;
+  }
+  .caicavv-agenda-decorativa{
+    position:absolute!important;
+    right:190px!important;
+    top:-42px!important;
+    width:155px!important;
+    height:155px!important;
+    object-fit:contain!important;
+    opacity:.24!important;
+    pointer-events:none!important;
+    transform:rotate(-6deg)!important;
+    z-index:0!important;
+  }
+  .search-card > *{
+    position:relative;
+    z-index:1;
+  }
+
+  @media(max-width:760px){
+    .caicavv-agenda-decorativa{
+      right:16px!important;
+      top:-18px!important;
+      width:105px!important;
+      height:105px!important;
+      opacity:.16!important;
+    }
+  }
+
+/* Correção dos caminhos: as imagens devem ficar dentro da pasta img/ */
+.caicavv-flor-img,
+.caicavv-agenda-decorativa{
+  max-width:100%!important;
+  max-height:100%!important;
+}
+
+</style>
+
+<script id="caicavv-png-icons-script">
+(function(){
+  const A = "img/";
+  const img = (src, alt, cls) => `<img src="${A}${src}" alt="${alt}" class="${cls}" draggable="false">`;
+
+  function trocarIconesCaicavv(){
+    document.querySelectorAll(".flower-logo").forEach(el=>{
+      if(!el.querySelector("img.caicavv-flor-img")){
+        el.innerHTML = img("flor-amarela.png", "Flor CAICAVV", "caicavv-flor-img");
+      }
+    });
+
+    document.querySelectorAll(".app-shell .flower").forEach(el=>{
+      if(!el.querySelector("img.caicavv-flor-img")){
+        el.innerHTML = img("flor-amarela.png", "Flor CAICAVV", "caicavv-flor-img");
+      }
+    });
+
+    document.querySelectorAll(".icon-box").forEach(el=>{
+      if((el.textContent || "").trim() === "👤"){
+        el.textContent = "";
+        el.classList.add("caicavv-usuario-login");
+      }
+    });
+
+    document.querySelectorAll(".side-icon").forEach(el=>{
+      if((el.textContent || "").trim() === "♙"){
+        el.textContent = "";
+        el.classList.add("caicavv-peao-login");
+      }
+    });
+
+    document.querySelectorAll(".app-shell .nav-icon").forEach(el=>{
+      el.textContent = "";
+      el.classList.add("caicavv-nav-img");
+    });
+
+    document.querySelectorAll(".user-panel .avatar").forEach(el=>{
+      el.textContent = "";
+      el.classList.add("caicavv-avatar-usuario");
+    });
+
+    document.querySelectorAll(".relatorio-card .rel-icone").forEach(el=>{
+      const t = (el.textContent || "").trim();
+      if(t === "▣" || t === "♙" || t === ""){
+        el.textContent = "";
+        el.classList.remove("caicavv-avatar-usuario");
+        el.classList.add("caicavv-relatorio-peao");
+      }
+    });
+
+    document.querySelectorAll(".search-card").forEach(card=>{
+      if(!card.querySelector(".caicavv-agenda-decorativa")){
+        const decor = document.createElement("img");
+        decor.src = A + "agenda-decorativa.png";
+        decor.alt = "";
+        decor.className = "caicavv-agenda-decorativa";
+        decor.setAttribute("aria-hidden", "true");
+        decor.draggable = false;
+        card.appendChild(decor);
+      }
+    });
+  }
+
+  document.addEventListener("DOMContentLoaded", trocarIconesCaicavv);
+  setTimeout(trocarIconesCaicavv, 300);
+  setTimeout(trocarIconesCaicavv, 1200);
+
+  const observer = new MutationObserver(function(){
+    clearTimeout(window.__caicavvPngIconTimer);
+    window.__caicavvPngIconTimer = setTimeout(trocarIconesCaicavv, 60);
+  });
+  observer.observe(document.documentElement, {childList:true, subtree:true});
+})();
+</script>
+<!-- ===== FIM DA TROCA DE ÍCONES POR PNG - CAICAVV ===== -->
+
+
+<!-- ===== AJUSTE FINO: PEÃO NO RELATÓRIO + AGENDA DECORATIVA MAIOR ===== -->
+<style id="caicavv-ajuste-peao-agenda">
+  .relatorio-card .rel-icone.caicavv-relatorio-peao{
+    background-image:url("img/peao.png")!important;
+    background-size:70%!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    font-size:0!important;
+    color:transparent!important;
+  }
+
+  .caicavv-agenda-decorativa{
+    right:190px!important;
+    top:-42px!important;
+    width:155px!important;
+    height:155px!important;
+    opacity:.24!important;
+  }
+
+  @media(max-width:760px){
+    .caicavv-agenda-decorativa{
+      right:16px!important;
+      top:-20px!important;
+      width:105px!important;
+      height:105px!important;
+      opacity:.16!important;
+    }
+  }
+</style>
 
 </body>
 </html>
