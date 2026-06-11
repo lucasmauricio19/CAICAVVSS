@@ -1653,11 +1653,16 @@ function aplicarPermissoesNaTela(){
   document.body.classList.toggle("recepcao-restrita", role === "recepcao");
   document.body.classList.toggle("sem-relatorios", !podeRelatorio);
 
+  const estaNaTelaAgendamentos = (typeof telaAtualCaicavv === "undefined" || telaAtualCaicavv === "agendamentos");
+
   if(formAtendimento){
-    formAtendimento.classList.toggle("hidden", !podeAdicionar);
+    // A lista/formulário de agendamento só pode aparecer dentro da aba Agendamentos.
+    // Antes, técnicos e coordenação reabriam esse bloco quando aplicarPermissoesNaTela()
+    // rodava em Configurações/Pacientes/Técnicos. Humanos e suas surpresas.
+    formAtendimento.classList.toggle("hidden", !podeAdicionar || !estaNaTelaAgendamentos);
   }
   if(typeof btnAdicionar !== "undefined" && btnAdicionar){
-    btnAdicionar.disabled = !podeAdicionar;
+    btnAdicionar.disabled = !podeAdicionar || !estaNaTelaAgendamentos;
   }
 
   const menuLateral = document.getElementById("menuLateral");
@@ -5185,9 +5190,14 @@ body.modo-app:not(.aparencia-noturna) .menu button::before{
 </script>
 
 <style id="caicavv-visibilidade-agendamentos-style">
-/* ===== Correção: abas dos técnicos + resumo somente em Agendamentos ===== */
+/* ===== Correção: blocos de agendamento somente na aba Agendamentos ===== */
+body.modo-app:not(.tela-agendamentos) #boasVindas,
 body.modo-app:not(.tela-agendamentos) #menu,
-body.modo-app:not(.tela-agendamentos) #relatorio{
+body.modo-app:not(.tela-agendamentos) #relatorio,
+body.modo-app:not(.tela-agendamentos) #filtrosV6,
+body.modo-app:not(.tela-agendamentos) #formAtendimento,
+body.modo-app:not(.tela-agendamentos) #abasPassadasContainer,
+body.modo-app:not(.tela-agendamentos) #btnCriarAbaPassada{
   display:none!important;
 }
 </style>
@@ -5195,11 +5205,18 @@ body.modo-app:not(.tela-agendamentos) #relatorio{
 (function(){
   function aplicarVisibilidadeAgendamentos(){
     const tela = (typeof telaAtualCaicavv !== "undefined") ? telaAtualCaicavv : "agendamentos";
-    document.body.classList.toggle("tela-agendamentos", tela === "agendamentos");
-    ["menu", "relatorio"].forEach(function(id){
+    const naAbaAgendamentos = tela === "agendamentos";
+    document.body.classList.toggle("tela-agendamentos", naAbaAgendamentos);
+
+    ["boasVindas", "menu", "relatorio", "filtrosV6", "formAtendimento", "abasPassadasContainer", "btnCriarAbaPassada"].forEach(function(id){
       const el = document.getElementById(id);
-      if(el) el.classList.toggle("hidden", tela !== "agendamentos");
+      if(el) el.classList.toggle("hidden", !naAbaAgendamentos);
     });
+
+    if(!naAbaAgendamentos && document.getElementById("lista")){
+      // Impede renderizações atrasadas de agendamento de reaparecerem em Configurações/Pacientes/Técnicos.
+      document.querySelectorAll("#lista .atendimento-card").forEach(function(card){ card.remove(); });
+    }
   }
 
   const setTelaOriginal = window.setTelaAtiva;
