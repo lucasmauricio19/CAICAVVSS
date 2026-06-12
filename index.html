@@ -824,7 +824,6 @@ body.modo-app{
 .entrada-exportar-acoes{display:flex;gap:10px;flex-wrap:wrap;background:#fff;border:1px solid #d8e4fa;border-radius:14px;padding:14px;margin-bottom:14px;box-shadow:0 10px 24px rgba(23,70,150,.10)}
 .entrada-exportar-acoes .entradas-btn{width:auto!important;min-width:165px;height:40px;border-radius:10px;border:0;background:var(--tema,#005bff);color:#fff;font-weight:900;cursor:pointer;padding:0 14px}
 .entrada-exportar-acoes .entradas-btn.excel{background:#16a34a!important}
-.entrada-exportar-acoes .entradas-btn.backup{background:#475569!important}
 @media(max-width:700px){.entrada-exportar-acoes{display:grid;grid-template-columns:1fr}.entrada-exportar-acoes .entradas-btn{width:100%!important}}
 @media print{.entrada-exportar-acoes,.entradas-toolbar,.entrada-acoes,button{display:none!important}.entrada-box,.entrada-kpi{box-shadow:none!important}.entrada-tabela-wrap{max-height:none!important;overflow:visible!important}}
 
@@ -2483,7 +2482,7 @@ function render(){
       ? window.atendimentoEstaEmAbaPassada(a)
       : false;
 
-    return passaFiltroTecnicoAvancado(a) && passaBusca(a, termo) && passaFiltroData(a) && passaFiltroStatus(a) && !arquivadoEmAbaPassada;
+    return passaFiltroTecnicoAvancado(a) && passaBusca(a, termo) && passaFiltroData(a) && passaFiltroStatus(a) && !arquivadoEmAbaPassada && String(a.origem || "") !== "upload" && String(a.tipo || "") !== "importado";
   });
 
   dados.sort((a,b) => {
@@ -3521,7 +3520,6 @@ function renderizarEntradasCAICAVV(){
     <div class="entrada-exportar-acoes">
       <button class="entradas-btn" onclick="imprimirRelatorioEntradasCAICAVV()">🖨️ Imprimir / Salvar PDF</button>
       <button class="entradas-btn excel" onclick="exportarEntradasCSVCAICAVV()">📊 Exportar Excel</button>
-      <button class="entradas-btn backup" onclick="exportarEntradasJSONCAICAVV()">💾 Exportar Backup</button>
     </div>
 
     <div class="entradas-kpis">
@@ -4178,10 +4176,6 @@ ${conteudo.innerHTML}
     if (texto.includes("exportar excel")) {
       ev.preventDefault();
       window.exportarEntradasCSVCAICAVV();
-    }
-    if (texto.includes("exportar backup")) {
-      ev.preventDefault();
-      window.exportarEntradasJSONCAICAVV();
     }
   });
 })();
@@ -5920,3 +5914,896 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
 })();
 </script>
 <!-- ===== FIM DA CORREÇÃO FINAL ===== -->
+
+<!-- ===== AJUSTES SOLICITADOS: MENSAGENS BONITAS + ABA UPLOAD RECEPÇÃO + UPLOAD DE ENTRADAS ===== -->
+<style id="caicavv-mensagens-upload-recepcao-style">
+  .caicavv-msg-fundo{
+    position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:rgba(4,18,64,.56);backdrop-filter:blur(5px);z-index:999999;padding:18px;
+  }
+  .caicavv-msg-fundo.show{display:flex;animation:caicavvMsgFade .18s ease both;}
+  .caicavv-msg-card{
+    width:min(460px,100%);border-radius:24px;background:linear-gradient(180deg,#ffffff,#f7fbff);
+    border:1px solid #d8e4fa;box-shadow:0 26px 90px rgba(0,23,76,.36);padding:24px 24px 20px;
+    color:#071957;text-align:left;position:relative;overflow:hidden;animation:caicavvMsgPop .22s cubic-bezier(.2,1.15,.35,1) both;
+  }
+  .caicavv-msg-card::before{
+    content:"";position:absolute;right:-44px;top:-54px;width:145px;height:145px;border-radius:50%;
+    background:rgba(0,91,255,.10);box-shadow:0 0 0 24px rgba(0,91,255,.045);pointer-events:none;
+  }
+  .caicavv-msg-icone{
+    width:58px;height:58px;border-radius:18px;display:grid;place-items:center;font-size:30px;font-weight:900;
+    background:#edf3ff;color:var(--tema,#005bff);margin-bottom:14px;
+  }
+  .caicavv-msg-card.sucesso .caicavv-msg-icone{background:#ecfdf5;color:#15803d;}
+  .caicavv-msg-card.erro .caicavv-msg-icone{background:#fef2f2;color:#b91c1c;}
+  .caicavv-msg-card.aviso .caicavv-msg-icone{background:#fff7ed;color:#c2410c;}
+  .caicavv-msg-card h3{margin:0 0 8px;font-size:21px;color:#061852;line-height:1.2;position:relative;z-index:1;}
+  .caicavv-msg-card p{margin:0;color:#405783;font-size:15px;line-height:1.5;white-space:pre-wrap;position:relative;z-index:1;}
+  .caicavv-msg-acoes{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;position:relative;z-index:1;}
+  .caicavv-msg-acoes button{width:auto!important;min-width:112px!important;height:42px!important;border-radius:999px!important;margin:0!important;padding:0 18px!important;font-weight:900!important;}
+  .caicavv-msg-ok{background:var(--tema,#005bff)!important;color:#fff!important;}
+  .caicavv-msg-cancelar{background:#e2e8f0!important;color:#334155!important;}
+  .caicavv-msg-confirmar{background:#dc2626!important;color:#fff!important;}
+  @keyframes caicavvMsgFade{from{opacity:0}to{opacity:1}}
+  @keyframes caicavvMsgPop{from{opacity:0;transform:translateY(14px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+  .nav-upload.hidden{display:none!important;}
+  .upload-grid-caicavv{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;align-items:start;margin-top:14px;}
+  .upload-card-caicavv{background:#fff;border:1px solid #d8e4fa;border-radius:14px;padding:16px;box-shadow:0 14px 32px rgba(23,70,150,.10);color:#071957;}
+  .upload-card-caicavv h3{margin:0 0 8px;font-size:18px;color:#061852;}
+  .upload-card-caicavv p{margin:0 0 12px;color:#52699d;font-size:13px;line-height:1.45;}
+  .upload-card-caicavv label{display:block;font-size:12px;font-weight:900;color:#52699d;text-transform:uppercase;letter-spacing:.04em;margin-top:10px;}
+  .upload-card-caicavv input,.upload-card-caicavv select{width:100%;height:42px;border:1px solid #ccd9f5;border-radius:10px;padding:0 12px;margin-top:6px;font-size:14px;color:#071957;background:#fff;box-sizing:border-box;}
+  .upload-card-caicavv input[type="file"]{height:auto;padding:10px;background:#f8fbff;}
+  .upload-card-caicavv button{height:42px;border:0;border-radius:10px;background:var(--tema,#005bff);color:#fff;font-weight:900;margin-top:12px;width:100%;cursor:pointer;}
+  .upload-card-caicavv button.secundario{background:#0f766e;}
+  .upload-card-caicavv button.perigo{background:#b91c1c;}
+  .upload-card-caicavv button:disabled{background:#94a3b8;cursor:not-allowed;}
+  .upload-resumo-caicavv{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px;}
+  .upload-kpi-caicavv{border:1px solid #e4ecfb;background:#f8fbff;border-radius:12px;padding:12px;}
+  .upload-kpi-caicavv span{display:block;color:#52699d;font-size:12px;font-weight:900;text-transform:uppercase;}
+  .upload-kpi-caicavv b{display:block;color:#061852;font-size:24px;margin-top:4px;}
+  .upload-tabela-wrap{max-height:430px;overflow:auto;border:1px solid #e4ecfb;border-radius:12px;margin-top:12px;background:#fff;}
+  .upload-tabela-caicavv{width:100%;border-collapse:collapse;font-size:13px;}
+  .upload-tabela-caicavv th{position:sticky;top:0;background:#f1f6ff;color:#061852;text-align:left;padding:10px;border-bottom:1px solid #d8e4fa;z-index:1;}
+  .upload-tabela-caicavv td{padding:9px 10px;border-bottom:1px solid #eef3fb;color:#071957;vertical-align:top;}
+  .upload-status-ok{color:#166534;font-weight:900;}
+  .upload-status-falta{color:#991b1b;font-weight:900;}
+  .upload-status-pendente{color:#1d4ed8;font-weight:900;}
+  .upload-aviso-caicavv{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;margin-top:12px;font-size:13px;line-height:1.45;}
+  .upload-sucesso-caicavv{background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;border-radius:12px;padding:12px;margin-top:12px;font-size:13px;line-height:1.45;}
+  .upload-pasta-caicavv{border:1px solid #d8e4fa;background:#fff;border-radius:14px;margin-top:12px;overflow:hidden;box-shadow:0 12px 28px rgba(23,70,150,.08);}
+  .upload-pasta-caicavv summary{cursor:pointer;list-style:none;padding:14px 16px;background:#f8fbff;display:flex;align-items:center;justify-content:space-between;gap:12px;color:#061852;font-weight:900;}
+  .upload-pasta-caicavv summary::-webkit-details-marker{display:none;}
+  .upload-pasta-caicavv summary span{display:block;font-size:15px;}
+  .upload-pasta-caicavv summary small{display:block;color:#52699d;font-size:12px;font-weight:800;margin-top:3px;}
+  .upload-pasta-conteudo{padding:14px 16px;background:#fff;}
+  .upload-resumo-final-caicavv{margin-top:12px;border:1px solid #bbf7d0;background:#ecfdf5;border-radius:12px;padding:12px;color:#14532d;}
+  .upload-acoes-pasta-caicavv{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 12px;}
+  .upload-acoes-pasta-caicavv button{width:auto!important;min-width:150px!important;height:38px!important;margin:0!important;border-radius:10px!important;padding:0 14px!important;font-size:13px!important;font-weight:900!important;}
+  .upload-acoes-pasta-caicavv .imprimir{background:#2563eb!important;}
+  .upload-acoes-pasta-caicavv .exportar{background:#0f766e!important;}
+  .upload-acoes-pasta-caicavv .excluir{background:#b91c1c!important;}
+  .upload-entradas-area{margin-top:14px;}
+  @media(max-width:900px){.upload-grid-caicavv{grid-template-columns:1fr}.upload-resumo-caicavv{grid-template-columns:1fr 1fr;}}
+  @media(max-width:620px){.upload-resumo-caicavv{grid-template-columns:1fr}.upload-tabela-caicavv{font-size:12px}.upload-acoes-pasta-caicavv{display:grid;grid-template-columns:1fr}.upload-acoes-pasta-caicavv button{width:100%!important;}}
+</style>
+
+<script id="caicavv-mensagens-upload-recepcao-script">
+(function(){
+  var alertOriginalCAICAVV = window.alert ? window.alert.bind(window) : null;
+
+  function garantirModalMensagemCAICAVV(){
+    var modal = document.getElementById("caicavvMsgFundo");
+    if(modal) return modal;
+    modal = document.createElement("div");
+    modal.id = "caicavvMsgFundo";
+    modal.className = "caicavv-msg-fundo";
+    modal.innerHTML = '<div id="caicavvMsgCard" class="caicavv-msg-card" onclick="event.stopPropagation()"><div id="caicavvMsgIcone" class="caicavv-msg-icone">i</div><h3 id="caicavvMsgTitulo">Mensagem</h3><p id="caicavvMsgTexto"></p><div id="caicavvMsgAcoes" class="caicavv-msg-acoes"></div></div>';
+    modal.addEventListener("click", function(){ fecharMensagemBonitaCAICAVV(false); });
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function iconeTipoCAICAVV(tipo){
+    if(tipo === "sucesso") return "✓";
+    if(tipo === "erro") return "!";
+    if(tipo === "aviso") return "⚠";
+    return "i";
+  }
+
+  function tituloTipoCAICAVV(tipo){
+    if(tipo === "sucesso") return "Tudo certo";
+    if(tipo === "erro") return "Atenção";
+    if(tipo === "aviso") return "Aviso";
+    return "Mensagem";
+  }
+
+  window.fecharMensagemBonitaCAICAVV = function(valor){
+    var modal = document.getElementById("caicavvMsgFundo");
+    if(modal) modal.classList.remove("show");
+    if(window.__caicavvMsgResolver){
+      var resolver = window.__caicavvMsgResolver;
+      window.__caicavvMsgResolver = null;
+      resolver(!!valor);
+    }
+  };
+
+  window.mostrarMensagemBonitaCAICAVV = function(msg, tipo, titulo){
+    tipo = tipo || "info";
+    var modal = garantirModalMensagemCAICAVV();
+    var card = document.getElementById("caicavvMsgCard");
+    var icone = document.getElementById("caicavvMsgIcone");
+    var tituloEl = document.getElementById("caicavvMsgTitulo");
+    var textoEl = document.getElementById("caicavvMsgTexto");
+    var acoes = document.getElementById("caicavvMsgAcoes");
+    if(!modal || !card || !icone || !tituloEl || !textoEl || !acoes){
+      if(alertOriginalCAICAVV) alertOriginalCAICAVV(String(msg || ""));
+      return;
+    }
+    card.className = "caicavv-msg-card " + tipo;
+    icone.textContent = iconeTipoCAICAVV(tipo);
+    tituloEl.textContent = titulo || tituloTipoCAICAVV(tipo);
+    textoEl.textContent = String(msg || "");
+    acoes.innerHTML = '<button type="button" class="caicavv-msg-ok" onclick="fecharMensagemBonitaCAICAVV(true)">OK</button>';
+    window.__caicavvMsgResolver = null;
+    modal.classList.add("show");
+  };
+
+  window.caicavvConfirmarBonito = function(msg, titulo){
+    return new Promise(function(resolve){
+      var modal = garantirModalMensagemCAICAVV();
+      var card = document.getElementById("caicavvMsgCard");
+      var icone = document.getElementById("caicavvMsgIcone");
+      var tituloEl = document.getElementById("caicavvMsgTitulo");
+      var textoEl = document.getElementById("caicavvMsgTexto");
+      var acoes = document.getElementById("caicavvMsgAcoes");
+      if(!modal || !card || !icone || !tituloEl || !textoEl || !acoes){ resolve(false); return; }
+      card.className = "caicavv-msg-card aviso";
+      icone.textContent = "?";
+      tituloEl.textContent = titulo || "Confirmar ação";
+      textoEl.textContent = String(msg || "");
+      acoes.innerHTML = '<button type="button" class="caicavv-msg-cancelar" onclick="fecharMensagemBonitaCAICAVV(false)">Cancelar</button><button type="button" class="caicavv-msg-confirmar" onclick="fecharMensagemBonitaCAICAVV(true)">Confirmar</button>';
+      window.__caicavvMsgResolver = resolve;
+      modal.classList.add("show");
+    });
+  };
+
+  window.alert = function(msg){
+    window.mostrarMensagemBonitaCAICAVV(String(msg || ""), "info", "Mensagem do sistema");
+  };
+
+  window.mostrarErro = function(msg){
+    window.mostrarMensagemBonitaCAICAVV(String(msg || ""), "erro", "Atenção");
+  };
+
+  window.mostrarSucesso = function(msg){
+    window.mostrarMensagemBonitaCAICAVV(String(msg || ""), "sucesso", "Tudo certo");
+  };
+})();
+</script>
+
+<script id="caicavv-upload-recepcao-script">
+(function(){
+  var uploadPlanilhaWorkbookCAICAVV = null;
+  var uploadPlanilhaArquivoNomeCAICAVV = "";
+  var uploadPlanilhaLinhasCAICAVV = [];
+  var uploadPlanilhaResumoCAICAVV = null;
+  var uploadEntradasWorkbookCAICAVV = null;
+  var uploadEntradasArquivoNomeCAICAVV = "";
+  var uploadEntradasLinhasCAICAVV = [];
+
+  function escUpload(v){
+    if(typeof escapeHTML === "function") return escapeHTML(v == null ? "" : String(v));
+    return String(v == null ? "" : v).replace(/[&<>'"]/g, function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[c];});
+  }
+  function normalizarUpload(v){
+    return String(v || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g," ").trim();
+  }
+  function roleUpload(){
+    try{return tecnicoLogado && tecnicoLogado.role ? String(tecnicoLogado.role).toLowerCase() : "";}catch(e){return "";}
+  }
+  function podeAcessarUploadCAICAVV(){
+    var role = roleUpload();
+    return role === "recepcao" || role === "coordenacao" || role === "adm";
+  }
+  window.podeAcessarUploadCAICAVV = podeAcessarUploadCAICAVV;
+
+  function dataBRUpload(data){
+    if(typeof formatarDataBR === "function") return formatarDataBR(data);
+    var p = String(data || "").split("-");
+    return p.length === 3 ? p[2] + "/" + p[1] + "/" + p[0] : String(data || "");
+  }
+  function parseDataUpload(valor){
+    if(valor instanceof Date && !isNaN(valor.getTime())){
+      return valor.getFullYear() + "-" + String(valor.getMonth()+1).padStart(2,"0") + "-" + String(valor.getDate()).padStart(2,"0");
+    }
+    if(typeof valor === "number" && isFinite(valor) && typeof XLSX !== "undefined"){
+      try{ var obj = XLSX.SSF.parse_date_code(valor); if(obj && obj.y && obj.m && obj.d) return String(obj.y).padStart(4,"0") + "-" + String(obj.m).padStart(2,"0") + "-" + String(obj.d).padStart(2,"0"); }catch(e){}
+    }
+    var txt = String(valor || "").trim().replace(/\s+.*$/, "");
+    if(!txt) return "";
+    var m = txt.match(/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})$/);
+    if(m) return m[1] + "-" + m[2].padStart(2,"0") + "-" + m[3].padStart(2,"0");
+    m = txt.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{2,4})$/);
+    if(m){ var ano = Number(m[3]); if(ano < 100) ano += 2000; return String(ano).padStart(4,"0") + "-" + m[2].padStart(2,"0") + "-" + m[1].padStart(2,"0"); }
+    return "";
+  }
+  function nomePacientePorPastaUpload(pasta){
+    try{
+      var p = typeof normalizarPasta === "function" ? normalizarPasta(pasta) : String(pasta || "").trim();
+      var nomes = cadastros && cadastros[p] ? cadastros[p] : null;
+      if(Array.isArray(nomes) && nomes.length) return nomes.join(" | ");
+    }catch(e){}
+    return "";
+  }
+  function statusTextoUpload(status){
+    if(status === "compareceu") return "Compareceu";
+    if(status === "faltou") return "Não compareceu";
+    return "Sem marcação";
+  }
+  function classeStatusUpload(status){
+    if(status === "compareceu") return "upload-status-ok";
+    if(status === "faltou") return "upload-status-falta";
+    return "upload-status-pendente";
+  }
+  function montarOptionsTecnicosUpload(valor){
+    var tecnicos = [];
+    try{ tecnicos = typeof getTecnicosDisponiveis === "function" ? getTecnicosDisponiveis() : Object.values(usuarios || {}).filter(function(u){return u && u.role === "tecnico";}).map(function(u){return u.nome;}); }catch(e){ tecnicos = []; }
+    return '<option value="">Selecione</option>' + tecnicos.map(function(t){return '<option value="'+escUpload(t)+'" '+(t===valor?'selected':'')+'>'+escUpload(t)+'</option>';}).join("");
+  }
+  function idxColunaUpload(headerNorm, tipo){
+    if(tipo === "data") return headerNorm.findIndex(function(h){return h === "data" || h === "dia" || h.includes("data atendimento") || h.includes("data do atendimento");});
+    if(tipo === "pasta") return headerNorm.findIndex(function(h){return h === "pasta" || h.includes("n pasta") || h.includes("numero") || h.includes("prontuario") || h.includes("pasta");});
+    if(tipo === "compareceu") return headerNorm.findIndex(function(h){return (h === "compareceu" || h === "veio" || h === "presente" || h.includes("compareceu")) && !h.includes("nao") && !h.includes("falt");});
+    if(tipo === "faltou") return headerNorm.findIndex(function(h){return h.includes("nao compareceu") || h.includes("não compareceu") || h.includes("faltou") || h.includes("falta") || h.includes("ausente");});
+    if(tipo === "obs") return headerNorm.findIndex(function(h){return h.includes("observacao") || h === "obs" || h.includes("descricao");});
+    return -1;
+  }
+  function valorMarcadoUpload(valor){
+    var t = normalizarUpload(valor);
+    return !!t && !["nao","não","n","0","false","falso","-"].includes(t);
+  }
+
+  function inserirNavUploadCAICAVV(){
+    var sidebar = document.querySelector(".app-shell .sidebar");
+    if(!sidebar) return;
+    var nav = document.getElementById("navUpload");
+    if(!nav){
+      nav = document.createElement("div");
+      nav.id = "navUpload";
+      nav.className = "nav nav-upload hidden";
+      nav.dataset.tela = "upload";
+      nav.onclick = window.abrirTelaUpload;
+      nav.innerHTML = '<div class="nav-icon">⇪</div><span>Upload</span>';
+      var navEntradas = document.getElementById("navEntradas");
+      var navConfig = sidebar.querySelector('.nav[data-tela="configuracoes"]');
+      if(navEntradas) navEntradas.insertAdjacentElement("afterend", nav);
+      else if(navConfig) navConfig.insertAdjacentElement("beforebegin", nav);
+      else sidebar.insertBefore(nav, sidebar.querySelector(".logout"));
+    }
+    nav.classList.toggle("hidden", !podeAcessarUploadCAICAVV());
+  }
+  function atualizarNavUploadCAICAVV(){
+    inserirNavUploadCAICAVV();
+    var nav = document.getElementById("navUpload");
+    if(nav) nav.classList.toggle("hidden", !podeAcessarUploadCAICAVV());
+    try{
+      if(typeof telaAtualCaicavv !== "undefined" && telaAtualCaicavv === "upload" && !podeAcessarUploadCAICAVV()) abrirTelaAgendamentos();
+    }catch(e){}
+  }
+
+  window.abrirTelaUpload = function(){
+    if(!podeAcessarUploadCAICAVV()){
+      if(typeof mostrarErro === "function") mostrarErro("A aba Upload é liberada apenas para Recepção, Coordenação e Administração.");
+      return;
+    }
+    if(typeof setTelaAtiva === "function") setTelaAtiva("upload");
+    document.body.classList.add("tela-upload");
+    document.querySelectorAll(".app-shell .nav").forEach(function(nav){ nav.classList.toggle("active", nav.dataset.tela === "upload"); });
+    if(typeof mostrarBlocosAgendamento === "function") mostrarBlocosAgendamento(false);
+    var destino = document.getElementById("lista") || document.querySelector(".content");
+    if(!destino) return;
+    destino.innerHTML = '<div class="pagina-titulo">Upload</div>'+
+      '<div class="pagina-sub">Importe planilhas antigas de agendamentos e arquivos de entradas em formato .ods, .xlsx ou .xls.</div>'+
+      '<div class="upload-grid-caicavv">'+
+        '<div class="upload-card-caicavv"><h3>1. Upload de agendamentos passados</h3><p>Envie uma planilha .ods, .xlsx ou .xls, escolha a aba e gere uma prévia antes de salvar.</p>'+
+          '<label>Arquivo</label><input id="uploadArquivoPlanilha" type="file" accept=".ods,.xlsx,.xls" onchange="lerArquivoUploadPlanilhaCAICAVV(event)">'+
+          '<label>Aba da planilha</label><select id="uploadNomeAba" onchange="prepararUploadPlanilhaCAICAVV()"><option value="">Envie um arquivo primeiro</option></select>'+
+          '<label>Nome do relatório/importação</label><input id="uploadNomeRelatorio" placeholder="Ex: Janeiro 2026 - Cláudia">'+
+          '<label>Técnico</label><select id="uploadTecnico">'+montarOptionsTecnicosUpload()+ '</select>'+
+          '<button type="button" class="secundario" onclick="prepararUploadPlanilhaCAICAVV()">Gerar prévia</button>'+
+          '<button type="button" id="btnImportarUpload" onclick="importarUploadPlanilhaFirebaseCAICAVV()" disabled>Importar para relatório</button>'+
+          '<div class="upload-aviso-caicavv">O leitor procura automaticamente as colunas <b>DATA</b>, <b>PASTA</b>, <b>COMPARECEU</b>, <b>NÃO COMPARECEU</b> e <b>OBSERVAÇÃO</b>.</div></div>'+
+        '<div class="upload-card-caicavv"><h3>2. Resumo</h3><p id="uploadResumoTexto">Nenhuma planilha lida ainda.</p><div id="uploadResumoCards" class="upload-resumo-caicavv"></div></div>'+
+      '</div>'+
+      '<div class="upload-card-caicavv" style="margin-top:14px"><h3>Prévia dos agendamentos</h3><div id="uploadPreview" class="upload-aviso-caicavv">A prévia aparecerá aqui depois da leitura.</div></div>'+
+      '<div class="upload-card-caicavv upload-entradas-area"><h3>Upload do arquivo de entradas</h3><p>Use aqui para importar o arquivo de entradas sem precisar abrir a aba Entradas.</p>'+
+        '<label>Arquivo de entradas</label><input id="uploadEntradasArquivo" type="file" accept=".ods,.xlsx,.xls" onchange="lerArquivoEntradasUploadCAICAVV(event)">'+
+        '<label>Aba da planilha</label><select id="uploadEntradasAba" onchange="prepararEntradasUploadCAICAVV()"><option value="">Envie um arquivo primeiro</option></select>'+
+        '<button type="button" class="secundario" onclick="prepararEntradasUploadCAICAVV()">Gerar prévia de entradas</button>'+
+        '<button type="button" id="btnImportarEntradasUpload" onclick="importarEntradasUploadCAICAVV()" disabled>Importar entradas</button>'+
+        '<div id="uploadEntradasPreview" class="upload-aviso-caicavv">A prévia das entradas aparecerá aqui.</div></div>'+
+      '<div class="upload-card-caicavv" style="margin-top:14px"><h3>Uploads importados</h3><p>As importações salvas aparecem aqui em formato de pasta, com os atendimentos da planilha e resumo final.</p><div id="uploadPastasImportadas"></div></div>';
+    renderizarPastasUploadImportadasCAICAVV();
+  };
+
+  window.lerArquivoUploadPlanilhaCAICAVV = function(event){
+    var arquivo = event.target.files && event.target.files[0];
+    uploadPlanilhaWorkbookCAICAVV = null;
+    uploadPlanilhaLinhasCAICAVV = [];
+    uploadPlanilhaResumoCAICAVV = null;
+    uploadPlanilhaArquivoNomeCAICAVV = arquivo ? arquivo.name : "";
+    var preview = document.getElementById("uploadPreview");
+    var select = document.getElementById("uploadNomeAba");
+    var btn = document.getElementById("btnImportarUpload");
+    if(btn) btn.disabled = true;
+    if(!arquivo) return;
+    if(typeof XLSX === "undefined"){ if(typeof mostrarErro === "function") mostrarErro("A biblioteca XLSX não carregou. Atualize a página e tente novamente."); return; }
+    var leitor = new FileReader();
+    leitor.onload = function(ev){
+      try{
+        var dados = new Uint8Array(ev.target.result);
+        uploadPlanilhaWorkbookCAICAVV = XLSX.read(dados, { type:"array", cellDates:true });
+        if(select){
+          select.innerHTML = uploadPlanilhaWorkbookCAICAVV.SheetNames.map(function(n){return '<option value="'+escUpload(n)+'">'+escUpload(n)+'</option>';}).join("");
+          select.value = uploadPlanilhaWorkbookCAICAVV.SheetNames[0] || "";
+        }
+        var nomeRel = document.getElementById("uploadNomeRelatorio");
+        if(nomeRel && !nomeRel.value) nomeRel.value = arquivo.name.replace(/\.[^.]+$/, "");
+        if(preview) preview.innerHTML = "Arquivo lido. Gere a prévia antes de importar.";
+        prepararUploadPlanilhaCAICAVV();
+      }catch(e){ console.error(e); if(typeof mostrarErro === "function") mostrarErro("Não foi possível ler a planilha de agendamentos."); }
+    };
+    leitor.readAsArrayBuffer(arquivo);
+  };
+
+  window.prepararUploadPlanilhaCAICAVV = function(){
+    var preview = document.getElementById("uploadPreview");
+    var btn = document.getElementById("btnImportarUpload");
+    if(btn) btn.disabled = true;
+    if(!uploadPlanilhaWorkbookCAICAVV){ if(preview) preview.innerHTML = "Envie um arquivo primeiro."; return; }
+    var nomeAba = document.getElementById("uploadNomeAba")?.value || uploadPlanilhaWorkbookCAICAVV.SheetNames[0];
+    var ws = uploadPlanilhaWorkbookCAICAVV.Sheets[nomeAba];
+    if(!ws){ if(preview) preview.innerHTML = "Aba da planilha não encontrada."; return; }
+    var linhas = XLSX.utils.sheet_to_json(ws, { header:1, defval:"", raw:true });
+    var idxHeader = linhas.findIndex(function(row){ var h = (row || []).map(normalizarUpload); return idxColunaUpload(h,"data") >= 0 && idxColunaUpload(h,"pasta") >= 0; });
+    if(idxHeader < 0){ if(preview) preview.innerHTML = "Não encontrei cabeçalho com DATA e PASTA nessa aba."; if(typeof mostrarErro === "function") mostrarErro("Não encontrei as colunas DATA e PASTA na planilha."); return; }
+    var headerNorm = (linhas[idxHeader] || []).map(normalizarUpload);
+    var idxData = idxColunaUpload(headerNorm,"data"), idxPasta = idxColunaUpload(headerNorm,"pasta"), idxCompareceu = idxColunaUpload(headerNorm,"compareceu"), idxFaltou = idxColunaUpload(headerNorm,"faltou"), idxObs = idxColunaUpload(headerNorm,"obs");
+    var tecnico = document.getElementById("uploadTecnico")?.value || "";
+    if(!tecnico){ if(preview) preview.innerHTML = "Selecione o técnico antes de gerar a prévia."; if(typeof mostrarErro === "function") mostrarErro("Selecione o técnico da planilha."); return; }
+    var registros = [], erros = 0, semPasta = 0, semStatus = 0;
+    for(var i=idxHeader+1;i<linhas.length;i++){
+      var row = linhas[i] || [];
+      var temConteudo = row.some(function(c){return String(c || "").trim();});
+      if(!temConteudo) continue;
+      var dataISO = parseDataUpload(row[idxData]);
+      var pastaValor = typeof normalizarPasta === "function" ? normalizarPasta(row[idxPasta]) : String(row[idxPasta] || "").trim();
+      if(!dataISO && !pastaValor) continue;
+      if(!dataISO){ erros++; continue; }
+      if(!pastaValor) semPasta++;
+      var marcouCompareceu = idxCompareceu >= 0 && valorMarcadoUpload(row[idxCompareceu]);
+      var marcouFaltou = idxFaltou >= 0 && valorMarcadoUpload(row[idxFaltou]);
+      var status = "agendado";
+      if(marcouCompareceu) status = "compareceu";
+      else if(marcouFaltou) status = "faltou";
+      else semStatus++;
+      var obs = idxObs >= 0 ? String(row[idxObs] || "").trim() : "";
+      registros.push({
+        id:"upload_"+Date.now()+"_"+i+"_"+Math.random().toString(36).slice(2,7),
+        pasta:pastaValor,
+        nome:nomePacientePorPastaUpload(pastaValor),
+        tecnico:tecnico,
+        data:dataISO,
+        hora:"",
+        descricao:"Importado da planilha " + nomeAba,
+        status:status,
+        observacaoRealizacao:obs,
+        origem:"upload",
+        tipo:"importado",
+        arquivoUpload:uploadPlanilhaArquivoNomeCAICAVV,
+        abaUpload:nomeAba,
+        linhaUpload:i+1,
+        criadoPor: tecnicoLogado ? tecnicoLogado.nome : "Recepção",
+        roleCriador: tecnicoLogado ? tecnicoLogado.role : "recepcao",
+        criadoEm:new Date().toISOString()
+      });
+    }
+    var duplicados = registros.filter(function(r){ return (atendimentos || []).some(function(a){ return String(a.origem || "") === "upload" && String(a.pasta || "") === String(r.pasta || "") && String(a.data || "") === String(r.data || "") && String(a.tecnico || "") === String(r.tecnico || "") && String(a.abaUpload || "") === String(r.abaUpload || ""); }); }).length;
+    uploadPlanilhaLinhasCAICAVV = registros;
+    uploadPlanilhaResumoCAICAVV = { total:registros.length, compareceu:registros.filter(function(r){return r.status==="compareceu";}).length, faltou:registros.filter(function(r){return r.status==="faltou";}).length, semPasta:semPasta, semStatus:semStatus, erros:erros, duplicados:duplicados, tecnico:tecnico, nomeAba:nomeAba };
+    renderizarResumoUploadCAICAVV();
+    var linhasHtml = registros.slice(0,250).map(function(r){return '<tr><td>'+escUpload(dataBRUpload(r.data))+'</td><td>'+escUpload(r.pasta || "—")+'</td><td>'+escUpload(r.nome || "Não encontrado")+'</td><td>'+escUpload(r.tecnico)+'</td><td class="'+classeStatusUpload(r.status)+'">'+escUpload(statusTextoUpload(r.status))+'</td><td>'+escUpload(r.observacaoRealizacao || "")+'</td></tr>';}).join("");
+    if(preview){ preview.className = "upload-tabela-wrap"; preview.innerHTML = '<table class="upload-tabela-caicavv"><thead><tr><th>Data</th><th>Pasta</th><th>Nome encontrado</th><th>Técnico</th><th>Veio?</th><th>Observação</th></tr></thead><tbody>'+(linhasHtml || '<tr><td colspan="6">Nenhum registro encontrado.</td></tr>')+'</tbody></table>'+(registros.length > 250 ? '<div class="upload-aviso-caicavv">Mostrando apenas os primeiros 250 registros na prévia.</div>' : ''); }
+    if(btn) btn.disabled = registros.length === 0;
+  };
+
+  function renderizarResumoUploadCAICAVV(){
+    var texto = document.getElementById("uploadResumoTexto");
+    var cards = document.getElementById("uploadResumoCards");
+    var r = uploadPlanilhaResumoCAICAVV;
+    if(!r){ if(texto) texto.textContent = "Nenhuma planilha lida ainda."; if(cards) cards.innerHTML = ""; return; }
+    if(texto) texto.textContent = r.total + " registro(s) encontrados na aba " + r.nomeAba + ".";
+    if(cards) cards.innerHTML = '<div class="upload-kpi-caicavv"><span>Total</span><b>'+r.total+'</b></div><div class="upload-kpi-caicavv"><span>Compareceu</span><b>'+r.compareceu+'</b></div><div class="upload-kpi-caicavv"><span>Faltou</span><b>'+r.faltou+'</b></div><div class="upload-kpi-caicavv"><span>Duplicados</span><b>'+r.duplicados+'</b></div>';
+  }
+
+  window.importarUploadPlanilhaFirebaseCAICAVV = async function(){
+    if(!podeAcessarUploadCAICAVV()){ if(typeof mostrarErro === "function") mostrarErro("Sem permissão para importar planilhas."); return; }
+    if(!uploadPlanilhaLinhasCAICAVV.length){ if(typeof mostrarErro === "function") mostrarErro("Gere a prévia antes de importar."); return; }
+    var nomeRelatorio = String(document.getElementById("uploadNomeRelatorio")?.value || uploadPlanilhaResumoCAICAVV?.nomeAba || "Importação").trim();
+    var importacaoId = "imp_upload_" + Date.now() + "_" + Math.random().toString(36).slice(2,8);
+    var btn = document.getElementById("btnImportarUpload"); if(btn) btn.disabled = true;
+    var novos = uploadPlanilhaLinhasCAICAVV.filter(function(r){ return !(atendimentos || []).some(function(a){ return String(a.origem || "") === "upload" && String(a.pasta || "") === String(r.pasta || "") && String(a.data || "") === String(r.data || "") && String(a.tecnico || "") === String(r.tecnico || "") && String(a.abaUpload || "") === String(r.abaUpload || ""); }); }).map(function(r){ return Object.assign({}, r, { importacaoUploadId:importacaoId, nomeRelatorioUpload:nomeRelatorio, importadoEm:new Date().toISOString() }); });
+    if(!novos.length){ if(typeof mostrarErro === "function") mostrarErro("Todos os registros dessa prévia já foram importados."); if(btn) btn.disabled = false; return; }
+    try{
+      atendimentos.unshift.apply(atendimentos, novos);
+      if(typeof registrarLog === "function") registrarLog("Upload de planilha", { id:"", pasta:"", nome:nomeRelatorio, tecnico:uploadPlanilhaResumoCAICAVV?.tecnico || "" }, novos.length + " registro(s) importado(s) de " + uploadPlanilhaArquivoNomeCAICAVV + " / " + (uploadPlanilhaResumoCAICAVV?.nomeAba || "aba") + ".");
+      if(typeof salvarAtendimentosFirebase === "function") await salvarAtendimentosFirebase();
+      if(typeof mostrarSucesso === "function") mostrarSucesso(novos.length + " registro(s) importado(s) com sucesso.");
+      var preview = document.getElementById("uploadPreview");
+      if(preview){ preview.className = "upload-sucesso-caicavv"; preview.innerHTML = "<b>Importação concluída.</b><br>"+novos.length+" registro(s) foram salvos para relatório. Duplicados foram ignorados."; }
+      uploadPlanilhaLinhasCAICAVV = [];
+      uploadPlanilhaResumoCAICAVV = null;
+      renderizarResumoUploadCAICAVV();
+      renderizarPastasUploadImportadasCAICAVV();
+    }catch(e){ console.error(e); if(typeof mostrarErro === "function") mostrarErro("Erro ao salvar os registros importados no Firebase."); if(btn) btn.disabled = false; }
+  };
+
+  function atendimentosUploadImportados(){
+    return (Array.isArray(atendimentos) ? atendimentos : []).filter(function(a){ return a && (a.origem === "upload" || a.tipo === "importado"); });
+  }
+  function chaveImportacaoUpload(a){
+    return a.importacaoUploadId || [a.nomeRelatorioUpload || a.abaUpload || "Importação", a.arquivoUpload || "", a.abaUpload || "", a.tecnico || ""].join("||");
+  }
+  function agruparImportacoesUpload(){
+    var mapa = new Map();
+    atendimentosUploadImportados().forEach(function(a){
+      var chave = chaveImportacaoUpload(a);
+      if(!mapa.has(chave)) mapa.set(chave, { id:chave, nome:a.nomeRelatorioUpload || a.abaUpload || "Importação de planilha", arquivo:a.arquivoUpload || "Arquivo não informado", aba:a.abaUpload || "Aba não informada", tecnico:a.tecnico || "Técnico não informado", criadoEm:a.importadoEm || a.criadoEm || "", itens:[] });
+      mapa.get(chave).itens.push(a);
+    });
+    return Array.from(mapa.values()).sort(function(a,b){ return String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")); });
+  }
+  function resumoImportacaoUpload(itens){
+    var datas = itens.map(function(r){return String(r.data || "");}).filter(Boolean).sort();
+    return { total:itens.length, compareceu:itens.filter(function(r){return r.status === "compareceu";}).length, faltou:itens.filter(function(r){return r.status === "faltou";}).length, pendente:itens.filter(function(r){return !["compareceu","faltou"].includes(String(r.status || ""));}).length, inicio:datas[0] || "", fim:datas[datas.length-1] || "" };
+  }
+  window.renderizarPastasUploadImportadasCAICAVV = function(){
+    var box = document.getElementById("uploadPastasImportadas");
+    if(!box) return;
+    var grupos = agruparImportacoesUpload();
+    if(!grupos.length){ box.innerHTML = '<div class="upload-aviso-caicavv">Nenhuma planilha importada ainda.</div>'; return; }
+    box.innerHTML = grupos.map(function(g){
+      var r = resumoImportacaoUpload(g.itens);
+      var linhas = g.itens.slice().sort(function(a,b){return String(a.data || "").localeCompare(String(b.data || ""));}).map(function(a){return '<tr><td>'+escUpload(dataBRUpload(a.data))+'</td><td>'+escUpload(a.pasta || "—")+'</td><td>'+escUpload(a.nome || "Não encontrado")+'</td><td class="'+classeStatusUpload(a.status)+'">'+escUpload(statusTextoUpload(a.status))+'</td><td>'+escUpload(a.observacaoRealizacao || "")+'</td></tr>';}).join("");
+      return '<details class="upload-pasta-caicavv"><summary><div><span>'+escUpload(g.nome)+'</span><small>'+escUpload(g.arquivo)+' • '+escUpload(g.aba)+' • '+escUpload(g.tecnico)+'</small></div><b>'+r.total+'</b></summary><div class="upload-pasta-conteudo"><div class="upload-acoes-pasta-caicavv"><button class="imprimir" type="button" onclick="imprimirImportacaoUploadCAICAVV(\''+escUpload(g.id)+'\')">Imprimir / PDF</button><button class="exportar" type="button" onclick="exportarImportacaoUploadCAICAVV(\''+escUpload(g.id)+'\')">Exportar planilha</button><button class="excluir" type="button" onclick="excluirImportacaoUploadCAICAVV(\''+escUpload(g.id)+'\')">Excluir importação</button></div><div class="upload-tabela-wrap"><table class="upload-tabela-caicavv"><thead><tr><th>Data</th><th>Pasta</th><th>Nome</th><th>Status</th><th>Observação</th></tr></thead><tbody>'+linhas+'</tbody></table></div><div class="upload-resumo-final-caicavv"><b>Resumo:</b> '+r.total+' registro(s), '+r.compareceu+' compareceu(ram), '+r.faltou+' não compareceu(ram), '+r.pendente+' sem marcação. Período: '+escUpload(dataBRUpload(r.inicio))+' até '+escUpload(dataBRUpload(r.fim))+'.</div></div></details>';
+    }).join("");
+  };
+  function grupoUploadPorId(id){ return agruparImportacoesUpload().find(function(g){ return String(g.id) === String(id); }); }
+  window.exportarImportacaoUploadCAICAVV = function(id){
+    var g = grupoUploadPorId(id); if(!g) return;
+    if(typeof XLSX === "undefined"){ if(typeof mostrarErro === "function") mostrarErro("A biblioteca XLSX não carregou."); return; }
+    var dados = g.itens.map(function(a){return {Data:dataBRUpload(a.data), Pasta:a.pasta || "", Nome:a.nome || "", Técnico:a.tecnico || "", Status:statusTextoUpload(a.status), Observação:a.observacaoRealizacao || ""};});
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dados), "Importação");
+    XLSX.writeFile(wb, String(g.nome || "importacao").replace(/[^a-z0-9_-]+/gi,"_") + ".xlsx");
+  };
+  window.imprimirImportacaoUploadCAICAVV = function(id){
+    var g = grupoUploadPorId(id); if(!g) return;
+    var linhas = g.itens.map(function(a){return '<tr><td>'+escUpload(dataBRUpload(a.data))+'</td><td>'+escUpload(a.pasta || "")+'</td><td>'+escUpload(a.nome || "")+'</td><td>'+escUpload(statusTextoUpload(a.status))+'</td><td>'+escUpload(a.observacaoRealizacao || "")+'</td></tr>';}).join("");
+    var win = window.open("", "_blank");
+    if(!win){ if(typeof mostrarErro === "function") mostrarErro("O navegador bloqueou a impressão. Permita pop-ups para este site."); return; }
+    win.document.write('<html><head><title>'+escUpload(g.nome)+'</title><style>body{font-family:Arial;padding:22px;color:#071957}table{width:100%;border-collapse:collapse}th,td{border:1px solid #d8e4fa;padding:7px;font-size:12px;text-align:left}th{background:#f1f6ff}</style></head><body><h1>'+escUpload(g.nome)+'</h1><p>'+escUpload(g.arquivo)+' • '+escUpload(g.aba)+' • '+escUpload(g.tecnico)+'</p><table><thead><tr><th>Data</th><th>Pasta</th><th>Nome</th><th>Status</th><th>Observação</th></tr></thead><tbody>'+linhas+'</tbody></table></body></html>');
+    win.document.close(); win.focus(); win.print();
+  };
+  window.excluirImportacaoUploadCAICAVV = async function(id){
+    var ok = typeof caicavvConfirmarBonito === "function" ? await caicavvConfirmarBonito("Excluir esta importação? Os registros importados dessa pasta serão removidos.", "Excluir importação") : confirm("Excluir esta importação?");
+    if(!ok) return;
+    try{
+      atendimentos = (atendimentos || []).filter(function(a){ return String(chaveImportacaoUpload(a)) !== String(id); });
+      if(typeof salvarAtendimentosFirebase === "function") await salvarAtendimentosFirebase();
+      renderizarPastasUploadImportadasCAICAVV();
+      if(typeof mostrarSucesso === "function") mostrarSucesso("Importação excluída.");
+    }catch(e){ console.error(e); if(typeof mostrarErro === "function") mostrarErro("Não foi possível excluir a importação."); }
+  };
+
+  window.lerArquivoEntradasUploadCAICAVV = function(event){
+    var arquivo = event.target.files && event.target.files[0];
+    uploadEntradasWorkbookCAICAVV = null;
+    uploadEntradasLinhasCAICAVV = [];
+    uploadEntradasArquivoNomeCAICAVV = arquivo ? arquivo.name : "";
+    var preview = document.getElementById("uploadEntradasPreview");
+    var select = document.getElementById("uploadEntradasAba");
+    var btn = document.getElementById("btnImportarEntradasUpload");
+    if(btn) btn.disabled = true;
+    if(!arquivo) return;
+    if(typeof XLSX === "undefined"){ if(typeof mostrarErro === "function") mostrarErro("A biblioteca XLSX não carregou."); return; }
+    var leitor = new FileReader();
+    leitor.onload = function(ev){
+      try{
+        uploadEntradasWorkbookCAICAVV = XLSX.read(new Uint8Array(ev.target.result), { type:"array", cellDates:true });
+        if(select){ select.innerHTML = uploadEntradasWorkbookCAICAVV.SheetNames.map(function(n){return '<option value="'+escUpload(n)+'">'+escUpload(n)+'</option>';}).join(""); select.value = uploadEntradasWorkbookCAICAVV.SheetNames[0] || ""; }
+        if(preview) preview.innerHTML = "Arquivo de entradas lido. Gere a prévia antes de importar.";
+        prepararEntradasUploadCAICAVV();
+      }catch(e){ console.error(e); if(typeof mostrarErro === "function") mostrarErro("Não foi possível ler o arquivo de entradas."); }
+    };
+    leitor.readAsArrayBuffer(arquivo);
+  };
+  window.prepararEntradasUploadCAICAVV = function(){
+    var preview = document.getElementById("uploadEntradasPreview");
+    var btn = document.getElementById("btnImportarEntradasUpload");
+    if(btn) btn.disabled = true;
+    if(!uploadEntradasWorkbookCAICAVV){ if(preview) preview.innerHTML = "Envie o arquivo de entradas primeiro."; return; }
+    var nomeAba = document.getElementById("uploadEntradasAba")?.value || uploadEntradasWorkbookCAICAVV.SheetNames[0];
+    var ws = uploadEntradasWorkbookCAICAVV.Sheets[nomeAba];
+    if(!ws){ if(preview) preview.innerHTML = "Aba de entradas não encontrada."; return; }
+    var linhas = XLSX.utils.sheet_to_json(ws, { defval:"", raw:true });
+    uploadEntradasLinhasCAICAVV = linhas.map(function(linha){
+      var nova = typeof normalizarEntradaImportadaCAICAVV === "function" ? normalizarEntradaImportadaCAICAVV(linha) : null;
+      if(nova){ nova.fonte = uploadEntradasArquivoNomeCAICAVV || "Importado pelo Upload"; }
+      return nova;
+    }).filter(function(nova){ return nova && (nova.nome || nova.pasta); });
+    var amostra = uploadEntradasLinhasCAICAVV.slice(0,120).map(function(e){return '<tr><td>'+escUpload(e.pasta)+'</td><td>'+escUpload(e.nome)+'</td><td>'+escUpload(e.idade)+'</td><td>'+escUpload(e.sexo)+'</td><td>'+escUpload(e.bairro)+'</td><td>'+escUpload(e.origem)+'</td><td>'+escUpload(e.violencia)+'</td><td>'+escUpload(dataBRUpload(e.data))+'</td></tr>';}).join("");
+    if(preview){ preview.className = "upload-tabela-wrap"; preview.innerHTML = '<table class="upload-tabela-caicavv"><thead><tr><th>Pasta</th><th>Nome</th><th>Idade</th><th>Sexo</th><th>Bairro</th><th>Origem</th><th>Violência</th><th>Data</th></tr></thead><tbody>'+(amostra || '<tr><td colspan="8">Nenhuma entrada encontrada.</td></tr>')+'</tbody></table>'+(uploadEntradasLinhasCAICAVV.length > 120 ? '<div class="upload-aviso-caicavv">Mostrando apenas as primeiras 120 entradas na prévia.</div>' : ''); }
+    if(btn) btn.disabled = uploadEntradasLinhasCAICAVV.length === 0;
+  };
+  window.importarEntradasUploadCAICAVV = function(){
+    if(!podeAcessarUploadCAICAVV()){ if(typeof mostrarErro === "function") mostrarErro("Sem permissão para importar entradas."); return; }
+    if(!uploadEntradasLinhasCAICAVV.length){ if(typeof mostrarErro === "function") mostrarErro("Gere a prévia de entradas antes de importar."); return; }
+    var existentes = new Set((entradasManuaisCAICAVV || []).map(function(e){ return [e.pasta||"", e.nome||"", e.data||""].join("||"); }));
+    var novas = uploadEntradasLinhasCAICAVV.filter(function(e){ var chave = [e.pasta||"", e.nome||"", e.data||""].join("||"); if(existentes.has(chave)) return false; existentes.add(chave); return true; });
+    entradasManuaisCAICAVV.push.apply(entradasManuaisCAICAVV, novas);
+    if(typeof salvarEntradasManuaisCAICAVV === "function") salvarEntradasManuaisCAICAVV();
+    if(typeof mostrarSucesso === "function") mostrarSucesso(novas.length + " entrada(s) importada(s). Duplicadas foram ignoradas.");
+    var preview = document.getElementById("uploadEntradasPreview");
+    if(preview){ preview.className = "upload-sucesso-caicavv"; preview.innerHTML = "<b>Entradas importadas.</b><br>"+novas.length+" entrada(s) salvas no sistema."; }
+    uploadEntradasLinhasCAICAVV = [];
+  };
+
+  function reforcarSalvamentoEntradasFirebase(){
+    if(window.__caicavvEntradasFirebaseWrapped) return;
+    window.__caicavvEntradasFirebaseWrapped = true;
+    var salvarOriginal = window.salvarEntradasManuaisCAICAVV;
+    window.salvarEntradasManuaisCAICAVV = function(){
+      if(typeof salvarOriginal === "function") salvarOriginal.apply(this, arguments);
+      else localStorage.setItem("entradasManuaisCAICAVV", JSON.stringify(entradasManuaisCAICAVV || []));
+      try{
+        if(typeof DOC_ATENDIMENTOS !== "undefined") DOC_ATENDIMENTOS.set({ entradasManuaisCAICAVV: entradasManuaisCAICAVV || [], entradasAtualizadasEm:new Date().toISOString() }, { merge:true });
+      }catch(e){ console.warn("Entradas salvas localmente; Firebase não aceitou agora.", e); }
+    };
+    try{
+      if(typeof DOC_ATENDIMENTOS !== "undefined") DOC_ATENDIMENTOS.get().then(function(snap){
+        var dados = snap.exists ? (snap.data() || {}) : {};
+        if(Array.isArray(dados.entradasManuaisCAICAVV) && dados.entradasManuaisCAICAVV.length){
+          var mapa = new Map((entradasManuaisCAICAVV || []).map(function(e){ return [[e.pasta||"", e.nome||"", e.data||""].join("||"), e]; }));
+          dados.entradasManuaisCAICAVV.forEach(function(e){ mapa.set([e.pasta||"", e.nome||"", e.data||""].join("||"), e); });
+          entradasManuaisCAICAVV = Array.from(mapa.values());
+          localStorage.setItem("entradasManuaisCAICAVV", JSON.stringify(entradasManuaisCAICAVV));
+        }
+      });
+    }catch(e){}
+  }
+
+  var aplicarPermissoesOriginalUpload = window.aplicarPermissoesNaTela;
+  if(typeof aplicarPermissoesOriginalUpload === "function" && !window.__caicavvUploadPermissaoWrapped){
+    window.__caicavvUploadPermissaoWrapped = true;
+    window.aplicarPermissoesNaTela = function(){
+      var r = aplicarPermissoesOriginalUpload.apply(this, arguments);
+      setTimeout(atualizarNavUploadCAICAVV, 0);
+      return r;
+    };
+  }
+  var setTelaOriginalUpload = window.setTelaAtiva;
+  if(typeof setTelaOriginalUpload === "function" && !window.__caicavvSetTelaUploadWrapped){
+    window.__caicavvSetTelaUploadWrapped = true;
+    window.setTelaAtiva = function(nome){
+      var r = setTelaOriginalUpload.apply(this, arguments);
+      document.body.classList.toggle("tela-upload", nome === "upload");
+      return r;
+    };
+  }
+
+  window.excluirEntradaCAICAVV = async function(id){
+    if(typeof podeAlterarEntradasCAICAVV === "function" && !podeAlterarEntradasCAICAVV()){
+      if(typeof mostrarErro === "function") mostrarErro("Somente Maiyara/coordenação pode excluir entradas.");
+      return;
+    }
+    var ok = typeof caicavvConfirmarBonito === "function" ? await caicavvConfirmarBonito("Excluir esta entrada manual?", "Excluir entrada") : confirm("Excluir esta entrada manual?");
+    if(!ok) return;
+    entradasManuaisCAICAVV = entradasManuaisCAICAVV.filter(function(e){ return String(e.id) !== String(id); });
+    if(typeof salvarEntradasManuaisCAICAVV === "function") salvarEntradasManuaisCAICAVV();
+    if(typeof renderizarEntradasCAICAVV === "function") renderizarEntradasCAICAVV();
+  };
+
+  window.excluirAbaPassada = async function(event, id){
+    if(event) event.stopPropagation();
+    var ok = typeof caicavvConfirmarBonito === "function" ? await caicavvConfirmarBonito("Excluir esta aba de agendamentos passados? Os agendamentos originais não serão apagados.", "Excluir aba") : confirm("Excluir esta aba de agendamentos passados?");
+    if(!ok) return;
+    try{
+      if(window.__caicavvAbasPassadas && Array.isArray(window.__caicavvAbasPassadas.abas)){
+        window.__caicavvAbasPassadas.abas = window.__caicavvAbasPassadas.abas.filter(function(a){ return String(a.id) !== String(id); });
+        if(typeof DOC_ATENDIMENTOS !== "undefined") await DOC_ATENDIMENTOS.set({ abasPassadas: window.__caicavvAbasPassadas.abas, abasPassadasAtualizadasEm:new Date().toISOString() }, { merge:true });
+      }
+      if(typeof render === "function") render();
+      else if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();
+      if(typeof mostrarSucesso === "function") mostrarSucesso("Aba excluída.");
+    }catch(e){ console.error(e); if(typeof mostrarErro === "function") mostrarErro("Não foi possível excluir a aba."); }
+  };
+
+  document.addEventListener("DOMContentLoaded", function(){
+    reforcarSalvamentoEntradasFirebase();
+    atualizarNavUploadCAICAVV();
+    setTimeout(atualizarNavUploadCAICAVV, 400);
+    setTimeout(atualizarNavUploadCAICAVV, 1200);
+  });
+  setInterval(function(){
+    if(document.getElementById("app") && document.getElementById("app").style.display !== "none") atualizarNavUploadCAICAVV();
+  }, 1200);
+})();
+</script>
+<!-- ===== FIM DOS AJUSTES SOLICITADOS ===== -->
+
+
+<!-- ===== AJUSTE FINAL: ÍCONE DE UPLOAD + MENSAGENS ESSENCIAIS ===== -->
+<style id="caicavv-upload-icone-mensagens-essenciais-style">
+  :root{
+    --img-upload-caicavv:url("data:image/png;base64,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");
+  }
+
+  /* Ícone novo da aba Upload */
+  .app-shell .nav[data-tela="upload"] .nav-icon,
+  .app-shell #navUpload .nav-icon{
+    width:30px!important;
+    height:30px!important;
+    display:block!important;
+    background-image:var(--img-upload-caicavv)!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    background-size:contain!important;
+    font-size:0!important;
+    color:transparent!important;
+    filter:none!important;
+  }
+  body.modo-app.aparencia-noturna .app-shell .nav[data-tela="upload"] .nav-icon,
+  body.modo-app.aparencia-noturna .app-shell #navUpload .nav-icon{
+    filter:brightness(0) invert(1) drop-shadow(0 0 8px rgba(255,255,255,.18))!important;
+  }
+  body.modo-app.aparencia-noturna.neon-ativo .app-shell .nav[data-tela="upload"] .nav-icon,
+  body.modo-app.aparencia-noturna.neon-ativo .app-shell #navUpload .nav-icon{
+    filter:brightness(0) invert(1)
+      drop-shadow(0 0 6px rgba(255,255,255,.24))
+      drop-shadow(0 0 14px color-mix(in srgb, var(--tema) 38%, transparent))!important;
+  }
+
+  /* Cabeçalho visual dentro da tela Upload */
+  .upload-hero-caicavv{
+    display:flex;align-items:center;gap:16px;
+    background:linear-gradient(135deg,#ffffff,#f3f8ff)!important;
+    border:1px solid #d8e4fa;border-radius:16px;
+    box-shadow:0 14px 32px rgba(23,70,150,.10);
+    padding:18px 20px;margin:0 0 14px;color:#071957;
+  }
+  .upload-hero-icon-caicavv{
+    width:58px;height:58px;border-radius:18px;flex:0 0 58px;
+    background:var(--tema-claro,#edf3ff);display:grid;place-items:center;
+    box-shadow:inset 0 0 0 1px rgba(0,91,255,.12);
+  }
+  .upload-hero-icon-caicavv::before{
+    content:"";width:32px;height:32px;display:block;
+    background-image:var(--img-upload-caicavv);
+    background-repeat:no-repeat;background-position:center;background-size:contain;
+  }
+  .upload-hero-caicavv h2{margin:0;color:#061852;font-size:22px;line-height:1.15;font-weight:900;}
+  .upload-hero-caicavv p{margin:6px 0 0;color:#52699d;font-size:14px;line-height:1.4;}
+  body.modo-app.aparencia-noturna .upload-hero-caicavv{
+    background:linear-gradient(135deg,rgba(9,20,54,.96),rgba(11,31,78,.94))!important;
+    border-color:rgba(148,163,184,.28)!important;color:#e5eefc!important;
+  }
+  body.modo-app.aparencia-noturna .upload-hero-caicavv h2{color:#f8fbff!important;}
+  body.modo-app.aparencia-noturna .upload-hero-caicavv p{color:#b9c7e6!important;}
+  body.modo-app.aparencia-noturna .upload-hero-icon-caicavv{background:rgba(255,255,255,.08)!important;}
+  body.modo-app.aparencia-noturna .upload-hero-icon-caicavv::before{
+    filter:brightness(0) invert(1) drop-shadow(0 0 8px rgba(255,255,255,.18))!important;
+  }
+  body.modo-app.aparencia-noturna.neon-ativo .upload-hero-icon-caicavv::before{
+    filter:brightness(0) invert(1)
+      drop-shadow(0 0 6px rgba(255,255,255,.24))
+      drop-shadow(0 0 14px color-mix(in srgb, var(--tema) 38%, transparent))!important;
+  }
+
+  /* Mensagens comuns viram aviso discreto. Confirmação fica só para ações críticas, tipo excluir. */
+  .caicavv-toast-bonito{
+    position:fixed;right:18px;top:18px;z-index:1000000;
+    width:min(380px,calc(100vw - 36px));
+    border-radius:18px;background:linear-gradient(180deg,#fff,#f8fbff);
+    border:1px solid #d8e4fa;box-shadow:0 20px 60px rgba(0,23,76,.28);
+    padding:14px 16px 14px 54px;color:#071957;
+    opacity:0;transform:translateY(-10px);pointer-events:none;
+    transition:.2s ease;
+  }
+  .caicavv-toast-bonito.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+  .caicavv-toast-bonito::before{
+    content:"i";position:absolute;left:14px;top:14px;width:28px;height:28px;border-radius:10px;
+    display:grid;place-items:center;background:#edf3ff;color:var(--tema,#005bff);font-weight:900;
+  }
+  .caicavv-toast-bonito.sucesso::before{content:"✓";background:#ecfdf5;color:#15803d;}
+  .caicavv-toast-bonito.erro::before{content:"!";background:#fef2f2;color:#b91c1c;}
+  .caicavv-toast-bonito.aviso::before{content:"!";background:#fff7ed;color:#c2410c;}
+  .caicavv-toast-bonito b{display:block;color:#061852;font-size:14px;margin-bottom:3px;}
+  .caicavv-toast-bonito span{display:block;color:#405783;font-size:13px;line-height:1.35;}
+
+  .caicavv-msg-card.confirmacao-critica{border-color:#fecaca!important;}
+  .caicavv-msg-detalhes{
+    margin-top:12px;padding:11px 12px;border-radius:13px;
+    background:#f8fafc;border:1px solid #e2e8f0;color:#334155!important;
+    font-size:13px!important;line-height:1.45!important;
+  }
+</style>
+
+<script id="caicavv-upload-icone-mensagens-essenciais-script">
+(function(){
+  function escMsgCAICAVV(v){
+    return String(v == null ? "" : v).replace(/[&<>'"]/g, function(c){return ({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"})[c];});
+  }
+
+  function garantirToastCAICAVV(){
+    var toast = document.getElementById("caicavvToastBonito");
+    if(toast) return toast;
+    toast = document.createElement("div");
+    toast.id = "caicavvToastBonito";
+    toast.className = "caicavv-toast-bonito";
+    toast.innerHTML = '<b id="caicavvToastTitulo">Mensagem</b><span id="caicavvToastTexto"></span>';
+    document.body.appendChild(toast);
+    return toast;
+  }
+
+  window.mostrarToastBonitoCAICAVV = function(msg, tipo, titulo){
+    tipo = tipo || "info";
+    var toast = garantirToastCAICAVV();
+    var tituloEl = document.getElementById("caicavvToastTitulo");
+    var textoEl = document.getElementById("caicavvToastTexto");
+    toast.className = "caicavv-toast-bonito " + tipo;
+    tituloEl.textContent = titulo || (tipo === "sucesso" ? "Tudo certo" : tipo === "erro" ? "Atenção" : "Aviso");
+    textoEl.textContent = String(msg || "");
+    toast.classList.add("show");
+    clearTimeout(window.__caicavvToastTimer);
+    window.__caicavvToastTimer = setTimeout(function(){ toast.classList.remove("show"); }, tipo === "erro" ? 4600 : 3200);
+  };
+
+  window.alert = function(msg){
+    window.mostrarToastBonitoCAICAVV(String(msg || ""), "info", "Mensagem do sistema");
+  };
+  window.mostrarErro = function(msg){
+    window.mostrarToastBonitoCAICAVV(String(msg || ""), "erro", "Atenção");
+  };
+  window.mostrarSucesso = function(msg){
+    window.mostrarToastBonitoCAICAVV(String(msg || ""), "sucesso", "Tudo certo");
+  };
+
+  function garantirModalConfirmacaoCAICAVV(){
+    var modal = document.getElementById("caicavvMsgFundo");
+    if(modal) return modal;
+    modal = document.createElement("div");
+    modal.id = "caicavvMsgFundo";
+    modal.className = "caicavv-msg-fundo";
+    modal.innerHTML = '<div id="caicavvMsgCard" class="caicavv-msg-card" onclick="event.stopPropagation()"><div id="caicavvMsgIcone" class="caicavv-msg-icone">?</div><h3 id="caicavvMsgTitulo">Confirmar ação</h3><p id="caicavvMsgTexto"></p><div id="caicavvMsgAcoes" class="caicavv-msg-acoes"></div></div>';
+    modal.addEventListener("click", function(){ if(typeof fecharMensagemBonitaCAICAVV === "function") fecharMensagemBonitaCAICAVV(false); });
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  window.fecharMensagemBonitaCAICAVV = function(valor){
+    var modal = document.getElementById("caicavvMsgFundo");
+    if(modal) modal.classList.remove("show");
+    if(window.__caicavvMsgResolver){
+      var resolver = window.__caicavvMsgResolver;
+      window.__caicavvMsgResolver = null;
+      resolver(!!valor);
+    }
+  };
+
+  window.caicavvConfirmarBonito = function(msg, titulo, detalhes){
+    return new Promise(function(resolve){
+      var modal = garantirModalConfirmacaoCAICAVV();
+      var card = document.getElementById("caicavvMsgCard");
+      var icone = document.getElementById("caicavvMsgIcone");
+      var tituloEl = document.getElementById("caicavvMsgTitulo");
+      var textoEl = document.getElementById("caicavvMsgTexto");
+      var acoes = document.getElementById("caicavvMsgAcoes");
+      if(!modal || !card || !icone || !tituloEl || !textoEl || !acoes){ resolve(false); return; }
+      card.className = "caicavv-msg-card aviso confirmacao-critica";
+      icone.textContent = "?";
+      tituloEl.textContent = titulo || "Deseja excluir?";
+      textoEl.innerHTML = escMsgCAICAVV(msg || "Confirme se deseja continuar.") + (detalhes ? '<div class="caicavv-msg-detalhes">'+escMsgCAICAVV(detalhes)+'</div>' : "");
+      acoes.innerHTML = '<button type="button" class="caicavv-msg-cancelar" onclick="fecharMensagemBonitaCAICAVV(false)">Cancelar</button><button type="button" class="caicavv-msg-confirmar" onclick="fecharMensagemBonitaCAICAVV(true)">Excluir</button>';
+      window.__caicavvMsgResolver = resolve;
+      modal.classList.add("show");
+    });
+  };
+
+  function aplicarIconeUploadCAICAVV(){
+    var nav = document.getElementById("navUpload") || document.querySelector('.app-shell .nav[data-tela="upload"]');
+    if(nav){
+      var icon = nav.querySelector(".nav-icon");
+      if(icon){ icon.textContent = ""; icon.classList.add("caicavv-nav-img"); }
+    }
+  }
+
+  function inserirHeroUploadCAICAVV(){
+    if(!document.body.classList.contains("tela-upload")) return;
+    var destino = document.getElementById("lista") || document.querySelector(".content");
+    if(!destino || destino.querySelector(".upload-hero-caicavv")) return;
+    var titulo = destino.querySelector(".pagina-titulo");
+    var sub = destino.querySelector(".pagina-sub");
+    if(titulo) titulo.style.display = "none";
+    if(sub) sub.style.display = "none";
+    var hero = document.createElement("div");
+    hero.className = "upload-hero-caicavv";
+    hero.innerHTML = '<div class="upload-hero-icon-caicavv" aria-hidden="true"></div><div><h2>Upload</h2><p>Importe planilhas antigas de agendamentos e arquivos de entradas em formato .ods, .xlsx ou .xls.</p></div>';
+    destino.insertBefore(hero, destino.firstChild);
+  }
+
+  var abrirOriginal = window.abrirTelaUpload;
+  if(typeof abrirOriginal === "function" && !window.__caicavvUploadHeroWrapped){
+    window.__caicavvUploadHeroWrapped = true;
+    window.abrirTelaUpload = function(){
+      var r = abrirOriginal.apply(this, arguments);
+      setTimeout(function(){ aplicarIconeUploadCAICAVV(); inserirHeroUploadCAICAVV(); }, 0);
+      return r;
+    };
+  }
+
+  var excluirEntradaOriginal = window.excluirEntradaCAICAVV;
+  if(typeof excluirEntradaOriginal === "function" && !window.__caicavvExcluirEntradaDetalhada){
+    window.__caicavvExcluirEntradaDetalhada = true;
+    window.excluirEntradaCAICAVV = async function(id){
+      if(typeof podeAlterarEntradasCAICAVV === "function" && !podeAlterarEntradasCAICAVV()){
+        if(typeof mostrarErro === "function") mostrarErro("Somente Maiyara/coordenação pode excluir entradas.");
+        return;
+      }
+      var ok = await window.caicavvConfirmarBonito(
+        "Deseja excluir esta entrada?",
+        "Deseja excluir?",
+        "Essa ação remove o registro do relatório de entradas. Os arquivos importados e os agendamentos não serão alterados."
+      );
+      if(!ok) return;
+      entradasManuaisCAICAVV = entradasManuaisCAICAVV.filter(function(e){ return String(e.id) !== String(id); });
+      if(typeof salvarEntradasManuaisCAICAVV === "function") salvarEntradasManuaisCAICAVV();
+      if(typeof renderizarEntradasCAICAVV === "function") renderizarEntradasCAICAVV();
+      if(typeof mostrarSucesso === "function") mostrarSucesso("Entrada excluída.");
+    };
+  }
+
+  var excluirAbaOriginal = window.excluirAbaPassada;
+  if(typeof excluirAbaOriginal === "function" && !window.__caicavvExcluirAbaDetalhada){
+    window.__caicavvExcluirAbaDetalhada = true;
+    window.excluirAbaPassada = async function(event, id){
+      if(event) event.stopPropagation();
+      var ok = await window.caicavvConfirmarBonito(
+        "Deseja excluir esta aba de agendamentos passados?",
+        "Deseja excluir?",
+        "Apenas a aba/pasta será removida. Os agendamentos originais não serão apagados."
+      );
+      if(!ok) return;
+      try{
+        if(window.__caicavvAbasPassadas && Array.isArray(window.__caicavvAbasPassadas.abas)){
+          window.__caicavvAbasPassadas.abas = window.__caicavvAbasPassadas.abas.filter(function(a){ return String(a.id) !== String(id); });
+          if(typeof DOC_ATENDIMENTOS !== "undefined") await DOC_ATENDIMENTOS.set({ abasPassadas: window.__caicavvAbasPassadas.abas, abasPassadasAtualizadasEm:new Date().toISOString() }, { merge:true });
+        }
+        if(typeof render === "function") render();
+        else if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();
+        if(typeof mostrarSucesso === "function") mostrarSucesso("Aba excluída.");
+      }catch(e){ console.error(e); if(typeof mostrarErro === "function") mostrarErro("Não foi possível excluir a aba."); }
+    };
+  }
+
+  document.addEventListener("DOMContentLoaded", function(){
+    setTimeout(function(){ aplicarIconeUploadCAICAVV(); inserirHeroUploadCAICAVV(); }, 200);
+    setTimeout(aplicarIconeUploadCAICAVV, 900);
+  });
+  setInterval(aplicarIconeUploadCAICAVV, 1200);
+})();
+</script>
+<!-- ===== FIM DO AJUSTE FINAL ===== -->
