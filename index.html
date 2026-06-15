@@ -3512,7 +3512,6 @@ function renderizarEntradasCAICAVV(){
   const porOrigem = entradaContarPorCAICAVV(listaMes,"origem");
   const porSexo = entradaContarPorCAICAVV(listaMes,"sexo");
   const porViolencia = entradaContarPorCAICAVV(listaMes,"violencia");
-  const porVinculacao = entradaContarPorCAICAVV(listaMes,"vinculacao");
   const porFaixa = entradaContarPorCAICAVV(listaMes.map(e=>({faixa:entradaFaixaEtariaCAICAVV(e.idade)})),"faixa");
   const criancasAdolescentes = listaMes.filter(e => { const n=parseInt(e.idade,10); return !Number.isNaN(n) && n < 18; }).length;
 
@@ -3531,7 +3530,7 @@ function renderizarEntradasCAICAVV(){
 
     <div class="entrada-box">
       <h3>Relatório de entradas: ${periodoLabel}</h3>
-      <p>Foram identificadas <b>${listaMes.length}</b> entradas no período selecionado. O bairro com maior frequência foi <b>${entradaEscapeCAICAVV(entradaMaiorCAICAVV(porBairro))}</b>. A origem de caso mais recorrente foi <b>${entradaEscapeCAICAVV(entradaMaiorCAICAVV(porOrigem))}</b>. O tipo de violência mais registrado foi <b>${entradaEscapeCAICAVV(entradaMaiorCAICAVV(porViolencia))}</b>. A vinculação/status mais frequente foi <b>${entradaEscapeCAICAVV(entradaMaiorCAICAVV(porVinculacao))}</b>.</p>
+      <p>Foram identificadas <b>${listaMes.length}</b> entradas no período selecionado. O bairro com maior frequência foi <b>${entradaEscapeCAICAVV(entradaMaiorCAICAVV(porBairro))}</b>. A origem de caso mais recorrente foi <b>${entradaEscapeCAICAVV(entradaMaiorCAICAVV(porOrigem))}</b>. O tipo de violência mais registrado foi <b>${entradaEscapeCAICAVV(entradaMaiorCAICAVV(porViolencia))}</b>.</p>
       <div class="entrada-alerta">O relatório pode ser tirado por qualquer intervalo de datas, como 1º trimestre, semestre ou ano inteiro. Os dados aparecem automaticamente conforme houver entradas importadas ou cadastradas manualmente.</div>
     </div>
 
@@ -3541,7 +3540,6 @@ function renderizarEntradasCAICAVV(){
       ${entradaListaResumoCAICAVV("Por sexo", porSexo)}
       ${entradaListaResumoCAICAVV("Por faixa etária", porFaixa)}
       ${entradaListaResumoCAICAVV("Por tipo de violência", porViolencia)}
-      ${entradaListaResumoCAICAVV("Por vinculação/status", porVinculacao)}
     </div>
 
     <div class="entrada-box">
