@@ -917,7 +917,7 @@ body.modo-app{
 
     <select id="editStatus">
       <option value="agendado">Pendente / agendado</option>
-      <option value="aguardando">Aguardando</option>
+      <option value="aguardando">Compareceu e aguardando</option>
       <option value="compareceu">Compareceu</option>
       <option value="faltou">Faltou</option>
     </select>
@@ -2136,7 +2136,7 @@ function formatarDataHoraBR(iso){
 function statusBonito(status){
   if(status === "compareceu") return "Compareceu";
   if(status === "faltou") return "Faltou";
-  if(status === "aguardando") return "Aguardando";
+  if(status === "aguardando") return "Compareceu e aguardando";
   return "Agendado";
 }
 
@@ -2294,7 +2294,7 @@ function getPeriodoMes(yyyyMm){
 function statusRelatorio(status){
   if(status === "compareceu") return "Veio";
   if(status === "faltou") return "Não veio";
-  if(status === "aguardando") return "Aguardando";
+  if(status === "aguardando") return "Compareceu e aguardando";
   return "Pendente";
 }
 
@@ -2510,15 +2510,17 @@ function render(){
 
   dados.forEach(a=>{
     const realizado = a.status === "compareceu" || a.status === "faltou";
-    const statusLabel = a.status === "compareceu" ? "Compareceu" : a.status === "faltou" ? "Faltou" : a.status === "aguardando" ? "Aguardando" : "Agendado";
+    const aguardando = a.status === "aguardando";
+    const statusLabel = a.status === "compareceu" ? "Compareceu" : a.status === "faltou" ? "Faltou" : aguardando ? "Compareceu e aguardando" : "Agendado";
     const statusTempo = getStatusTempo(a);
     const classeTempo = statusTempo === "atrasado" ? "alerta-atrasado" : statusTempo === "proximo" ? "alerta-proximo" : "";
 
-    const chipClass = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : a.status === "aguardando" ? "aguardando-chip" : "";
+    const chipClass = a.status === "compareceu" ? "ok" : a.status === "faltou" ? "falta" : aguardando ? "aguardando-chip" : "";
     const podeEditar = podeEditarAtendimento(a);
     const podeExcluir = permissoes[role].del;
-    const podeMarcar = permissoes[role].marcar && !realizado;
-    const podeAguardando = role === "recepcao" && !realizado && (a.status || "agendado") !== "aguardando";
+    const podeMarcar = permissoes[role].marcar && !realizado && !aguardando;
+    const podeAguardando = role === "recepcao" && !realizado && !aguardando;
+    const podeFinalizar = permissoes[role].marcar && aguardando;
 
     lista.innerHTML += `
       <div class="card atendimento-card v10-card status-${a.status || 'agendado'} ${realizado ? 'realizado' : ''} ${classeTempo}" onclick="fecharMenusAtendimento()">
@@ -2560,6 +2562,7 @@ function render(){
           <div class="v10-actions">
             ${podeAguardando ? `<button class="aguardando" onclick="event.stopPropagation(); marcarAguardando('${a.id}')">🔔 Aguardando</button>` : ""}
             ${podeMarcar ? `<button class="compareceu" onclick="event.stopPropagation(); marcar('${a.id}','compareceu')">✔ Compareceu</button><button class="faltou" onclick="event.stopPropagation(); marcar('${a.id}','faltou')">✖ Faltou</button>` : ""}
+            ${podeFinalizar ? `<button class="finalizado" onclick="event.stopPropagation(); marcar('${a.id}','compareceu')">✔ Finalizado</button>` : ""}
           </div>
         </div>
       </div>
@@ -4461,7 +4464,7 @@ ${conteudo.innerHTML}
           <span>📁 Pasta ${esc(a.pasta || "—")}</span>
           <span>👤 ${esc(a.tecnico || "—")}</span>
           <span>📅 ${esc(dataBR(a.data))} às ${esc(a.hora || "—")}</span>
-          <span>${esc(a.status === "compareceu" ? "Compareceu" : a.status === "faltou" ? "Faltou" : a.status === "aguardando" ? "Aguardando" : "Agendado")}</span>
+          <span>${esc(a.status === "compareceu" ? "Compareceu" : a.status === "faltou" ? "Faltou" : a.status === "aguardando" ? "Compareceu e aguardando" : "Agendado")}</span>
           ${a.descricao ? `<span>📝 ${esc(a.descricao)}</span>` : ""}
         </div>`).join("") : `<div class="aba-passada-vazia">Nenhum agendamento encontrado nesse intervalo.</div>`;
 
@@ -4873,6 +4876,10 @@ body.modo-app:not(.aparencia-noturna) .menu button::before{
   background:linear-gradient(180deg,#f59e0b,#d97706)!important;
   color:#fff!important;
 }
+.v10-actions .finalizado{
+  background:linear-gradient(180deg,#16c765,#079341)!important;
+  color:#fff!important;
+}
 .status-chip.aguardando-chip,
 .status-chip.v10-pendente.aguardando-chip{
   background:#fef3c7!important;
@@ -5066,12 +5073,12 @@ body.modo-app:not(.aparencia-noturna) .menu button::before{
     item.atualizadoEm = new Date().toISOString();
 
     if(typeof registrarLog === "function"){
-      registrarLog("Paciente aguardando", item, `Status alterado de ${statusBonito(statusAnterior)} para Aguardando pela recepção.`);
+      registrarLog("Paciente aguardando", item, `Status alterado de ${statusBonito(statusAnterior)} para Compareceu e aguardando pela recepção.`);
     }
 
     await salvarAtendimentosFirebase();
     if(typeof render === "function") render();
-    if(typeof mostrarSucesso === "function") mostrarSucesso("Status alterado para Aguardando. O técnico responsável será avisado.");
+    if(typeof mostrarSucesso === "function") mostrarSucesso("Status alterado para Compareceu e aguardando. O técnico responsável será avisado.");
   };
 
   function garantirBotaoAtivarSons(){
