@@ -27,9 +27,6 @@
         const db = firebase.firestore();
         const DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos");
     </script>
-</head>
-<body>
-
 
 <!-- ===== AJUSTE FINO: PEÃO NO RELATÓRIO + AGENDA DECORATIVA MAIOR ===== -->
 <style id="caicavv-ajuste-peao-agenda">
@@ -177,10 +174,6 @@ body.modo-app.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
   opacity:.14!important;
 }
 </style>
-
-</body>
-</html>
-
 
 <style>
 body{font-family:Arial;background:#f1f5f9;margin:0}
@@ -841,6 +834,496 @@ body.modo-app{
 .arquivo-titulo-mes{font-size:14px;font-weight:900;color:#52699d;margin-top:4px;}
 @media(max-width:950px){.search-row{grid-template-columns:1fr!important;}.search-row input[type="date"]{width:100%!important;}}
 
+/* ===== SISTEMA DE MOVIMENTO CAICAVV ===== */
+:root{
+  --motion-instant:100ms;
+  --motion-fast:160ms;
+  --motion-normal:260ms;
+  --motion-slow:520ms;
+  --ease-standard:cubic-bezier(.2,.8,.2,1);
+  --ease-out:cubic-bezier(.22,1,.36,1);
+  --ease-spring:cubic-bezier(.34,1.56,.64,1);
+}
+html{scroll-behavior:smooth;}
+body,
+.app-shell .topbar,
+.app-shell .sidebar,
+.app-shell .user-panel,
+.app-shell #menu,
+.app-shell .relatorio-card,
+.app-shell .search-card,
+.app-shell .form-card,
+.app-shell .v10-card,
+.paciente-card,
+.config-card,
+.tecnico-relatorio-box,
+.entrada-kpi,
+.entrada-box,
+.upload-hero-caicavv{
+  transition:
+    background-color var(--motion-normal) var(--ease-standard),
+    border-color var(--motion-normal) var(--ease-standard),
+    color var(--motion-normal) var(--ease-standard),
+    box-shadow var(--motion-normal) var(--ease-standard),
+    opacity var(--motion-normal) var(--ease-standard),
+    transform var(--motion-normal) var(--ease-standard);
+}
+button,
+.app-shell .nav,
+.menu-icon,
+.btn-menu-atendimento,
+.btn-menu-paciente,
+.status-chip,
+input,
+select,
+textarea,
+.search-box,
+.input-group{
+  transition:
+    background-color var(--motion-fast) var(--ease-standard),
+    border-color var(--motion-fast) var(--ease-standard),
+    color var(--motion-fast) var(--ease-standard),
+    box-shadow var(--motion-fast) var(--ease-standard),
+    opacity var(--motion-fast) var(--ease-standard),
+    transform var(--motion-fast) var(--ease-standard);
+}
+button:not(:disabled):hover,
+.menu-icon:hover,
+.btn-menu-atendimento:hover,
+.btn-menu-paciente:hover{
+  transform:translateY(-2px);
+}
+button:not(:disabled):active,
+.app-shell .nav:active,
+.btn-menu-atendimento:active,
+.btn-menu-paciente:active{
+  transform:scale(.97);
+}
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+.app-shell .nav:focus-visible,
+.menu-icon:focus-visible{
+  outline:3px solid color-mix(in srgb,var(--tema,#005bff) 45%,white);
+  outline-offset:3px;
+}
+button:disabled{transform:none!important;opacity:.72;}
+body:not(.modo-app) .background::before{animation:caicavvBackgroundDrift 18s var(--ease-standard) infinite alternate;}
+body:not(.modo-app) .orb{animation:caicavvOrbDrift 16s var(--ease-standard) infinite alternate;}
+body:not(.modo-app) .login-card{animation:caicavvLoginCardIn var(--motion-slow) var(--ease-out) both;}
+body:not(.modo-app) .flower-logo{animation:caicavvFlowerFloat 4.8s var(--ease-standard) infinite alternate;transition:filter var(--motion-normal) var(--ease-standard),transform var(--motion-normal) var(--ease-standard);}
+body:not(.modo-app) .flower-logo:hover{filter:drop-shadow(0 0 16px rgba(250,204,21,.62));transform:translateY(-2px) scale(.86)!important;}
+body:not(.modo-app) .login-card > *{animation:caicavvLoginItemIn 520ms var(--ease-out) both;}
+body:not(.modo-app) .login-card > *:nth-child(1){animation-delay:60ms;}
+body:not(.modo-app) .login-card > *:nth-child(2){animation-delay:110ms;}
+body:not(.modo-app) .login-card > *:nth-child(3){animation-delay:150ms;}
+body:not(.modo-app) .login-card > *:nth-child(4){animation-delay:190ms;}
+body:not(.modo-app) .login-card > *:nth-child(5){animation-delay:230ms;}
+body:not(.modo-app) .login-card > *:nth-child(6){animation-delay:270ms;}
+body:not(.modo-app) .login-card > *:nth-child(7){animation-delay:310ms;}
+body:not(.modo-app) .login-card > *:nth-child(8){animation-delay:350ms;}
+body:not(.modo-app) .login-card > *:nth-child(9){animation-delay:390ms;}
+.input-group:focus-within,
+.search-box:focus-within,
+.form-card input:focus,
+.form-card select:focus,
+.modal-box input:focus,
+.modal-box select:focus,
+.modal-box textarea:focus{
+  border-color:var(--tema,#0ea5ff)!important;
+  box-shadow:0 0 0 4px color-mix(in srgb,var(--tema,#0ea5ff) 20%,transparent)!important;
+}
+.input-group:focus-within .icon-box{transform:translateX(2px) scale(1.04);}
+.login-button{position:relative;overflow:hidden;}
+.login-button::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(110deg,transparent 0%,rgba(255,255,255,.26) 42%,transparent 70%);
+  transform:translateX(-120%);
+  transition:transform 620ms var(--ease-out);
+}
+.login-button:hover::after{transform:translateX(120%);}
+.login-button.is-loading,
+.login-button.is-success{pointer-events:none;}
+.login-button.is-loading span:first-child{
+  width:18px;height:18px;border:2px solid rgba(255,255,255,.45);border-top-color:#fff;border-radius:50%;
+  font-size:0;animation:caicavvSpin 800ms linear infinite;
+}
+.login-card.login-error{animation:caicavvShake 360ms var(--ease-standard) both;}
+.login-card.login-error .input-group{border-color:#fecaca!important;box-shadow:0 0 0 4px rgba(220,38,38,.18)!important;}
+.login-screen.saindo{animation:caicavvLoginOut 320ms var(--ease-standard) both;}
+.app-shell.motion-enter .sidebar{animation:caicavvSidebarIn 520ms var(--ease-out) both;}
+.app-shell.motion-enter .topbar{animation:caicavvTopbarIn 480ms var(--ease-out) both;}
+.app-shell.motion-enter .user-panel,
+.app-shell.motion-enter #menu,
+.app-shell.motion-enter .relatorio-card,
+.app-shell.motion-enter .search-card,
+.app-shell.motion-enter .form-card{
+  animation:caicavvPanelItemIn 480ms var(--ease-out) both;
+}
+.app-shell.motion-enter #menu{animation-delay:70ms;}
+.app-shell.motion-enter .relatorio-card{animation-delay:120ms;}
+.app-shell.motion-enter .search-card{animation-delay:170ms;}
+.app-shell.motion-enter .form-card{animation-delay:220ms;}
+.app-shell .nav{position:relative;overflow:hidden;}
+.app-shell .nav::before{
+  content:"";position:absolute;inset:8px;border-radius:12px;background:rgba(255,255,255,.12);
+  opacity:0;transform:scale(.96);transition:opacity var(--motion-fast) var(--ease-standard),transform var(--motion-fast) var(--ease-standard);
+}
+.app-shell .nav:hover::before,.app-shell .nav.active::before{opacity:1;transform:scale(1);}
+.app-shell .nav:hover .nav-icon{transform:translateY(-2px);}
+.app-shell .nav-icon{transition:transform var(--motion-fast) var(--ease-standard),filter var(--motion-fast) var(--ease-standard);}
+.app-shell .v10-card,
+.paciente-card,
+.config-card,
+.entrada-kpi,
+.entrada-box{transform-origin:center;}
+.app-shell .v10-card:hover,
+.paciente-card:hover,
+.config-card:hover,
+.entrada-kpi:hover,
+.entrada-box:hover{
+  transform:translateY(-3px);
+  box-shadow:0 22px 46px rgba(15,23,42,.14),0 0 0 1px rgba(255,255,255,.55) inset!important;
+}
+.v10-card.caicavv-card-enter,
+.paciente-card.caicavv-card-enter,
+.config-card.caicavv-card-enter,
+.entrada-kpi.caicavv-card-enter,
+.entrada-box.caicavv-card-enter,
+.lista-vazia.caicavv-card-enter,
+.upload-hero-caicavv.caicavv-card-enter{animation:caicavvCardIn 380ms var(--ease-out) both;}
+.v10-card.caicavv-status-flash .status-chip{animation:caicavvStatusPulse 520ms var(--ease-out) both;}
+.v10-card.status-compareceu.caicavv-status-flash{animation:caicavvOkFlash 620ms var(--ease-standard) both;}
+.v10-card.status-faltou.caicavv-status-flash{animation:caicavvFaltaFlash 620ms var(--ease-standard) both;}
+.v10-card.caicavv-removing{animation:caicavvRemoveCard 240ms var(--ease-standard) forwards;}
+.menu-lateral-fundo{opacity:0;transition:opacity var(--motion-normal) var(--ease-standard),backdrop-filter var(--motion-normal) var(--ease-standard);}
+.menu-lateral-fundo.show{opacity:1;backdrop-filter:blur(2px);}
+.menu-lateral{transform:translateX(-18px);opacity:0;transition:transform var(--motion-normal) var(--ease-out),opacity var(--motion-normal) var(--ease-standard);}
+.menu-lateral.show{transform:translateX(0);opacity:1;}
+.menu-atendimento,
+.menu-paciente{
+  display:block!important;opacity:0;transform:translateY(-6px) scale(.98);pointer-events:none;
+  transform-origin:top right;transition:opacity var(--motion-fast) var(--ease-standard),transform var(--motion-fast) var(--ease-standard);
+}
+.menu-atendimento.show,
+.menu-paciente.show{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
+.modal-fundo,
+.caicavv-msg-fundo{
+  opacity:0;pointer-events:none;display:flex!important;
+  transition:opacity var(--motion-normal) var(--ease-standard),backdrop-filter var(--motion-normal) var(--ease-standard);
+}
+.modal-fundo.show,
+.caicavv-msg-fundo.show{opacity:1;pointer-events:auto;backdrop-filter:blur(4px);}
+.modal-fundo .modal-box,
+.caicavv-msg-card{
+  opacity:0;transform:translateY(14px) scale(.96);
+  transition:opacity var(--motion-normal) var(--ease-out),transform var(--motion-normal) var(--ease-out);
+}
+.modal-fundo.show .modal-box,
+.caicavv-msg-fundo.show .caicavv-msg-card{opacity:1;transform:translateY(0) scale(1);}
+.animacao-realizado.show .animacao-realizado-card{animation:caicavvDoneIn 520ms var(--ease-out) both;}
+.animacao-check{animation:caicavvDonePulse 900ms var(--ease-standard) 2 alternate!important;}
+.toast{display:none!important;}
+.caicavv-toast-bonito{
+  padding-right:42px!important;
+  transform:translate3d(18px,-8px,0) scale(.98)!important;
+  transition:opacity var(--motion-normal) var(--ease-standard),transform var(--motion-normal) var(--ease-out)!important;
+  overflow:hidden;
+}
+.caicavv-toast-bonito.show{transform:translate3d(0,0,0) scale(1)!important;}
+.caicavv-toast-bonito .toast-close-caicavv{
+  position:absolute;right:10px;top:10px;width:26px!important;min-width:26px!important;height:26px!important;
+  border:0!important;background:transparent!important;color:#52699d!important;padding:0!important;margin:0!important;
+  box-shadow:none!important;font-size:18px!important;line-height:1!important;
+}
+.caicavv-toast-bonito .toast-progress-caicavv{
+  position:absolute;left:0;right:0;bottom:0;height:3px;background:color-mix(in srgb,var(--tema,#005bff) 58%,transparent);
+  transform-origin:left;animation:caicavvToastProgress var(--toast-duration,3200ms) linear forwards;
+}
+.caicavv-toast-bonito.paused .toast-progress-caicavv{animation-play-state:paused;}
+body.caicavv-theme-changing *{
+  transition:
+    background-color var(--motion-normal) var(--ease-standard),
+    border-color var(--motion-normal) var(--ease-standard),
+    color var(--motion-normal) var(--ease-standard),
+    box-shadow var(--motion-normal) var(--ease-standard)!important;
+}
+@keyframes caicavvLoginCardIn{from{opacity:0;transform:translateY(20px) scale(.97)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes caicavvLoginItemIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+@keyframes caicavvLoginOut{to{opacity:0;transform:translateY(-10px) scale(.985)}}
+@keyframes caicavvFlowerFloat{from{translate:0 0}to{translate:0 -5px}}
+@keyframes caicavvBackgroundDrift{from{transform:translate3d(0,0,0) scale(1)}to{transform:translate3d(10px,-8px,0) scale(1.02)}}
+@keyframes caicavvOrbDrift{from{transform:translate3d(0,0,0)}to{transform:translate3d(14px,-10px,0)}}
+@keyframes caicavvSpin{to{transform:rotate(360deg)}}
+@keyframes caicavvShake{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}
+@keyframes caicavvSidebarIn{from{opacity:0;transform:translateX(-18px)}to{opacity:1;transform:translateX(0)}}
+@keyframes caicavvTopbarIn{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes caicavvPanelItemIn{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
+@keyframes caicavvCardIn{from{opacity:0;transform:translateY(12px) scale(.985)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes caicavvStatusPulse{0%{transform:scale(.96)}55%{transform:scale(1.06)}100%{transform:scale(1)}}
+@keyframes caicavvOkFlash{0%{box-shadow:0 0 0 rgba(22,163,74,0)}45%{box-shadow:0 0 0 5px rgba(22,163,74,.14)}100%{box-shadow:0 18px 36px rgba(15,23,42,.11)}}
+@keyframes caicavvFaltaFlash{0%{box-shadow:0 0 0 rgba(220,38,38,0)}45%{box-shadow:0 0 0 5px rgba(220,38,38,.14)}100%{box-shadow:0 18px 36px rgba(15,23,42,.11)}}
+@keyframes caicavvRemoveCard{to{opacity:0;transform:translateY(8px) scale(.98)}}
+@keyframes caicavvDoneIn{from{opacity:0;transform:translateY(18px) scale(.92)}to{opacity:1;transform:translateY(0) scale(1)}}
+@keyframes caicavvDonePulse{from{transform:scale(1)}to{transform:scale(1.08)}}
+@keyframes caicavvToastProgress{from{transform:scaleX(1)}to{transform:scaleX(0)}}
+@media(max-width:700px){
+  body:not(.modo-app) .background::before,
+  body:not(.modo-app) .orb{animation:none;}
+  .app-shell .v10-card:hover,.paciente-card:hover,.config-card:hover,.entrada-kpi:hover,.entrada-box:hover{transform:none;}
+  .caicavv-toast-bonito{right:12px!important;top:12px!important;width:calc(100vw - 24px)!important;}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto;}
+  *,*::before,*::after{
+    animation-duration:1ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:1ms!important;
+    scroll-behavior:auto!important;
+  }
+}
+
+/* ===== NAVEGAÇÃO FLUTUANTE ===== */
+.caicavv-quick-nav{
+  position:fixed;
+  top:calc(50% + 28px);
+  right:16px;
+  z-index:82;
+  width:208px;
+  max-height:calc(100vh - 124px);
+  transform:translateY(-50%);
+  border:1px solid color-mix(in srgb,var(--tema,#005bff) 22%,#d8e4fa);
+  border-radius:22px;
+  background:color-mix(in srgb,#fff 94%,var(--tema,#005bff) 6%);
+  box-shadow:0 20px 48px rgba(5,30,85,.18);
+  padding:10px;
+  opacity:0;
+  visibility:hidden;
+  pointer-events:none;
+  overflow:hidden;
+  contain:layout paint;
+}
+body.modo-app .caicavv-quick-nav.is-ready{
+  opacity:1;
+  visibility:visible;
+  pointer-events:auto;
+  animation:caicavvQuickEnter .32s cubic-bezier(.2,.8,.2,1) both,caicavvQuickFloat 5s ease-in-out .35s infinite;
+}
+.caicavv-quick-toggle{
+  width:100%!important;
+  min-height:42px;
+  margin:0!important;
+  padding:0 12px!important;
+  border-radius:14px!important;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:9px;
+  background:var(--tema,#005bff)!important;
+  color:#fff!important;
+  font-weight:900;
+  box-shadow:0 8px 18px color-mix(in srgb,var(--tema,#005bff) 28%,transparent)!important;
+  transition:transform .16s ease,box-shadow .18s ease,background-color .18s ease!important;
+}
+.caicavv-quick-toggle:active{transform:scale(.97)}
+.caicavv-quick-toggle svg{width:20px;height:20px;transition:transform .22s ease}
+.caicavv-quick-nav.is-collapsed{width:58px;padding:8px}
+.caicavv-quick-nav.is-collapsed .caicavv-quick-toggle{width:42px!important;height:42px!important;padding:0!important;justify-content:center}
+.caicavv-quick-nav.is-collapsed .caicavv-quick-toggle-label,
+.caicavv-quick-nav.is-collapsed .caicavv-quick-list{display:none}
+.caicavv-quick-nav.is-collapsed .caicavv-quick-toggle svg{transform:rotate(180deg)}
+.caicavv-quick-list{position:relative;display:grid;gap:5px;margin-top:8px;padding:3px 0}
+.caicavv-quick-indicator{
+  position:absolute;
+  left:3px;
+  top:3px;
+  width:4px;
+  height:40px;
+  border-radius:999px;
+  background:var(--tema,#005bff);
+  box-shadow:0 0 14px color-mix(in srgb,var(--tema,#005bff) 58%,transparent);
+  transform:translateY(var(--quick-indicator-y,0));
+  transition:transform .24s cubic-bezier(.2,.8,.2,1),height .18s ease;
+  pointer-events:none;
+}
+.caicavv-quick-link{
+  position:relative;
+  width:100%!important;
+  min-height:40px;
+  margin:0!important;
+  padding:0 10px 0 15px!important;
+  border-radius:12px!important;
+  border:0!important;
+  background:transparent!important;
+  color:#24406f!important;
+  display:flex;
+  align-items:center;
+  gap:10px;
+  text-align:left;
+  font-size:13px;
+  font-weight:850;
+  transition:transform .16s ease,background-color .18s ease,color .18s ease!important;
+}
+.caicavv-quick-link svg{width:19px;height:19px;flex:0 0 19px;transition:transform .2s ease}
+.caicavv-quick-link:hover{background:color-mix(in srgb,var(--tema,#005bff) 10%,transparent)!important;transform:translateX(2px)}
+.caicavv-quick-link:hover svg{transform:scale(1.08) rotate(-3deg)}
+.caicavv-quick-link[aria-current="page"]{background:color-mix(in srgb,var(--tema,#005bff) 13%,#fff)!important;color:var(--tema,#005bff)!important}
+body.caicavv-quick-open .app-shell .content{padding-right:256px!important;transition:padding-right .24s ease}
+body:not(.caicavv-quick-open) .app-shell .content{transition:padding-right .24s ease}
+@keyframes caicavvQuickEnter{from{opacity:0;transform:translate(22px,-50%) scale(.94)}to{opacity:1;transform:translate(0,-50%) scale(1)}}
+@keyframes caicavvQuickFloat{0%,100%{margin-top:0}50%{margin-top:-5px}}
+
+/* ===== ANIMAÇÕES DE ROLAGEM ===== */
+.caicavv-reveal{opacity:1;transform:none}
+.js-caicavv-motion .caicavv-reveal.caicavv-reveal-pending{
+  opacity:0;
+  transform:translate3d(0,18px,0);
+  transition:opacity .42s ease,transform .46s cubic-bezier(.2,.8,.2,1);
+  transition-delay:var(--reveal-delay,0ms);
+  will-change:transform,opacity;
+}
+.js-caicavv-motion .caicavv-reveal[data-reveal="left"].caicavv-reveal-pending{transform:translate3d(-20px,0,0)}
+.js-caicavv-motion .caicavv-reveal[data-reveal="right"].caicavv-reveal-pending{transform:translate3d(20px,0,0)}
+.js-caicavv-motion .caicavv-reveal[data-reveal="scale"].caicavv-reveal-pending{transform:scale(.975)}
+.js-caicavv-motion .caicavv-reveal.is-visible{opacity:1;transform:none;will-change:auto}
+.caicavv-glow-card{position:relative;isolation:isolate}
+.caicavv-glow-card::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  background:radial-gradient(250px circle at var(--glow-x,50%) var(--glow-y,50%),color-mix(in srgb,var(--tema,#005bff) 12%,transparent),transparent 68%);
+  opacity:0;
+  pointer-events:none;
+  z-index:-1;
+  transition:opacity .2s ease;
+}
+.caicavv-glow-card:hover::after{opacity:1}
+
+/* ===== ILUSTRAÇÕES ANIMADAS ===== */
+.caicavv-section-illustration{
+  position:relative;
+  min-height:112px;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:18px;
+  margin:0 0 16px;
+  padding:17px 22px;
+  border:1px solid color-mix(in srgb,var(--tema,#005bff) 15%,#d8e4fa);
+  border-radius:18px;
+  background:linear-gradient(135deg,color-mix(in srgb,var(--tema,#005bff) 8%,#fff),#fff 72%);
+  overflow:hidden;
+  box-shadow:0 12px 28px rgba(23,70,150,.08);
+}
+.caicavv-section-illustration::before{
+  content:"";
+  position:absolute;
+  width:150px;
+  height:150px;
+  right:-50px;
+  top:-72px;
+  border-radius:50%;
+  background:color-mix(in srgb,var(--tema,#005bff) 9%,transparent);
+  pointer-events:none;
+}
+.caicavv-illustration-copy{position:relative;z-index:1;min-width:0}
+.caicavv-illustration-copy strong{display:block;color:#061852;font-size:18px;line-height:1.25}
+.caicavv-illustration-copy span{display:block;color:#52699d;font-size:13px;font-weight:700;margin-top:5px;line-height:1.4}
+.caicavv-illustration-svg{
+  width:94px;
+  height:78px;
+  flex:0 0 auto;
+  color:var(--tema,#005bff);
+  transform:translate3d(var(--parallax-x,0),var(--parallax-y,0),0);
+  transition:transform .18s ease;
+}
+.caicavv-svg-draw{fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:160;stroke-dashoffset:0}
+.js-caicavv-motion .caicavv-section-illustration.caicavv-reveal-pending .caicavv-svg-draw{stroke-dashoffset:160}
+.js-caicavv-motion .caicavv-section-illustration.is-visible .caicavv-svg-draw{animation:caicavvDraw .72s ease forwards;animation-delay:var(--draw-delay,0ms)}
+.caicavv-svg-fill{fill:color-mix(in srgb,var(--tema,#005bff) 13%,transparent);stroke:currentColor;stroke-width:1.8}
+@keyframes caicavvDraw{to{stroke-dashoffset:0}}
+
+/* ===== TRANSIÇÕES ENTRE ABAS ===== */
+.app-shell .content{min-height:calc(100vh - 122px)}
+.app-shell .content.caicavv-tab-transitioning{overflow:hidden;pointer-events:none}
+.app-shell .content.caicavv-tab-transitioning .caicavv-quick-nav{pointer-events:auto}
+.app-shell .nav,.app-shell #menu button{position:relative}
+.app-shell .nav::after,.app-shell #menu button::after{
+  content:"";
+  position:absolute;
+  left:18%;right:18%;bottom:5px;height:3px;border-radius:999px;
+  background:currentColor;
+  transform:scaleX(0);
+  transform-origin:center;
+  transition:transform .22s ease;
+  opacity:.8;
+}
+.app-shell .nav.active::after,.app-shell #menu button.ativo::after{transform:scaleX(1)}
+
+/* ===== MICROINTERAÇÕES E ACESSIBILIDADE ===== */
+button,.app-shell .nav,.menu-icon,.logout{touch-action:manipulation}
+button:active,.app-shell .nav:active,.menu-icon:active,.logout:active{transform:scale(.975)}
+button:focus-visible,input:focus-visible,select:focus-visible,.app-shell .nav:focus-visible,.menu-icon:focus-visible,.logout:focus-visible{
+  outline:3px solid color-mix(in srgb,var(--tema,#005bff) 58%,#fff)!important;
+  outline-offset:3px!important;
+}
+.menu-atendimento{transform-origin:top right;animation:caicavvMenuOpen .16s cubic-bezier(.2,.8,.2,1)}
+@keyframes caicavvMenuOpen{from{opacity:0;transform:translateY(-5px) scale(.97)}to{opacity:1;transform:none}}
+.caicavv-action-check{animation:caicavvCheck .35s cubic-bezier(.2,1.4,.4,1)}
+@keyframes caicavvCheck{from{transform:scale(.5);opacity:0}to{transform:scale(1);opacity:1}}
+
+body.aparencia-noturna .caicavv-quick-nav,
+body.aparencia-noturna .caicavv-section-illustration{
+  background:color-mix(in srgb,#07152d 92%,var(--tema,#005bff) 8%)!important;
+  border-color:rgba(148,163,184,.24)!important;
+}
+body.aparencia-noturna .caicavv-quick-link{color:#dbeafe!important}
+body.aparencia-noturna .caicavv-illustration-copy strong{color:#f8fafc}
+body.aparencia-noturna .caicavv-illustration-copy span{color:#b8c7e6}
+
+@media(max-width:1180px){
+  body.caicavv-quick-open .app-shell .content{padding-right:32px!important}
+  .caicavv-quick-nav{right:10px;width:188px}
+}
+@media(max-width:760px){
+  .caicavv-quick-nav{
+    top:auto;
+    right:14px;
+    bottom:14px;
+    width:58px;
+    max-height:none;
+    padding:8px;
+    transform:none;
+    border-radius:18px;
+    animation:none!important;
+  }
+  body.modo-app .caicavv-quick-nav.is-ready{animation:caicavvQuickMobileEnter .25s ease both!important}
+  .caicavv-quick-nav .caicavv-quick-toggle{width:42px!important;height:42px!important;padding:0!important;justify-content:center}
+  .caicavv-quick-toggle-label{display:none}
+  .caicavv-quick-nav:not(.is-collapsed){width:min(250px,calc(100vw - 28px));padding:9px}
+  .caicavv-quick-nav:not(.is-collapsed) .caicavv-quick-toggle{width:100%!important;padding:0 12px!important;justify-content:space-between}
+  .caicavv-quick-nav:not(.is-collapsed) .caicavv-quick-toggle-label{display:inline}
+  .caicavv-quick-nav.is-collapsed .caicavv-quick-list{display:none}
+  .caicavv-section-illustration{min-height:96px;padding:14px 16px}
+  .caicavv-section-illustration svg{width:74px;height:64px}
+  .caicavv-illustration-copy strong{font-size:16px}
+  @keyframes caicavvQuickMobileEnter{from{opacity:0;transform:translateY(16px) scale(.94)}to{opacity:1;transform:none}}
+}
+@media(prefers-reduced-motion:reduce){
+  body.modo-app .caicavv-quick-nav.is-ready{animation:none!important}
+  .caicavv-quick-nav,.caicavv-quick-nav.is-ready,.caicavv-section-illustration,.caicavv-illustration-svg,
+  .caicavv-reveal,.caicavv-quick-indicator,.caicavv-quick-link,.caicavv-quick-toggle,
+  .app-shell .nav::after,.app-shell #menu button::after{
+    animation:none!important;
+    transition:none!important;
+    scroll-behavior:auto!important;
+  }
+  .js-caicavv-motion .caicavv-reveal.caicavv-reveal-pending{opacity:1!important;transform:none!important}
+  .caicavv-svg-draw{stroke-dashoffset:0!important}
+}
+
 </style>
 </head>
 
@@ -1074,6 +1557,16 @@ body.modo-app{
     </div>
   </aside>
 
+  <aside id="caicavvQuickNav" class="caicavv-quick-nav is-collapsed" aria-label="Navegação rápida">
+    <button id="caicavvQuickToggle" class="caicavv-quick-toggle" type="button" aria-expanded="false" aria-controls="caicavvQuickList">
+      <span class="caicavv-quick-toggle-label">Navegação rápida</span>
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <nav id="caicavvQuickList" class="caicavv-quick-list" aria-label="Atalhos das áreas">
+      <span class="caicavv-quick-indicator" aria-hidden="true"></span>
+    </nav>
+  </aside>
+
   <main class="main">
     <header class="topbar">
       <div class="brand">
@@ -1142,40 +1635,6 @@ const horariosAtendimento = [
   "13:00","13:30","14:00","14:30","15:00","15:30","16:00","16:30"
 ];
 let filtroDataModo = "todos";
-
-async function salvarAtendimentosFirebase(){
-  try{
-    await DOC_ATENDIMENTOS.set({
-      itens: atendimentos,
-      logs: logsAlteracoes,
-      atualizadoEm: new Date().toISOString()
-    }, { merge: true });
-  }catch(e){
-    console.error(e);
-    mostrarErro("Erro ao salvar no Firebase.");
-    throw e;
-  }
-}
-
-async function carregarAtendimentosFirebase(){
-  try{
-    const snap = await DOC_ATENDIMENTOS.get();
-    if(snap.exists){
-      const dados = snap.data() || {};
-      atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
-      logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
-    } else {
-      atendimentos = [];
-      logsAlteracoes = [];
-      await DOC_ATENDIMENTOS.set({ itens: [], logs: [], criadoEm: new Date().toISOString() }, { merge: true });
-    }
-  }catch(e){
-    console.error(e);
-    atendimentos = [];
-    logsAlteracoes = [];
-    mostrarErro("Não foi possível carregar os dados do Firebase.");
-  }
-}
 
 const usuarios = {
   "josiane.caicavv": { nome: "Josiane", role: "tecnico" },
@@ -1346,13 +1805,27 @@ let pastaConfirmada = false;
 let toastTimeout = null;
 let agendamentoPendenteExclusao = null;
 let agendamentoEmEdicao = null;
+let caicavvUltimoToast = { chave:"", tempo:0 };
+let caicavvUltimoStatusAnimado = null;
 
 
 function mostrarToast(msg, tipo="erro"){
+  const mensagem = String(msg || "");
+  const tipoNormalizado = tipo || "info";
+  const agora = Date.now();
+  const chave = tipoNormalizado + "|" + mensagem;
+  if(caicavvUltimoToast.chave === chave && agora - caicavvUltimoToast.tempo < 900) return;
+  caicavvUltimoToast = { chave, tempo:agora };
+
+  if(typeof window.mostrarToastBonitoCAICAVV === "function"){
+    window.mostrarToastBonitoCAICAVV(mensagem, tipoNormalizado);
+    return;
+  }
+
   const el = document.getElementById("toast");
   if(!el) return;
-  el.textContent = msg;
-  el.className = `toast show ${tipo}`;
+  el.textContent = mensagem;
+  el.className = `toast show ${tipoNormalizado}`;
   clearTimeout(toastTimeout);
   toastTimeout = setTimeout(()=>{
     el.className = "toast";
@@ -1555,6 +2028,100 @@ function ativarEnterLogin(){
 
 ativarEnterLogin();
 
+function respeitaMovimentoReduzido(){
+  return window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function definirEstadoCarregando(botao, carregando, texto){
+  if(!botao) return;
+  if(carregando){
+    if(!botao.dataset.textoOriginal) botao.dataset.textoOriginal = botao.innerHTML;
+    botao.classList.add("is-loading");
+    botao.disabled = true;
+    botao.setAttribute("aria-busy", "true");
+    botao.innerHTML = `<span></span>${texto || "Carregando..."}`;
+    return;
+  }
+  botao.classList.remove("is-loading");
+  botao.disabled = false;
+  botao.removeAttribute("aria-busy");
+  if(botao.dataset.textoOriginal) botao.innerHTML = botao.dataset.textoOriginal;
+}
+
+function animarErroLogin(){
+  const card = document.querySelector("#loginDiv .login-card");
+  if(!card) return;
+  card.classList.remove("login-error");
+  void card.offsetWidth;
+  card.classList.add("login-error");
+  setTimeout(()=>card.classList.remove("login-error"), 420);
+}
+
+function animarEntradaPainel(){
+  const aplicativo = document.getElementById("app");
+  if(!aplicativo || aplicativo.dataset.motionDone === "1") return;
+  aplicativo.dataset.motionDone = "1";
+  aplicativo.classList.add("motion-enter");
+  setTimeout(()=>aplicativo.classList.remove("motion-enter"), respeitaMovimentoReduzido() ? 20 : 900);
+}
+
+function mostrarPainelComTransicao(){
+  const loginTela = document.getElementById("loginDiv");
+  const aplicativo = document.getElementById("app");
+  const abrir = () => {
+    if(loginTela) loginTela.style.display = "none";
+    if(aplicativo) aplicativo.style.display = "block";
+    document.body.classList.add("modo-app");
+    requestAnimationFrame(animarEntradaPainel);
+  };
+  if(!loginTela || loginTela.style.display === "none" || respeitaMovimentoReduzido()){
+    abrir();
+    return;
+  }
+  loginTela.classList.add("saindo");
+  setTimeout(()=>{
+    loginTela.classList.remove("saindo");
+    abrir();
+  }, 300);
+}
+
+function abrirModalAnimado(modal){
+  if(!modal) return;
+  modal.classList.remove("saindo");
+  modal.classList.add("show");
+  modal.setAttribute("aria-hidden", "false");
+}
+
+function fecharModalAnimado(modal, aoFechar){
+  if(!modal) return;
+  const concluir = () => {
+    modal.classList.remove("show", "saindo");
+    modal.setAttribute("aria-hidden", "true");
+    if(typeof aoFechar === "function") aoFechar();
+  };
+  if(respeitaMovimentoReduzido() || !modal.classList.contains("show")){
+    concluir();
+    return;
+  }
+  modal.classList.add("saindo");
+  setTimeout(concluir, 230);
+}
+
+function animarCardsVisiveis(container){
+  if(respeitaMovimentoReduzido()) return;
+  const raiz = container || document;
+  const cards = raiz.querySelectorAll(".v10-card,.paciente-card,.config-card,.entrada-kpi,.entrada-box,.lista-vazia,.upload-hero-caicavv");
+  cards.forEach((card, index)=>{
+    if(index > 14) return;
+    card.classList.add("caicavv-card-enter");
+    card.style.animationDelay = Math.min(index * 28, 260) + "ms";
+    card.addEventListener("animationend", () => {
+      card.classList.remove("caicavv-card-enter");
+      card.style.animationDelay = "";
+    }, { once:true });
+  });
+}
+
 async function login(){
   let u = String(user.value || "").trim().toLowerCase();
   let p = String(pass.value || "");
@@ -1576,9 +2143,7 @@ async function login(){
     }
 
     salvarSessao(u);
-    loginDiv.style.display = "none";
-    app.style.display = "block";
-    document.body.classList.add("modo-app");
+    mostrarPainelComTransicao();
     aplicarTemaSalvo();
 
     montarMenu();
@@ -1602,9 +2167,7 @@ async function login(){
       filtroAtual = "";
     }
 
-    loginDiv.style.display = "none";
-    app.style.display = "block";
-    document.body.classList.add("modo-app");
+    mostrarPainelComTransicao();
     aplicarTemaSalvo();
 
     montarMenu();
@@ -1618,6 +2181,56 @@ function logout(){
   limparSessao();
   location.reload();
 }
+
+window.login = async function(){
+  const botaoLogin = document.querySelector(".login-button");
+  if(botaoLogin && botaoLogin.disabled) return;
+  definirEstadoCarregando(botaoLogin, true, "Entrando...");
+
+  let u = String(user.value || "").trim().toLowerCase();
+  let p = String(pass.value || "");
+
+  try{
+    await carregarSenhasFirebase();
+
+    if(!u || !p){
+      animarErroLogin();
+      mostrarErro("Preencha usuario e senha.");
+      return;
+    }
+
+    if(usuarios[u] && senhas[u] === p){
+      tecnicoLogado = usuarios[u];
+
+      if(tecnicoLogado.role === "tecnico"){
+        filtroAtual = tecnicoLogado.nome;
+      } else {
+        filtroAtual = "";
+      }
+
+      salvarSessao(u);
+      if(botaoLogin){
+        botaoLogin.classList.remove("is-loading");
+        botaoLogin.classList.add("is-success");
+        botaoLogin.innerHTML = "<span>✓</span>Entrou";
+      }
+      mostrarPainelComTransicao();
+      aplicarTemaSalvo();
+
+      montarMenu();
+      carregarFiltrosAvancados();
+      aplicarPermissoesNaTela();
+      await carregar();
+    } else {
+      animarErroLogin();
+      mostrarErro("Senha ou usuario incorretos");
+    }
+  } finally {
+    if(!tecnicoLogado){
+      definirEstadoCarregando(botaoLogin, false);
+    }
+  }
+};
 
 function montarMenu(){
   let html = "";
@@ -1645,6 +2258,7 @@ function montarMenu(){
 }
 
 function aplicarPermissoesNaTela(){
+  if(!tecnicoLogado) return;
   const role = tecnicoLogado.role;
   const podeAdicionar = permissoes[role].add;
   const podeRelatorio = podeAcessarRelatorios();
@@ -1778,13 +2392,13 @@ async function marcar(id,status){
   const obs = document.getElementById("observacaoRealizado");
   if(obs) obs.value = item.observacaoRealizacao || "";
   const modal = document.getElementById("modalObservacaoRealizado");
-  if(modal) modal.classList.add("show");
+  if(modal) abrirModalAnimado(modal);
 }
 
 function cancelarObservacaoRealizado(){
   atendimentoMarcacaoPendente = null;
   const modal = document.getElementById("modalObservacaoRealizado");
-  if(modal) modal.classList.remove("show");
+  if(modal) fecharModalAnimado(modal);
 }
 
 async function confirmarObservacaoRealizado(){
@@ -1812,6 +2426,7 @@ async function confirmarObservacaoRealizado(){
 
   await salvarAtendimentosFirebase();
   cancelarObservacaoRealizado();
+  caicavvUltimoStatusAnimado = id;
   render();
   mostrarAnimacaoAtendimentoRealizado();
 }
@@ -1868,12 +2483,11 @@ function abrirModalEdicao(id){
   editHora.disabled = !podeEditarDados;
   editDescricao.disabled = !podeEditarDados;
 
-  modalEditar.classList.add("show");
+  abrirModalAnimado(modalEditar);
 }
 
 function fecharModalEdicao(){
-  agendamentoEmEdicao = null;
-  modalEditar.classList.remove("show");
+  fecharModalAnimado(modalEditar, ()=>{ agendamentoEmEdicao = null; });
 }
 
 function buscarNomeEdicao(){
@@ -1968,6 +2582,7 @@ async function salvarEdicao(){
 
   await salvarAtendimentosFirebase();
   fecharModalEdicao();
+  caicavvUltimoStatusAnimado = item.id;
   render();
   mostrarToast("Agendamento editado com sucesso.", "sucesso");
 }
@@ -1985,12 +2600,11 @@ function excluir(id){
 
 function abrirModalExcluir(id){
   agendamentoPendenteExclusao = id;
-  modalExcluir.classList.add("show");
+  abrirModalAnimado(modalExcluir);
 }
 
 function fecharModalExcluir(){
-  agendamentoPendenteExclusao = null;
-  modalExcluir.classList.remove("show");
+  fecharModalAnimado(modalExcluir, ()=>{ agendamentoPendenteExclusao = null; });
 }
 
 async function confirmarExclusao(){
@@ -2156,20 +2770,20 @@ function abrirHistoricoPaciente(id){
     <div class="v7-box"><b>${escapeHTML(item.nome)}</b><br><span class="v7-muted">Pasta ${escapeHTML(item.pasta)}</span></div>
     <div class="v7-box"><b>Total:</b> ${total} &nbsp; <b>Compareceu:</b> ${ok} &nbsp; <b>Faltou:</b> ${faltas} &nbsp; <b>Pendente:</b> ${pendentes}</div>
     <div class="v7-lista">${linhas || '<div class="v7-muted">Nenhum histórico encontrado.</div>'}</div>`;
-  modalHistorico.classList.add("show");
+  abrirModalAnimado(modalHistorico);
 }
 
-function fecharModalHistorico(){ modalHistorico.classList.remove("show"); }
+function fecharModalHistorico(){ fecharModalAnimado(modalHistorico); }
 
 function abrirLogAtendimento(id){
   const item = atendimentos.find(a => a.id === id);
   const basePasta = item ? normalizarPasta(item.pasta) : "";
   const logs = logsAlteracoes.filter(l => l.atendimentoId === id || (basePasta && normalizarPasta(l.pasta) === basePasta)).slice(0,80);
   conteudoLog.innerHTML = `<div class="v7-lista">${logs.map(l=>`<div class="v7-item"><b>${escapeHTML(l.acao)}</b> <span class="v7-tag log">${escapeHTML(l.usuario)} / ${escapeHTML(l.perfil)}</span><br><span class="v7-muted">${escapeHTML(formatarDataHoraBR(l.dataHora))}</span><br>${escapeHTML(l.detalhes || "Sem detalhes")}</div>`).join("") || '<div class="v7-muted">Nenhum log encontrado para este atendimento.</div>'}</div>`;
-  modalLog.classList.add("show");
+  abrirModalAnimado(modalLog);
 }
 
-function fecharModalLog(){ modalLog.classList.remove("show"); }
+function fecharModalLog(){ fecharModalAnimado(modalLog); }
 
 
 function passaBusca(item, termo){
@@ -2243,8 +2857,12 @@ function toggleMenuLateral(){
   const fundo = document.getElementById("menuLateralFundo");
   const menu = document.getElementById("menuLateral");
   if(!fundo || !menu) return;
-  fundo.classList.toggle("show");
-  menu.classList.toggle("show");
+  const abrir = !menu.classList.contains("show");
+  fundo.classList.toggle("show", abrir);
+  menu.classList.toggle("show", abrir);
+  menu.setAttribute("aria-hidden", abrir ? "false" : "true");
+  const botao = document.querySelector(".menu-icon");
+  if(botao) botao.setAttribute("aria-expanded", abrir ? "true" : "false");
   prepararMesRelatorio();
   verificarAvisoDia30();
 }
@@ -2252,7 +2870,12 @@ function fecharMenuLateral(){
   const fundo = document.getElementById("menuLateralFundo");
   const menu = document.getElementById("menuLateral");
   if(fundo) fundo.classList.remove("show");
-  if(menu) menu.classList.remove("show");
+  if(menu){
+    menu.classList.remove("show");
+    menu.setAttribute("aria-hidden", "true");
+  }
+  const botao = document.querySelector(".menu-icon");
+  if(botao) botao.setAttribute("aria-expanded", "false");
 }
 function mesAtualValor(){
   const hoje = new Date();
@@ -2631,8 +3254,6 @@ function setTelaAtiva(nome){
 }
 function mostrarBlocosAgendamento(mostrar){["boasVindas","menu","relatorio","filtrosV6","formAtendimento","abasPassadasContainer","btnCriarAbaPassada"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("hidden",!mostrar);});}
 function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();}
-function abrirTelaPacientes(){setTelaAtiva("pacientes");mostrarBlocosAgendamento(false);const totalPastas=Object.keys(cadastros).length;const totalNomes=Object.values(cadastros).reduce((s,nomes)=>s+nomes.length,0);let cards="";Object.entries(cadastros).forEach(([pasta,nomes])=>{nomes.forEach(nome=>{cards+=`<div class="paciente-card"><strong>${escapeHTML(nome)}</strong><span>📁 Pasta ${escapeHTML(pasta)}</span></div>`;});});lista.innerHTML=`<div class="pagina-titulo">Pastas</div><div class="pagina-sub">Busca rápida por nome ou nº da pasta.</div><div class="search-card" style="margin-bottom:14px"><div class="search-box"><span>🔍</span><input id="buscaPacientes" placeholder="Buscar por nome ou nº" oninput="filtrarPacientes()"></div></div><div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div><div id="listaPacientes" class="pacientes-grid">${cards}</div>`;}
-function filtrarPacientes(){const termo=normalizarBusca(document.getElementById("buscaPacientes")?.value||"");document.querySelectorAll(".paciente-card").forEach(card=>{card.style.display=normalizarBusca(card.innerText).includes(termo)?"block":"none";});}
 function abrirTelaTecnicos(){setTelaAtiva("tecnicos");mostrarBlocosAgendamento(false);const tecnicos=Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);const mesAtual=new Date().toISOString().slice(0,7);lista.innerHTML=`<div class="pagina-titulo">Relatório por técnico</div><div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div><div class="tecnico-relatorio-box"><label><b>Técnico</b></label><select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select><label><b>Mês</b></label><input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}"><button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button></div><div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;}
 function gerarRelatorioTecnicoNaTela(){const tecnico=document.getElementById("tecnicoRelatorioTela").value;const mes=document.getElementById("mesRelatorioTecnicoTela").value;const dados=atendimentos.filter(a=>a.tecnico===tecnico&&String(a.data||"").startsWith(mes));const total=dados.length;const ok=dados.filter(a=>a.status==="compareceu").length;const falta=dados.filter(a=>a.status==="faltou").length;const pendente=dados.filter(a=>!a.status||a.status==="agendado").length;const linhas=dados.sort((a,b)=>getDataHoraAtendimento(a).localeCompare(getDataHoraAtendimento(b))).map(a=>`<div class="paciente-card"><strong>📁 Pasta ${escapeHTML(a.pasta)} · ${escapeHTML(formatarDataBR(a.data))}</strong><span>${escapeHTML(a.status||"agendado")} · ${escapeHTML(a.descricao||"Sem descrição")}</span></div>`).join("");document.getElementById("resultadoTecnicoTela").innerHTML=`<div class="relatorio-card"><div class="rel-icone">👥</div><div><span class="rel-nome">${escapeHTML(tecnico)}</span><br><span class="rel-metrica">Total: <b>${total}</b></span><span class="rel-metrica ok">Compareceu: <b>${ok}</b></span><span class="rel-metrica erro">Faltou: <b>${falta}</b></span><span class="rel-metrica">Pendente: <b>${pendente}</b></span></div></div><div class="pacientes-grid" style="margin-top:12px">${linhas||'<div class="paciente-card"><strong>Nenhum atendimento encontrado.</strong></div>'}</div>`;}
 function abrirTelaConfiguracoes(){
@@ -3924,6 +4545,8 @@ function baixarArquivoEntradasCAICAVV(conteudo, nomeArquivo, tipo){
   table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #d8e4fa;padding:5px;text-align:left;vertical-align:top}th{background:#005bff;color:#fff}
   canvas{max-width:100%;border:1px solid #d8e4fa;border-radius:8px}
   @media print{body{padding:8px}.entrada-box{break-inside:avoid}.entrada-tabela-wrap{break-inside:auto}}
+
+
 </style>
 </head>
 <body>
@@ -4344,8 +4967,8 @@ ${conteudo.innerHTML}
     garantirContainer();
     garantirModal();
     garantirCSS();
-    if(typeof aplicarPermissoesNaTela === "function") aplicarPermissoesNaTela();
-    renderizarAbasPassadas();
+    if(tecnicoLogado && typeof aplicarPermissoesNaTela === "function") aplicarPermissoesNaTela();
+    if(tecnicoLogado) renderizarAbasPassadas();
   }
 
   window.abrirModalAbaPassada = function(){
@@ -4542,14 +5165,19 @@ ${conteudo.innerHTML}
 
   document.addEventListener("DOMContentLoaded", function(){
     envolverFuncoesOriginais();
-    carregarAbasPassadasFirebase().then(init);
-    let tentativas = 0;
-    const timer = setInterval(function(){
-      envolverFuncoesOriginais();
-      init();
-      tentativas++;
-      if((el("btnCriarAbaPassada") && el("abasPassadasContainer")) || tentativas > 40) clearInterval(timer);
-    }, 300);
+    carregarAbasPassadasFirebase().then(init).catch(function(e){ console.error(e); });
+
+    let quadroPendente = false;
+    const observarEstrutura = new MutationObserver(function(){
+      if(quadroPendente) return;
+      quadroPendente = true;
+      requestAnimationFrame(function(){
+        quadroPendente = false;
+        envolverFuncoesOriginais();
+        if(document.getElementById("app")) init();
+      });
+    });
+    observarEstrutura.observe(document.body, { childList:true, subtree:true });
   });
 
   window.renderizarAbasPassadas = renderizarAbasPassadas;
@@ -4775,9 +5403,8 @@ ${conteudo.innerHTML}
     });
   }
 
-  document.addEventListener("DOMContentLoaded", trocarIconesCaicavv);
-  setTimeout(trocarIconesCaicavv, 300);
-  setTimeout(trocarIconesCaicavv, 1200);
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", trocarIconesCaicavv, { once:true });
+  else trocarIconesCaicavv();
 
   const observer = new MutationObserver(function(){
     clearTimeout(window.__caicavvPngIconTimer);
@@ -4787,37 +5414,6 @@ ${conteudo.innerHTML}
 })();
 </script>
 <!-- ===== FIM DA TROCA DE ÍCONES POR PNG - CAICAVV ===== -->
-
-
-<!-- ===== AJUSTE FINO: PEÃO NO RELATÓRIO + AGENDA DECORATIVA MAIOR ===== -->
-<style id="caicavv-ajuste-peao-agenda">
-  .relatorio-card .rel-icone.caicavv-relatorio-peao{
-    background-image:url("img/peao.png")!important;
-    background-size:70%!important;
-    background-repeat:no-repeat!important;
-    background-position:center!important;
-    font-size:0!important;
-    color:transparent!important;
-  }
-
-  .caicavv-agenda-decorativa{
-    right:190px!important;
-    top:-42px!important;
-    width:155px!important;
-    height:155px!important;
-    opacity:.24!important;
-  }
-
-  @media(max-width:760px){
-    .caicavv-agenda-decorativa{
-      right:16px!important;
-      top:-20px!important;
-      width:105px!important;
-      height:105px!important;
-      opacity:.16!important;
-    }
-  }
-</style>
 
 
 
@@ -4866,9 +5462,6 @@ body.modo-app:not(.aparencia-noturna) .menu button::before{
   filter:none!important;
 }
 </style>
-
-</body>
-</html>
 
 <style id="caicavv-aguardando-style">
 /* ===== Integração: Aguardando + campainha dos técnicos ===== */
@@ -7292,7 +7885,7 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
     window.__caicavvUploadPermissaoWrapped = true;
     window.aplicarPermissoesNaTela = function(){
       var r = aplicarPermissoesOriginalUpload.apply(this, arguments);
-      setTimeout(atualizarNavUploadCAICAVV, 0);
+      requestAnimationFrame(atualizarNavUploadCAICAVV);
       return r;
     };
   }
@@ -7336,12 +7929,18 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
   document.addEventListener("DOMContentLoaded", function(){
     reforcarSalvamentoEntradasFirebase();
     atualizarNavUploadCAICAVV();
-    setTimeout(atualizarNavUploadCAICAVV, 400);
-    setTimeout(atualizarNavUploadCAICAVV, 1200);
+    let pendente = false;
+    const observadorUpload = new MutationObserver(function(){
+      if(pendente) return;
+      pendente = true;
+      requestAnimationFrame(function(){
+        pendente = false;
+        atualizarNavUploadCAICAVV();
+      });
+    });
+    const app = document.getElementById("app");
+    if(app) observadorUpload.observe(app, { childList:true, subtree:true, attributes:true, attributeFilter:["class","style"] });
   });
-  setInterval(function(){
-    if(document.getElementById("app") && document.getElementById("app").style.display !== "none") atualizarNavUploadCAICAVV();
-  }, 1200);
 })();
 </script>
 <!-- ===== FIM DOS AJUSTES SOLICITADOS ===== -->
@@ -7601,9 +8200,487 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
   }
 
   document.addEventListener("DOMContentLoaded", function(){
-    setTimeout(function(){ aplicarIconeUploadCAICAVV(); inserirHeroUploadCAICAVV(); }, 200);
-    setTimeout(aplicarIconeUploadCAICAVV, 900);
+    aplicarIconeUploadCAICAVV();
+    inserirHeroUploadCAICAVV();
+    let pendente = false;
+    const observadorIconeUpload = new MutationObserver(function(){
+      if(pendente) return;
+      pendente = true;
+      requestAnimationFrame(function(){
+        pendente = false;
+        aplicarIconeUploadCAICAVV();
+        inserirHeroUploadCAICAVV();
+      });
+    });
+    const app = document.getElementById("app");
+    if(app) observadorIconeUpload.observe(app, { childList:true, subtree:true });
   });
-  setInterval(aplicarIconeUploadCAICAVV, 1200);
 })();
 </script>
+
+
+<script id="caicavv-interacoes-modernas">
+(function(){
+  "use strict";
+
+  const estado = {
+    reduzMovimento: window.matchMedia("(prefers-reduced-motion: reduce)"),
+    tela: "agendamentos",
+    transicao: false,
+    revealObserver: null,
+    scrollObserver: null,
+    mutationObserver: null,
+    raf: 0,
+    links: new Map(),
+    seções: new Map(),
+    navSignature: ""
+  };
+
+  const icones = {
+    inicio:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5M5.5 10.5V20h13v-9.5M9.5 20v-6h5v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    agendamentos:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 3v4m10-4v4M3 10h18m-14 4h3m4 0h3m-10 3h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    pacientes:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 21c.6-4.1 3.1-6.5 7.5-6.5s6.9 2.4 7.5 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    entradas:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM15 3v5h5M9 13h7m-7 4h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    relatorios:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10m5 10V4m6 16v-7m5 7V7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    configuracoes:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.37.27.73.6 1 .99.25.35.4.75.4 1.1V11h.2v4h-.09a1.7 1.7 0 0 0-1.51 0Z" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    upload:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  };
+
+  const rotas = [
+    {id:"inicio",label:"Início",tela:null,alvo:"boasVindas",sempre:true},
+    {id:"agendamentos",label:"Agendamentos",tela:"agendamentos",alvo:"filtrosV6"},
+    {id:"pacientes",label:"Pacientes",tela:"pacientes",alvo:"lista"},
+    {id:"entradas",label:"Entradas",tela:"entradas",alvo:"lista"},
+    {id:"relatorios",label:"Relatórios",tela:"tecnicos",alvo:"lista"},
+    {id:"configuracoes",label:"Configurações",tela:"configuracoes",alvo:"lista"},
+    {id:"upload",label:"Upload",tela:"upload",alvo:"lista"}
+  ];
+
+  const ilustrações = {
+    agendamentos:{titulo:"Agenda organizada",sub:"Consulte horários, filtre atendimentos e acompanhe cada status.",svg:'<svg class="caicavv-illustration-svg" viewBox="0 0 120 90" aria-hidden="true"><rect class="caicavv-svg-fill" x="18" y="18" width="82" height="62" rx="10"/><path class="caicavv-svg-draw" d="M18 35h82M36 10v17m46-17v17M34 49h13m12 0h13m12 0h6M34 63h13m12 0h13"/><path class="caicavv-svg-draw" style="--draw-delay:120ms" d="m80 65 6 6 12-14"/></svg>'},
+    pacientes:{titulo:"Pacientes",sub:"Localize cadastros com rapidez e mantenha as informações organizadas.",svg:'<svg class="caicavv-illustration-svg" viewBox="0 0 120 90" aria-hidden="true"><circle class="caicavv-svg-fill" cx="60" cy="30" r="17"/><path class="caicavv-svg-draw" d="M35 79c2-22 11-33 25-33s23 11 25 33M48 30a12 12 0 0 0 24 0"/><path class="caicavv-svg-draw" style="--draw-delay:120ms" d="M89 28c9-8 19 4 8 13l-8 7-8-7c-11-9-1-21 8-13Z"/></svg>'},
+    entradas:{titulo:"Entradas",sub:"Acompanhe registros e indicadores sem perder o contexto do período.",svg:'<svg class="caicavv-illustration-svg" viewBox="0 0 120 90" aria-hidden="true"><path class="caicavv-svg-fill" d="M28 10h45l19 19v51H28z"/><path class="caicavv-svg-draw" d="M73 10v20h19M42 45h36M42 58h36M42 71h23"/><path class="caicavv-svg-draw" style="--draw-delay:120ms" d="M18 51h16m-8-8 8 8-8 8"/></svg>'},
+    tecnicos:{titulo:"Relatórios",sub:"Visualize indicadores e gere relatórios conforme as permissões da conta.",svg:'<svg class="caicavv-illustration-svg" viewBox="0 0 120 90" aria-hidden="true"><path class="caicavv-svg-fill" d="M17 73h88v8H17z"/><path class="caicavv-svg-draw" d="M29 70V48h13v22M54 70V25h13v45M79 70V38h13v32M23 31l25-14 20 8 25-16"/><circle cx="23" cy="31" r="3" fill="currentColor"/><circle cx="48" cy="17" r="3" fill="currentColor"/><circle cx="68" cy="25" r="3" fill="currentColor"/><circle cx="93" cy="9" r="3" fill="currentColor"/></svg>'},
+    configuracoes:{titulo:"Configurações",sub:"Ajuste aparência, preferências e opções permitidas para esta conta.",svg:'<svg class="caicavv-illustration-svg" viewBox="0 0 120 90" aria-hidden="true"><circle class="caicavv-svg-fill" cx="60" cy="45" r="17"/><circle class="caicavv-svg-draw" cx="60" cy="45" r="8"/><path class="caicavv-svg-draw" d="M60 11v9m0 50v9M26 45h9m50 0h9M36 21l7 7m34 34 7 7M84 21l-7 7M43 62l-7 7M50 14l3 8m14 46 3 8M29 35l8 3m46 14 8 3M29 55l8-3m46-14 8-3M50 76l3-8m14-46 3-8"/></svg>'},
+    upload:{titulo:"Upload",sub:"Importe arquivos reais e acompanhe o processamento sem recarregar a página.",svg:'<svg class="caicavv-illustration-svg" viewBox="0 0 120 90" aria-hidden="true"><path class="caicavv-svg-fill" d="M24 17h72v58H24z"/><path class="caicavv-svg-draw" d="M60 61V29m0 0L47 42m13-13 13 13M38 65v8h44v-8"/></svg>'}
+  };
+
+  function appVisível(){
+    const app = document.getElementById("app");
+    return !!app && app.style.display !== "none" && getComputedStyle(app).display !== "none";
+  }
+  function seguroSessãoGet(chave){try{return sessionStorage.getItem(chave);}catch(e){return null;}}
+  function seguroSessãoSet(chave,valor){try{sessionStorage.setItem(chave,valor);}catch(e){}}
+  function movimentoReduzido(){return estado.reduzMovimento.matches;}
+  function elementoVisível(el){
+    if(!el || el.classList.contains("hidden")) return false;
+    const estilo = getComputedStyle(el);
+    return estilo.display !== "none" && estilo.visibility !== "hidden";
+  }
+  function telaAtual(){
+    if(document.body.classList.contains("tela-pacientes")) return "pacientes";
+    if(document.body.classList.contains("tela-tecnicos")) return "tecnicos";
+    if(document.body.classList.contains("tela-entradas")) return "entradas";
+    if(document.body.classList.contains("tela-configuracoes")) return "configuracoes";
+    if(document.body.classList.contains("tela-upload")) return "upload";
+    return typeof window.telaAtualCaicavv === "string" ? window.telaAtualCaicavv : "agendamentos";
+  }
+  function rotaPermitida(rota){
+    if(rota.sempre) return true;
+    const seletor = rota.tela === "upload" ? '.app-shell .nav[data-tela="upload"],#navUpload' : `.app-shell .nav[data-tela="${rota.tela}"]`;
+    const nav = document.querySelector(seletor);
+    if(rota.id === "relatorios" && typeof window.podeAcessarRelatorios === "function" && !window.podeAcessarRelatorios()) return false;
+    return elementoVisível(nav);
+  }
+
+  function montarNavegação(){
+    const nav = document.getElementById("caicavvQuickNav");
+    const lista = document.getElementById("caicavvQuickList");
+    if(!nav || !lista || !appVisível()) return;
+    const permitidas = rotas.filter(rotaPermitida);
+    const assinatura = permitidas.map(rota=>rota.id).join("|");
+    if(assinatura === estado.navSignature && estado.links.size){
+      nav.classList.add("is-ready");
+      atualizarAtivo(estado.tela === "tecnicos" ? "relatorios" : estado.tela);
+      return;
+    }
+    estado.navSignature = assinatura;
+    const indicador = lista.querySelector(".caicavv-quick-indicator");
+    lista.querySelectorAll(".caicavv-quick-link").forEach(el=>el.remove());
+    estado.links.clear();
+    permitidas.forEach(rota=>{
+      const botão = document.createElement("button");
+      botão.type = "button";
+      botão.className = "caicavv-quick-link";
+      botão.dataset.quickRoute = rota.id;
+      botão.innerHTML = (icones[rota.id] || icones.inicio) + `<span>${rota.label}</span>`;
+      botão.addEventListener("click",()=>navegarRota(rota));
+      lista.appendChild(botão);
+      estado.links.set(rota.id,botão);
+    });
+    if(indicador) lista.prepend(indicador);
+    nav.classList.add("is-ready");
+    atualizarAtivo(estado.tela === "tecnicos" ? "relatorios" : estado.tela);
+  }
+
+  function atualizarAtivo(id){
+    if(id === "tecnicos") id = "relatorios";
+    if(!estado.links.has(id)) id = estado.links.has("agendamentos") ? "agendamentos" : "inicio";
+    let ativo = null;
+    estado.links.forEach((botão,chave)=>{
+      const atual = chave === id;
+      botão.toggleAttribute("aria-current",atual);
+      if(atual){botão.setAttribute("aria-current","page");ativo=botão;}
+    });
+    if(!ativo) return;
+    const lista = document.getElementById("caicavvQuickList");
+    if(lista){
+      const y = ativo.offsetTop - 3;
+      lista.style.setProperty("--quick-indicator-y",`${y}px`);
+      const indicador = lista.querySelector(".caicavv-quick-indicator");
+      if(indicador) indicador.style.height = `${ativo.offsetHeight}px`;
+    }
+  }
+
+  function rolarPara(alvo){
+    const el = typeof alvo === "string" ? document.getElementById(alvo) : alvo;
+    if(!el) return;
+    el.scrollIntoView({behavior:movimentoReduzido()?"auto":"smooth",block:"start"});
+  }
+
+  function navegarRota(rota){
+    if(rota.id === "inicio"){
+      atualizarAtivo("inicio");
+      rolarPara(rota.alvo);
+      return;
+    }
+    const função = {
+      agendamentos:window.abrirTelaAgendamentos,
+      pacientes:window.abrirTelaPacientes,
+      entradas:window.abrirTelaEntradas,
+      tecnicos:window.abrirTelaTecnicos,
+      configuracoes:window.abrirTelaConfiguracoes,
+      upload:window.abrirTelaUpload
+    }[rota.tela];
+    if(typeof função === "function") função();
+    requestAnimationFrame(()=>{
+      atualizarAtivo(rota.id);
+      const alvo = document.getElementById(rota.alvo);
+      if(alvo && alvo.getBoundingClientRect().top < 0) rolarPara(alvo);
+      if(innerWidth <= 760) definirRecolhida(true);
+    });
+  }
+
+  function definirRecolhida(recolhida){
+    const nav = document.getElementById("caicavvQuickNav");
+    const botão = document.getElementById("caicavvQuickToggle");
+    if(!nav || !botão) return;
+    nav.classList.toggle("is-collapsed",recolhida);
+    botão.setAttribute("aria-expanded",String(!recolhida));
+    document.body.classList.toggle("caicavv-quick-open",!recolhida && innerWidth > 1180);
+    seguroSessãoSet("caicavv_quick_collapsed",recolhida?"1":"0");
+  }
+
+  function prepararNavegação(){
+    const botão = document.getElementById("caicavvQuickToggle");
+    if(!botão || botão.dataset.ready === "1") return;
+    botão.dataset.ready = "1";
+    botão.addEventListener("click",()=>{
+      const nav = document.getElementById("caicavvQuickNav");
+      definirRecolhida(!nav || !nav.classList.contains("is-collapsed"));
+    });
+    const salvo = seguroSessãoGet("caicavv_quick_collapsed");
+    definirRecolhida(innerWidth <= 760 ? true : salvo !== "0");
+  }
+
+  function svgIlustração(tela){return ilustrações[tela] || ilustrações.agendamentos;}
+  function garantirIlustração(){
+    if(!appVisível()) return;
+    const tela = telaAtual();
+    const lista = document.getElementById("lista");
+    const filtros = document.getElementById("filtrosV6");
+    if(!lista) return;
+    document.querySelectorAll(".caicavv-section-illustration").forEach(el=>{
+      if(el.dataset.screen !== tela) el.remove();
+    });
+    let alvo = tela === "agendamentos" ? filtros : lista;
+    if(!alvo) alvo = lista;
+    let banner = document.querySelector(`.caicavv-section-illustration[data-screen="${tela}"]`);
+    if(!banner){
+      const info = svgIlustração(tela);
+      banner = document.createElement("div");
+      banner.className = "caicavv-section-illustration caicavv-reveal caicavv-glow-card";
+      banner.dataset.screen = tela;
+      banner.dataset.reveal = tela === "pacientes" ? "left" : tela === "configuracoes" ? "right" : "scale";
+      banner.innerHTML = `<div class="caicavv-illustration-copy"><strong>${info.titulo}</strong><span>${info.sub}</span></div>${info.svg}`;
+      if(tela === "agendamentos") alvo.parentNode.insertBefore(banner,alvo);
+      else alvo.prepend(banner);
+      prepararParallax(banner);
+      registrarRevelação(banner,0);
+    }
+  }
+
+  function prepararParallax(el){
+    if(el.dataset.parallaxReady === "1" || movimentoReduzido()) return;
+    el.dataset.parallaxReady = "1";
+    let quadro = 0;
+    el.addEventListener("pointermove",ev=>{
+      if(quadro) return;
+      quadro = requestAnimationFrame(()=>{
+        quadro = 0;
+        const r = el.getBoundingClientRect();
+        const x = ((ev.clientX-r.left)/r.width-.5)*5;
+        const y = ((ev.clientY-r.top)/r.height-.5)*4;
+        el.style.setProperty("--parallax-x",`${x.toFixed(2)}px`);
+        el.style.setProperty("--parallax-y",`${y.toFixed(2)}px`);
+      });
+    },{passive:true});
+    el.addEventListener("pointerleave",()=>{
+      el.style.setProperty("--parallax-x","0px");
+      el.style.setProperty("--parallax-y","0px");
+    },{passive:true});
+  }
+
+  function criarRevealObserver(){
+    if(estado.revealObserver) estado.revealObserver.disconnect();
+    estado.revealObserver = new IntersectionObserver(entradas=>{
+      entradas.forEach(entrada=>{
+        if(!entrada.isIntersecting) return;
+        entrada.target.classList.remove("caicavv-reveal-pending");
+        entrada.target.classList.add("is-visible");
+        estado.revealObserver.unobserve(entrada.target);
+      });
+    },{threshold:.12,rootMargin:"0px 0px -6% 0px"});
+  }
+
+  function registrarRevelação(el,índice){
+    if(!el || el.dataset.revealReady === "1") return;
+    el.dataset.revealReady = "1";
+    el.classList.add("caicavv-reveal");
+    if(!el.dataset.reveal) el.dataset.reveal = ["up","left","right","scale"][índice%4];
+    el.style.setProperty("--reveal-delay",`${Math.min(índice,10)*35}ms`);
+    if(movimentoReduzido() || !estado.revealObserver){el.classList.add("is-visible");return;}
+    const r = el.getBoundingClientRect();
+    if(r.top < innerHeight*.92 && r.bottom > 0){el.classList.add("is-visible");return;}
+    el.classList.add("caicavv-reveal-pending");
+    estado.revealObserver.observe(el);
+  }
+
+  function registrarElementos(){
+    const content = document.querySelector(".app-shell .content");
+    if(!content) return;
+    const seletores = [".pagina-titulo",".pagina-sub",".relatorio-card",".search-card",".form-card",".v10-card",".paciente-card",".config-card",".entrada-box",".entradas-kpi",".lista-vazia",".caicavv-section-illustration"];
+    const elementos = Array.from(content.querySelectorAll(seletores.join(","))).filter(elementoVisível).slice(0,28);
+    elementos.forEach((el,i)=>{
+      if(i%4===1) el.dataset.reveal="left";
+      else if(i%4===2) el.dataset.reveal="right";
+      else if(i%4===3) el.dataset.reveal="scale";
+      registrarRevelação(el,i);
+      if(el.matches(".v10-card,.paciente-card,.config-card,.entrada-box,.entradas-kpi,.search-card,.form-card")) prepararGlow(el);
+    });
+  }
+
+  function prepararGlow(el){
+    if(el.dataset.glowReady === "1") return;
+    el.dataset.glowReady = "1";
+    el.classList.add("caicavv-glow-card");
+    let quadro=0;
+    el.addEventListener("pointermove",ev=>{
+      if(quadro || movimentoReduzido()) return;
+      quadro=requestAnimationFrame(()=>{
+        quadro=0;
+        const r=el.getBoundingClientRect();
+        el.style.setProperty("--glow-x",`${ev.clientX-r.left}px`);
+        el.style.setProperty("--glow-y",`${ev.clientY-r.top}px`);
+      });
+    },{passive:true});
+  }
+
+  function conectarScrollspy(){
+    if(estado.scrollObserver) estado.scrollObserver.disconnect();
+    estado.seções.clear();
+    if(!appVisível()) return;
+    const tela = telaAtual();
+    const pares = [
+      ["inicio",document.getElementById("boasVindas")],
+      [tela === "tecnicos" ? "relatorios" : tela,document.querySelector(`.caicavv-section-illustration[data-screen="${tela}"]`) || document.getElementById(tela === "agendamentos" ? "filtrosV6" : "lista")]
+    ].filter(([,el])=>el);
+    pares.forEach(([id,el])=>estado.seções.set(el,id));
+    let visíveis = new Map();
+    estado.scrollObserver = new IntersectionObserver(entradas=>{
+      entradas.forEach(e=>{
+        if(e.isIntersecting) visíveis.set(e.target,e.intersectionRatio);
+        else visíveis.delete(e.target);
+      });
+      if(!visíveis.size) return;
+      const melhor = Array.from(visíveis.entries()).sort((a,b)=>b[1]-a[1])[0][0];
+      atualizarAtivo(estado.seções.get(melhor));
+    },{threshold:[.15,.35,.6],rootMargin:"-18% 0px -52% 0px"});
+    estado.seções.forEach((_,el)=>estado.scrollObserver.observe(el));
+  }
+
+  async function executarTransição(nome,função,args){
+    if(estado.transicao || typeof função !== "function") return;
+    const atual = telaAtual();
+    if(atual === nome){
+      função.apply(window,args);
+      estado.tela = nome;
+      reforçarInterface();
+      return;
+    }
+    const content = document.querySelector(".app-shell .content");
+    if(!content || movimentoReduzido()){
+      função.apply(window,args);
+      estado.tela=nome;
+      reforçarInterface();
+      return;
+    }
+    estado.transicao=true;
+    content.classList.add("caicavv-tab-transitioning");
+    const altura = content.getBoundingClientRect().height;
+    content.style.minHeight=`${Math.max(altura,360)}px`;
+    try{
+      await content.animate([{opacity:1,transform:"translateX(0)"},{opacity:0,transform:"translateX(-8px)"}],{duration:150,easing:"ease",fill:"forwards"}).finished;
+      função.apply(window,args);
+      estado.tela=nome;
+      content.getAnimations().forEach(a=>a.cancel());
+      content.animate([{opacity:0,transform:"translateX(12px)"},{opacity:1,transform:"translateX(0)"}],{duration:260,easing:"cubic-bezier(.2,.8,.2,1)",fill:"both"});
+    }catch(e){
+      função.apply(window,args);
+      estado.tela=nome;
+    }finally{
+      requestAnimationFrame(()=>{
+        content.classList.remove("caicavv-tab-transitioning");
+        content.style.minHeight="";
+        estado.transicao=false;
+        reforçarInterface();
+      });
+    }
+  }
+
+  function envolverSessão(){
+    const loginOriginal = window.login;
+    if(typeof loginOriginal === "function" && !loginOriginal.__caicavvMotionSession){
+      const loginEnvolvido = async function(){
+        const resultado = await loginOriginal.apply(this,arguments);
+        requestAnimationFrame(function(){
+          estado.navSignature = "";
+          envolverRotas();
+          reforçarInterface();
+        });
+        return resultado;
+      };
+      loginEnvolvido.__caicavvMotionSession = true;
+      window.login = loginEnvolvido;
+    }
+
+    const logoutOriginal = window.logout;
+    if(typeof logoutOriginal === "function" && !logoutOriginal.__caicavvMotionSession){
+      const logoutEnvolvido = function(){
+        const nav = document.getElementById("caicavvQuickNav");
+        if(nav) nav.classList.remove("is-ready");
+        document.body.classList.remove("caicavv-quick-open");
+        return logoutOriginal.apply(this,arguments);
+      };
+      logoutEnvolvido.__caicavvMotionSession = true;
+      window.logout = logoutEnvolvido;
+    }
+  }
+
+  function envolverRotas(){
+    const mapa = {
+      abrirTelaAgendamentos:"agendamentos",
+      abrirTelaPacientes:"pacientes",
+      abrirTelaTecnicos:"tecnicos",
+      abrirTelaEntradas:"entradas",
+      abrirTelaConfiguracoes:"configuracoes",
+      abrirTelaUpload:"upload"
+    };
+    Object.entries(mapa).forEach(([nome,tela])=>{
+      const original=window[nome];
+      if(typeof original!=="function" || original.__caicavvMotionWrapped) return;
+      const envolvida=function(){return executarTransição(tela,original,arguments);};
+      envolvida.__caicavvMotionWrapped=true;
+      envolvida.__caicavvOriginal=original;
+      window[nome]=envolvida;
+    });
+  }
+
+  function tornarControlesAcessíveis(){
+    document.querySelectorAll(".app-shell .nav,.menu-icon,.logout").forEach(el=>{
+      if(el.dataset.keyboardReady==="1") return;
+      el.dataset.keyboardReady="1";
+      el.setAttribute("role","button");
+      el.tabIndex=0;
+      el.addEventListener("keydown",ev=>{
+        if(ev.key!=="Enter" && ev.key!==" ") return;
+        ev.preventDefault();
+        el.click();
+      });
+    });
+    document.querySelectorAll(".modal-fundo,.caicavv-msg-fundo").forEach(modal=>{
+      modal.setAttribute("role","dialog");
+      modal.setAttribute("aria-modal","true");
+    });
+    const menu=document.querySelector(".menu-icon");
+    if(menu){
+      const lateral=document.getElementById("menuLateral");
+      menu.setAttribute("aria-expanded",String(!!lateral&&lateral.classList.contains("show")));
+      menu.setAttribute("aria-controls","menuLateral");
+    }
+  }
+
+  function fecharComEscape(ev){
+    if(ev.key!=="Escape") return;
+    document.querySelectorAll(".menu-atendimento.show").forEach(el=>el.classList.remove("show"));
+    if(typeof window.fecharMenuLateral==="function") window.fecharMenuLateral();
+    document.querySelectorAll(".modal-fundo.show,.caicavv-msg-fundo.show").forEach(modal=>{
+      const cancelar=modal.querySelector(".modal-cancelar,.caicavv-msg-cancelar,.menu-lateral-fechar");
+      if(cancelar) cancelar.click();
+      else modal.classList.remove("show");
+    });
+  }
+
+  function reforçarInterface(){
+    if(!appVisível()) return;
+    estado.tela=telaAtual();
+    prepararNavegação();
+    montarNavegação();
+    garantirIlustração();
+    registrarElementos();
+    tornarControlesAcessíveis();
+    conectarScrollspy();
+    atualizarAtivo(estado.tela==="tecnicos"?"relatorios":estado.tela);
+  }
+
+  function agendarReforço(){
+    cancelAnimationFrame(estado.raf);
+    estado.raf=requestAnimationFrame(reforçarInterface);
+  }
+
+  function iniciar(){
+    document.documentElement.classList.add("js-caicavv-motion");
+    criarRevealObserver();
+    envolverRotas();
+    envolverSessão();
+    prepararNavegação();
+    document.addEventListener("keydown",fecharComEscape);
+    estado.reduzMovimento.addEventListener?.("change",()=>{criarRevealObserver();agendarReforço();});
+    window.addEventListener("resize",()=>{
+      if(innerWidth<=760) definirRecolhida(true);
+      else document.body.classList.toggle("caicavv-quick-open",!document.getElementById("caicavvQuickNav")?.classList.contains("is-collapsed")&&innerWidth>1180);
+      agendarReforço();
+    },{passive:true});
+    estado.mutationObserver=new MutationObserver(agendarReforço);
+    const app=document.getElementById("app");
+    if(app) estado.mutationObserver.observe(app,{childList:true,subtree:true,attributes:true,attributeFilter:["class","style"]});
+    agendarReforço();
+  }
+
+  if(document.readyState==="loading") document.addEventListener("DOMContentLoaded",iniciar,{once:true});
+  else iniciar();
+})();
+</script>
+
+</body>
+</html>
