@@ -23,9 +23,21 @@
             appId: "1:402044173505:web:300c6bca3116adc108a840"
         };
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos");
+        let db = null;
+        let DOC_ATENDIMENTOS = null;
+        try {
+            if (!window.firebase || !firebase.firestore) {
+                throw new Error("Firebase SDK não carregado.");
+            }
+            if (!firebase.apps.length) {
+                firebase.initializeApp(firebaseConfig);
+            }
+            db = firebase.firestore();
+            DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos");
+        } catch (erroFirebase) {
+            console.error("Falha ao inicializar Firebase:", erroFirebase);
+            window.__caicavvFirebaseInitError = erroFirebase;
+        }
     </script>
 
 <!-- ===== AJUSTE FINO: PEÃO NO RELATÓRIO + AGENDA DECORATIVA MAIOR ===== -->
@@ -1104,11 +1116,21 @@ body.caicavv-theme-changing *{
   overflow:hidden;
   contain:layout paint;
 }
-body.modo-app .caicavv-quick-nav.is-ready{
+body:not(.navegacao-rapida-ativa) .caicavv-quick-nav{
+  display:none!important;
+}
+body.modo-app.navegacao-rapida-ativa .caicavv-quick-nav.is-ready{
   opacity:1;
   visibility:visible;
   pointer-events:auto;
   animation:caicavvQuickEnter .32s cubic-bezier(.2,.8,.2,1) both,caicavvQuickFloat 5s ease-in-out .35s infinite;
+}
+body.modo-app.navegacao-rapida-ativa .app-shell .sidebar{
+  display:none!important;
+}
+body.modo-app.navegacao-rapida-ativa .app-shell .main{
+  margin-left:0!important;
+  width:100%!important;
 }
 .caicavv-quick-toggle{
   width:100%!important;
@@ -1299,7 +1321,7 @@ body.aparencia-noturna .caicavv-illustration-copy span{color:#b8c7e6}
     border-radius:18px;
     animation:none!important;
   }
-  body.modo-app .caicavv-quick-nav.is-ready{animation:caicavvQuickMobileEnter .25s ease both!important}
+  body.modo-app.navegacao-rapida-ativa .caicavv-quick-nav.is-ready{animation:caicavvQuickMobileEnter .25s ease both!important}
   .caicavv-quick-nav .caicavv-quick-toggle{width:42px!important;height:42px!important;padding:0!important;justify-content:center}
   .caicavv-quick-toggle-label{display:none}
   .caicavv-quick-nav:not(.is-collapsed){width:min(250px,calc(100vw - 28px));padding:9px}
@@ -1312,7 +1334,7 @@ body.aparencia-noturna .caicavv-illustration-copy span{color:#b8c7e6}
   @keyframes caicavvQuickMobileEnter{from{opacity:0;transform:translateY(16px) scale(.94)}to{opacity:1;transform:none}}
 }
 @media(prefers-reduced-motion:reduce){
-  body.modo-app .caicavv-quick-nav.is-ready{animation:none!important}
+  body.modo-app.navegacao-rapida-ativa .caicavv-quick-nav.is-ready{animation:none!important}
   .caicavv-quick-nav,.caicavv-quick-nav.is-ready,.caicavv-section-illustration,.caicavv-illustration-svg,
   .caicavv-reveal,.caicavv-quick-indicator,.caicavv-quick-link,.caicavv-quick-toggle,
   .app-shell .nav::after,.app-shell #menu button::after{
@@ -1670,6 +1692,9 @@ async function carregarSenhasFirebase(){
   if(senhasCarregadasFirebase) return;
 
   try{
+    if(window.__caicavvFirebaseInitError || !DOC_ATENDIMENTOS){
+      throw window.__caicavvFirebaseInitError || new Error("Documento do Firestore indisponível.");
+    }
     const snap = await DOC_ATENDIMENTOS.get();
 
     if(snap.exists){
@@ -1695,8 +1720,8 @@ async function carregarSenhasFirebase(){
     senhasCarregadasFirebase = true;
   }catch(e){
     console.error(e);
-    senhas = { ...senhasPadrao, ...senhas };
-    mostrarErro("Não foi possível carregar as senhas salvas. Usando senhas padrão temporariamente.");
+    mostrarErro("Não foi possível carregar as senhas salvas no Firebase. Verifique a conexão ou permissões do Firestore.");
+    throw e;
   }
 }
 
@@ -2143,41 +2168,57 @@ async function login(){
     }
 
     salvarSessao(u);
-    mostrarPainelComTransicao();
     aplicarTemaSalvo();
 
     montarMenu();
     carregarFiltrosAvancados();
     aplicarPermissoesNaTela();
     await carregar();
+    mostrarPainelComTransicao();
+
+    aplicarModoNavegacao();
   } else {
     mostrarErro("Senha ou usuário incorretos");
   }
 }
 
 (async function restaurarSessao(){
-  await carregarSenhasFirebase();
-  const u = lerSessao();
-  if(u && usuarios[u]){
-    tecnicoLogado = usuarios[u];
+  try{
+    await carregarSenhasFirebase();
+    const u = lerSessao();
+    if(u && usuarios[u]){
+      tecnicoLogado = usuarios[u];
 
-    if(tecnicoLogado.role === "tecnico"){
-      filtroAtual = tecnicoLogado.nome;
-    } else {
-      filtroAtual = "";
+      if(tecnicoLogado.role === "tecnico"){
+        filtroAtual = tecnicoLogado.nome;
+      } else {
+        filtroAtual = "";
+      }
+
+      aplicarTemaSalvo();
+
+      montarMenu();
+      carregarFiltrosAvancados();
+      aplicarPermissoesNaTela();
+      await carregar();
+      mostrarPainelComTransicao();
+
+      aplicarModoNavegacao();
     }
-
-    mostrarPainelComTransicao();
-    aplicarTemaSalvo();
-
-    montarMenu();
-    carregarFiltrosAvancados();
-    aplicarPermissoesNaTela();
-    await carregar();
+  }catch(e){
+    console.error(e);
+    tecnicoLogado = null;
+    limparSessao();
+    document.body.classList.remove("modo-app");
+    const login = document.getElementById("loginDiv");
+    const aplicativo = document.getElementById("app");
+    if(aplicativo) aplicativo.style.display = "none";
+    if(login) login.style.display = "flex";
   }
 })();
 
 function logout(){
+  aplicarModoNavegacao(true);
   limparSessao();
   location.reload();
 }
@@ -2207,20 +2248,20 @@ window.login = async function(){
       } else {
         filtroAtual = "";
       }
-
       salvarSessao(u);
-      if(botaoLogin){
-        botaoLogin.classList.remove("is-loading");
-        botaoLogin.classList.add("is-success");
-        botaoLogin.innerHTML = "<span>✓</span>Entrou";
-      }
-      mostrarPainelComTransicao();
       aplicarTemaSalvo();
 
       montarMenu();
       carregarFiltrosAvancados();
       aplicarPermissoesNaTela();
       await carregar();
+      if(botaoLogin){
+        botaoLogin.classList.remove("is-loading");
+        botaoLogin.classList.add("is-success");
+        botaoLogin.innerHTML = "<span>✓</span>Entrou";
+      }
+      mostrarPainelComTransicao();
+      aplicarModoNavegacao();
     } else {
       animarErroLogin();
       mostrarErro("Senha ou usuario incorretos");
@@ -2290,6 +2331,8 @@ function aplicarPermissoesNaTela(){
   const btnAbaPassada = document.getElementById("btnCriarAbaPassada");
   const podeCriarAbaPassada = typeof podeCriarAbaAgendamentosPassados === "function" ? podeCriarAbaAgendamentosPassados() : false;
   if(btnAbaPassada) btnAbaPassada.classList.toggle("hidden", !podeCriarAbaPassada || telaAtualCaicavv !== "agendamentos");
+  aplicarRotasNaBarraLateral();
+  aplicarModoNavegacao();
 
   if(telaAtualCaicavv === "entradas" && !podeVerEntradas){
     abrirTelaAgendamentos();
@@ -3000,6 +3043,7 @@ function baixarCSVRelatorio(yyyyMm){
 }
 
 function abrirRelatorioMensal(){
+  if(!podeAcessarTelaCaicavv("relatorio_mensal")){ mostrarErro("Acesso negado."); return; }
   prepararMesRelatorio();
   const mes = document.getElementById("mesRelatorio")?.value;
   const dados = dadosRelatorioMensal(mes);
@@ -3227,6 +3271,59 @@ function modoNoturnoAtivo(){
 function neonAtivo(){
   return localStorage.getItem(chavePreferencia("neon")) === "on";
 }
+function navegacaoRapidaAtiva(){
+  return localStorage.getItem(chavePreferencia("navegacao_rapida")) === "on";
+}
+function roleAtualCaicavv(){
+  return tecnicoLogado && tecnicoLogado.role ? String(tecnicoLogado.role).toLowerCase() : "";
+}
+function podeAcessarTelaCaicavv(tela){
+  const role = roleAtualCaicavv();
+  if(!role) return false;
+  if(tela === "agendamentos" || tela === "pacientes" || tela === "configuracoes") return true;
+  if(tela === "tecnicos") return role === "recepcao" || role === "coordenacao" || role === "adm";
+  if(tela === "entradas") return typeof podeAcessarEntradas === "function" ? podeAcessarEntradas() : role === "adm" || role === "coordenacao";
+  if(tela === "upload") return typeof podeAcessarUploadCAICAVV === "function" ? podeAcessarUploadCAICAVV() : role === "recepcao" || role === "coordenacao" || role === "adm";
+  if(tela === "relatorio_mensal") return role === "recepcao" || role === "coordenacao";
+  if(tela === "sair") return true;
+  return false;
+}
+function rotasDisponiveisCaicavv(){
+  const rotas = [];
+  if(podeAcessarTelaCaicavv("relatorio_mensal")) rotas.push({id:"relatorio_mensal", label:"Relatório mensal", tela:"relatorio_mensal", alvo:"lista"});
+  ["agendamentos","pacientes","tecnicos","entradas","configuracoes","upload"].forEach(tela => {
+    if(!podeAcessarTelaCaicavv(tela)) return;
+    const labels = {agendamentos:"Agendamentos", pacientes:"Pacientes", tecnicos:"Relatórios", entradas:"Entradas", configuracoes:"Configurações", upload:"Upload"};
+    const alvos = {agendamentos:"filtrosV6", pacientes:"lista", tecnicos:"lista", entradas:"lista", configuracoes:"lista", upload:"lista"};
+    rotas.push({id:tela === "tecnicos" ? "relatorios" : tela, label:labels[tela], tela, alvo:alvos[tela]});
+  });
+  rotas.push({id:"sair", label:"Sair", tela:"sair", alvo:""});
+  return rotas;
+}
+function aplicarRotasNaBarraLateral(){
+  document.querySelectorAll(".app-shell .nav[data-tela]").forEach(nav => {
+    nav.classList.toggle("hidden", !podeAcessarTelaCaicavv(nav.dataset.tela));
+  });
+  if(typeof atualizarNavUploadCAICAVV === "function") atualizarNavUploadCAICAVV();
+}
+function aplicarModoNavegacao(limpar){
+  const ativa = !limpar && !!tecnicoLogado && navegacaoRapidaAtiva();
+  document.body.classList.toggle("navegacao-rapida-ativa", ativa);
+  document.body.classList.toggle("navegacao-lateral-ativa", !ativa);
+  if(!ativa) document.body.classList.remove("caicavv-quick-open");
+  aplicarRotasNaBarraLateral();
+  const nav = document.getElementById("caicavvQuickNav");
+  if(nav){
+    nav.classList.toggle("is-ready", ativa && nav.classList.contains("is-ready"));
+    nav.setAttribute("aria-hidden", String(!ativa));
+  }
+  if(typeof window.caicavvReforcarNavegacaoRapida === "function") window.caicavvReforcarNavegacaoRapida();
+}
+function definirNavegacaoRapida(ativo){
+  localStorage.setItem(chavePreferencia("navegacao_rapida"), ativo ? "on" : "off");
+  aplicarModoNavegacao();
+  mostrarSucesso(ativo ? "Navegação rápida ativada para este login." : "Navegação rápida desativada para este login.");
+}
 function aplicarAparenciaVisualSalva(){
   document.body.classList.toggle("aparencia-noturna", modoNoturnoAtivo());
   document.body.classList.toggle("neon-ativo", neonAtivo());
@@ -3253,16 +3350,18 @@ function setTelaAtiva(nome){
   document.querySelectorAll(".app-shell .nav").forEach(nav=>nav.classList.toggle("active",nav.dataset.tela===nome));
 }
 function mostrarBlocosAgendamento(mostrar){["boasVindas","menu","relatorio","filtrosV6","formAtendimento","abasPassadasContainer","btnCriarAbaPassada"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("hidden",!mostrar);});}
-function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();}
-function abrirTelaTecnicos(){setTelaAtiva("tecnicos");mostrarBlocosAgendamento(false);const tecnicos=Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);const mesAtual=new Date().toISOString().slice(0,7);lista.innerHTML=`<div class="pagina-titulo">Relatório por técnico</div><div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div><div class="tecnico-relatorio-box"><label><b>Técnico</b></label><select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select><label><b>Mês</b></label><input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}"><button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button></div><div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;}
+function abrirTelaAgendamentos(){if(!podeAcessarTelaCaicavv("agendamentos")){mostrarErro("Acesso negado.");return;}setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();}
+function abrirTelaTecnicos(){if(!podeAcessarTelaCaicavv("tecnicos")){mostrarErro("Acesso negado.");return;}setTelaAtiva("tecnicos");mostrarBlocosAgendamento(false);const tecnicos=Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);const mesAtual=new Date().toISOString().slice(0,7);lista.innerHTML=`<div class="pagina-titulo">Relatório por técnico</div><div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div><div class="tecnico-relatorio-box"><label><b>Técnico</b></label><select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select><label><b>Mês</b></label><input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}"><button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button></div><div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;}
 function gerarRelatorioTecnicoNaTela(){const tecnico=document.getElementById("tecnicoRelatorioTela").value;const mes=document.getElementById("mesRelatorioTecnicoTela").value;const dados=atendimentos.filter(a=>a.tecnico===tecnico&&String(a.data||"").startsWith(mes));const total=dados.length;const ok=dados.filter(a=>a.status==="compareceu").length;const falta=dados.filter(a=>a.status==="faltou").length;const pendente=dados.filter(a=>!a.status||a.status==="agendado").length;const linhas=dados.sort((a,b)=>getDataHoraAtendimento(a).localeCompare(getDataHoraAtendimento(b))).map(a=>`<div class="paciente-card"><strong>📁 Pasta ${escapeHTML(a.pasta)} · ${escapeHTML(formatarDataBR(a.data))}</strong><span>${escapeHTML(a.status||"agendado")} · ${escapeHTML(a.descricao||"Sem descrição")}</span></div>`).join("");document.getElementById("resultadoTecnicoTela").innerHTML=`<div class="relatorio-card"><div class="rel-icone">👥</div><div><span class="rel-nome">${escapeHTML(tecnico)}</span><br><span class="rel-metrica">Total: <b>${total}</b></span><span class="rel-metrica ok">Compareceu: <b>${ok}</b></span><span class="rel-metrica erro">Faltou: <b>${falta}</b></span><span class="rel-metrica">Pendente: <b>${pendente}</b></span></div></div><div class="pacientes-grid" style="margin-top:12px">${linhas||'<div class="paciente-card"><strong>Nenhum atendimento encontrado.</strong></div>'}</div>`;}
 function abrirTelaConfiguracoes(){
+  if(!podeAcessarTelaCaicavv("configuracoes")){mostrarErro("Acesso negado.");return;}
   setTelaAtiva("configuracoes");
   mostrarBlocosAgendamento(false);
   const temaAtual = localStorage.getItem(chavePreferencia("tema")) || "azul";
   const lembrete = lembreteAtivo();
   const modoNoturno = modoNoturnoAtivo();
   const neonLigado = neonAtivo();
+  const navRapidaLigada = navegacaoRapidaAtiva();
   const nomeTema = nomesTemasCaicavv[temaAtual] || "Azul";
   const adminSenhas = podeGerenciarSenhas();
 
@@ -3308,6 +3407,14 @@ function abrirTelaConfiguracoes(){
           <p class="pagina-sub">Quando ligado, o sistema destaca atendimentos próximos do horário. Essa configuração também fica só neste login.</p>
         </div>
         <input type="checkbox" id="checkLembrete" ${lembrete?"checked":""} onchange="definirLembrete(this.checked)">
+      </div>
+
+      <div class="config-card switch-row">
+        <div>
+          <h3>Navegação rápida</h3>
+          <p class="pagina-sub">Substitui a barra lateral esquerda por uma navegação flutuante compacta.</p>
+        </div>
+        <input type="checkbox" id="checkNavegacaoRapida" ${navRapidaLigada?"checked":""} onchange="definirNavegacaoRapida(this.checked)">
       </div>
 
       <div class="config-card config-senha-card">
@@ -3382,6 +3489,11 @@ function contarPacientes(){
 }
 
 function salvarAtendimentosFirebase(){
+  if(window.__caicavvFirebaseInitError || !DOC_ATENDIMENTOS){
+    const erro = window.__caicavvFirebaseInitError || new Error("Documento do Firestore indisponível.");
+    mostrarErro("Firebase indisponível. A alteração não foi salva.");
+    return Promise.reject(erro);
+  }
   return DOC_ATENDIMENTOS.set({
     itens: atendimentos,
     logs: logsAlteracoes,
@@ -3434,6 +3546,9 @@ async function salvarCadastrosFirebase(){
 
 async function carregarAtendimentosFirebase(){
   try{
+    if(window.__caicavvFirebaseInitError || !DOC_ATENDIMENTOS){
+      throw window.__caicavvFirebaseInitError || new Error("Documento do Firestore indisponível.");
+    }
     const snap = await DOC_ATENDIMENTOS.get();
     if(snap.exists){
       const dados = snap.data() || {};
@@ -3475,9 +3590,8 @@ async function carregarAtendimentosFirebase(){
     }
   }catch(e){
     console.error(e);
-    atendimentos = [];
-    logsAlteracoes = [];
-    mostrarErro("Não foi possível carregar os dados do Firebase.");
+    mostrarErro("Não foi possível carregar os dados do Firebase. Nada local foi usado como substituto.");
+    throw e;
   }
 }
 
@@ -3502,6 +3616,7 @@ function montarCardPaciente(pasta, nome, index){
 }
 
 function abrirTelaPacientes(){
+  if(!podeAcessarTelaCaicavv("pacientes")){ mostrarErro("Acesso negado."); return; }
   setTelaAtiva("pacientes");
   mostrarBlocosAgendamento(false);
 
@@ -4069,6 +4184,7 @@ function setTelaAtivaEntradasCAICAVV(){
 }
 
 function abrirTelaEntradas(){
+  if(!podeAcessarTelaCaicavv("entradas")){ mostrarErro("Acesso negado."); return; }
   if(typeof podeAcessarEntradas === "function" && !podeAcessarEntradas()){
     if(typeof mostrarErro === "function") mostrarErro("A aba Entradas é liberada apenas para ADM e Coordenação.");
     return;
@@ -7860,26 +7976,34 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
     if(window.__caicavvEntradasFirebaseWrapped) return;
     window.__caicavvEntradasFirebaseWrapped = true;
     var salvarOriginal = window.salvarEntradasManuaisCAICAVV;
-    window.salvarEntradasManuaisCAICAVV = function(){
-      if(typeof salvarOriginal === "function") salvarOriginal.apply(this, arguments);
+    window.salvarEntradasManuaisCAICAVV = async function(){
+      if(typeof salvarOriginal === "function") await salvarOriginal.apply(this, arguments);
       else localStorage.setItem("entradasManuaisCAICAVV", JSON.stringify(entradasManuaisCAICAVV || []));
       try{
-        if(typeof DOC_ATENDIMENTOS !== "undefined") DOC_ATENDIMENTOS.set({ entradasManuaisCAICAVV: entradasManuaisCAICAVV || [], entradasAtualizadasEm:new Date().toISOString() }, { merge:true });
-      }catch(e){ console.warn("Entradas salvas localmente; Firebase não aceitou agora.", e); }
-    };
-    try{
-      if(typeof DOC_ATENDIMENTOS !== "undefined") DOC_ATENDIMENTOS.get().then(function(snap){
-        var dados = snap.exists ? (snap.data() || {}) : {};
-        if(Array.isArray(dados.entradasManuaisCAICAVV) && dados.entradasManuaisCAICAVV.length){
-          var mapa = new Map((entradasManuaisCAICAVV || []).map(function(e){ return [[e.pasta||"", e.nome||"", e.data||""].join("||"), e]; }));
-          dados.entradasManuaisCAICAVV.forEach(function(e){ mapa.set([e.pasta||"", e.nome||"", e.data||""].join("||"), e); });
-          entradasManuaisCAICAVV = Array.from(mapa.values());
-          localStorage.setItem("entradasManuaisCAICAVV", JSON.stringify(entradasManuaisCAICAVV));
+        if(typeof DOC_ATENDIMENTOS !== "undefined" && DOC_ATENDIMENTOS){
+          await DOC_ATENDIMENTOS.set({ entradasManuaisCAICAVV: entradasManuaisCAICAVV || [], entradasAtualizadasEm:new Date().toISOString() }, { merge:true });
         }
-      });
-    }catch(e){}
+      }catch(e){
+        console.error(e);
+        if(typeof mostrarErro === "function") mostrarErro("Não foi possível salvar as entradas no Firebase.");
+        throw e;
+      }
+    };
+    (async function(){
+      try{
+        if(typeof DOC_ATENDIMENTOS !== "undefined" && DOC_ATENDIMENTOS){
+          var snap = await DOC_ATENDIMENTOS.get();
+          var dados = snap.exists ? (snap.data() || {}) : {};
+          if(Array.isArray(dados.entradasManuaisCAICAVV) && dados.entradasManuaisCAICAVV.length){
+            var mapa = new Map((entradasManuaisCAICAVV || []).map(function(e){ return [[e.pasta||"", e.nome||"", e.data||""].join("||"), e]; }));
+            dados.entradasManuaisCAICAVV.forEach(function(e){ mapa.set([e.pasta||"", e.nome||"", e.data||""].join("||"), e); });
+            entradasManuaisCAICAVV = Array.from(mapa.values());
+            localStorage.setItem("entradasManuaisCAICAVV", JSON.stringify(entradasManuaisCAICAVV));
+          }
+        }
+      }catch(e){ console.error(e); }
+    })();
   }
-
   var aplicarPermissoesOriginalUpload = window.aplicarPermissoesNaTela;
   if(typeof aplicarPermissoesOriginalUpload === "function" && !window.__caicavvUploadPermissaoWrapped){
     window.__caicavvUploadPermissaoWrapped = true;
@@ -8236,18 +8360,17 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
     navSignature: ""
   };
 
-  const icones = {
-    inicio:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5M5.5 10.5V20h13v-9.5M9.5 20v-6h5v6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    agendamentos:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 3v4m10-4v4M3 10h18m-14 4h3m4 0h3m-10 3h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  const icones = {    agendamentos:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7 3v4m10-4v4M3 10h18m-14 4h3m4 0h3m-10 3h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     pacientes:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 21c.6-4.1 3.1-6.5 7.5-6.5s6.9 2.4 7.5 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
     entradas:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6zM15 3v5h5M9 13h7m-7 4h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     relatorios:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10m5 10V4m6 16v-7m5 7V7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
     configuracoes:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.37.27.73.6 1 .99.25.35.4.75.4 1.1V11h.2v4h-.09a1.7 1.7 0 0 0-1.51 0Z" fill="none" stroke="currentColor" stroke-width="1.45" stroke-linecap="round" stroke-linejoin="round"/></svg>',
-    upload:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    upload:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L7.5 8.5M12 4l4.5 4.5M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    relatorio_mensal:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h14v16H5zM8 8h8M8 12h8M8 16h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    sair:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 6H6v12h4m4-9 3 3-3 3m-7-3h10" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
   };
 
   const rotas = [
-    {id:"inicio",label:"Início",tela:null,alvo:"boasVindas",sempre:true},
     {id:"agendamentos",label:"Agendamentos",tela:"agendamentos",alvo:"filtrosV6"},
     {id:"pacientes",label:"Pacientes",tela:"pacientes",alvo:"lista"},
     {id:"entradas",label:"Entradas",tela:"entradas",alvo:"lista"},
@@ -8286,6 +8409,9 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
     return typeof window.telaAtualCaicavv === "string" ? window.telaAtualCaicavv : "agendamentos";
   }
   function rotaPermitida(rota){
+    if(rota.tela === "sair") return true;
+    if(rota.tela === "relatorio_mensal") return typeof window.podeAcessarTelaCaicavv === "function" ? window.podeAcessarTelaCaicavv("relatorio_mensal") : false;
+    if(typeof window.rotasDisponiveisCaicavv === "function") return true;
     if(rota.sempre) return true;
     const seletor = rota.tela === "upload" ? '.app-shell .nav[data-tela="upload"],#navUpload' : `.app-shell .nav[data-tela="${rota.tela}"]`;
     const nav = document.querySelector(seletor);
@@ -8297,7 +8423,8 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
     const nav = document.getElementById("caicavvQuickNav");
     const lista = document.getElementById("caicavvQuickList");
     if(!nav || !lista || !appVisível()) return;
-    const permitidas = rotas.filter(rotaPermitida);
+    const fonteRotas = typeof window.rotasDisponiveisCaicavv === "function" ? window.rotasDisponiveisCaicavv() : rotas;
+    const permitidas = fonteRotas.filter(rotaPermitida);
     const assinatura = permitidas.map(rota=>rota.id).join("|");
     if(assinatura === estado.navSignature && estado.links.size){
       nav.classList.add("is-ready");
@@ -8313,7 +8440,7 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
       botão.type = "button";
       botão.className = "caicavv-quick-link";
       botão.dataset.quickRoute = rota.id;
-      botão.innerHTML = (icones[rota.id] || icones.inicio) + `<span>${rota.label}</span>`;
+      botão.innerHTML = (icones[rota.id] || icones.agendamentos) + `<span>${rota.label}</span>`;
       botão.addEventListener("click",()=>navegarRota(rota));
       lista.appendChild(botão);
       estado.links.set(rota.id,botão);
@@ -8325,7 +8452,7 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
 
   function atualizarAtivo(id){
     if(id === "tecnicos") id = "relatorios";
-    if(!estado.links.has(id)) id = estado.links.has("agendamentos") ? "agendamentos" : "inicio";
+    if(!estado.links.has(id)) id = estado.links.has("agendamentos") ? "agendamentos" : Array.from(estado.links.keys())[0];
     let ativo = null;
     estado.links.forEach((botão,chave)=>{
       const atual = chave === id;
@@ -8349,9 +8476,14 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
   }
 
   function navegarRota(rota){
-    if(rota.id === "inicio"){
-      atualizarAtivo("inicio");
-      rolarPara(rota.alvo);
+
+    if(rota.tela === "sair"){
+      if(typeof window.logout === "function") window.logout();
+      return;
+    }
+    if(rota.tela === "relatorio_mensal"){
+      atualizarAtivo("relatorio_mensal");
+      if(typeof window.abrirRelatorioMensal === "function") window.abrirRelatorioMensal();
       return;
     }
     const função = {
@@ -8657,6 +8789,8 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
     cancelAnimationFrame(estado.raf);
     estado.raf=requestAnimationFrame(reforçarInterface);
   }
+
+  window.caicavvReforcarNavegacaoRapida = agendarReforço;
 
   function iniciar(){
     document.documentElement.classList.add("js-caicavv-motion");
