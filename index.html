@@ -178,6 +178,352 @@ body.modo-app.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
 }
 </style>
 
+
+<style id="caicavv-lembretes-reagendamento-style">
+.lembretes-reagendamento{
+  margin:14px 0 0;
+  padding:16px 18px;
+  border:1px solid #cfe0ff;
+  border-radius:16px;
+  background:linear-gradient(180deg,#f7fbff 0%,#eef5ff 100%);
+  box-shadow:0 12px 30px rgba(37,99,235,.08);
+}
+.lembretes-reagendamento.hidden{display:none!important}
+.lembretes-reagendamento__topo{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:12px;
+}
+.lembretes-reagendamento__titulo{
+  display:flex;
+  align-items:center;
+  gap:12px;
+  min-width:0;
+}
+.lembretes-reagendamento__icone{
+  width:42px;
+  height:42px;
+  border-radius:12px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  flex:0 0 42px;
+  background:#e1ebff;
+  color:#2563eb;
+  font-size:22px;
+}
+.lembretes-reagendamento__titulo h3{
+  margin:0;
+  color:#071943;
+  font-size:18px;
+  line-height:1.2;
+}
+.lembretes-reagendamento__titulo p{
+  margin:3px 0 0;
+  color:#52699d;
+  font-size:13px;
+  line-height:1.35;
+}
+.lembretes-reagendamento__contador{
+  display:inline-flex;
+  min-width:34px;
+  height:34px;
+  padding:0 10px;
+  border-radius:999px;
+  align-items:center;
+  justify-content:center;
+  background:#2563eb;
+  color:#fff;
+  font-size:14px;
+  font-weight:900;
+}
+.lembretes-reagendamento__lista{
+  display:grid;
+  gap:10px;
+}
+.lembrete-reagendamento-card{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:14px;
+  align-items:center;
+  padding:12px 14px;
+  border:1px solid #dbe7f7;
+  border-radius:13px;
+  background:#fff;
+}
+.lembrete-reagendamento-card__nome{
+  margin:0;
+  color:#071943;
+  font-size:15px;
+  font-weight:900;
+  line-height:1.3;
+}
+.lembrete-reagendamento-card__linha{
+  display:flex;
+  flex-wrap:wrap;
+  gap:7px 12px;
+  margin-top:5px;
+  color:#52699d;
+  font-size:13px;
+  font-weight:700;
+}
+.lembrete-reagendamento-card__tipo{
+  display:inline-flex;
+  align-items:center;
+  width:max-content;
+  margin-top:7px;
+  padding:4px 8px;
+  border-radius:999px;
+  background:#eef2ff;
+  color:#4338ca;
+  font-size:11px;
+  font-weight:900;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.lembrete-reagendamento-card__dias{
+  min-width:92px;
+  text-align:center;
+  padding:9px 10px;
+  border-radius:11px;
+  background:#eff6ff;
+  border:1px solid #dbeafe;
+  color:#1d4ed8;
+  font-size:13px;
+  font-weight:900;
+}
+.lembrete-reagendamento-card__dias.hoje{
+  background:#fff7ed;
+  border-color:#fed7aa;
+  color:#c2410c;
+}
+@media(max-width:720px){
+  .lembretes-reagendamento{padding:13px}
+  .lembrete-reagendamento-card{grid-template-columns:1fr}
+  .lembrete-reagendamento-card__dias{justify-self:start;min-width:0}
+}
+body.modo-app.aparencia-noturna .lembretes-reagendamento{
+  background:rgba(15,23,42,.84)!important;
+  border-color:rgba(96,165,250,.28)!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.20)!important;
+}
+body.modo-app.aparencia-noturna .lembretes-reagendamento__titulo h3,
+body.modo-app.aparencia-noturna .lembrete-reagendamento-card__nome{
+  color:#e5edff!important;
+}
+body.modo-app.aparencia-noturna .lembretes-reagendamento__titulo p,
+body.modo-app.aparencia-noturna .lembrete-reagendamento-card__linha{
+  color:#b8c6df!important;
+}
+body.modo-app.aparencia-noturna .lembrete-reagendamento-card{
+  background:rgba(15,23,42,.92)!important;
+  border-color:rgba(148,163,184,.20)!important;
+}
+body.modo-app.aparencia-noturna .lembretes-reagendamento__icone{
+  background:rgba(37,99,235,.20)!important;
+}
+</style>
+
+
+<script id="caicavv-lembretes-reagendamento-script">
+(function(){
+  "use strict";
+
+  const LIMITE_DIAS_LEMBRETE_REAGENDAMENTO = 7;
+  const MILISSEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
+  let intervaloLembretesReagendamento = null;
+
+  function partesDataCalendarioCAICAVV(dataISO){
+    const partes = String(dataISO || "").split("-");
+    if(partes.length !== 3) return null;
+
+    const ano = Number(partes[0]);
+    const mes = Number(partes[1]);
+    const dia = Number(partes[2]);
+
+    if(!Number.isInteger(ano) || !Number.isInteger(mes) || !Number.isInteger(dia)) return null;
+    if(ano < 1900 || mes < 1 || mes > 12 || dia < 1 || dia > 31) return null;
+
+    const dataUTC = new Date(Date.UTC(ano, mes - 1, dia));
+    if(
+      dataUTC.getUTCFullYear() !== ano ||
+      dataUTC.getUTCMonth() !== mes - 1 ||
+      dataUTC.getUTCDate() !== dia
+    ) return null;
+
+    return { ano, mes, dia };
+  }
+
+  function hojeCalendarioUTC(){
+    const agora = new Date();
+    return Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate());
+  }
+
+  function diasAteAtendimentoCAICAVV(dataISO){
+    const partes = partesDataCalendarioCAICAVV(dataISO);
+    if(!partes) return null;
+    const alvoUTC = Date.UTC(partes.ano, partes.mes - 1, partes.dia);
+    return Math.round((alvoUTC - hojeCalendarioUTC()) / MILISSEGUNDOS_POR_DIA);
+  }
+
+  function atendimentoValidoParaLembreteCAICAVV(item){
+    if(!item || !item.id || !item.data) return false;
+
+    // Só atendimentos ainda agendados geram lembrete. Assim, compareceu,
+    // faltou, aguardando, cancelado ou qualquer outro estado finalizado não reaparece.
+    if(String(item.status || "agendado") !== "agendado") return false;
+
+    // Mantém o mesmo alcance da agenda atual: registros importados/arquivados
+    // não são transformados em novos avisos na área principal do técnico.
+    if(String(item.origem || "") === "upload" || String(item.tipo || "") === "importado") return false;
+    if(typeof window.atendimentoEstaEmAbaPassada === "function" && window.atendimentoEstaEmAbaPassada(item)) return false;
+
+    const dias = diasAteAtendimentoCAICAVV(item.data);
+    return Number.isInteger(dias) && dias >= 0 && dias <= LIMITE_DIAS_LEMBRETE_REAGENDAMENTO;
+  }
+
+  function obterLembretesReagendamentoCAICAVV(){
+    if(typeof atendimentos === "undefined" || !Array.isArray(atendimentos)) return [];
+    if(typeof tecnicoLogado === "undefined" || !tecnicoLogado) return [];
+
+    const eTecnico = tecnicoLogado.role === "tecnico";
+    const eJohanna = tecnicoLogado.role === "adm" && String(tecnicoLogado.nome || "").trim().toLowerCase() === "johanna";
+
+    // Técnicos veem somente seus próprios atendimentos.
+    // Johanna, por ser a ADM responsável por essa visão, vê todos os técnicos.
+    // Outros perfis administrativos mantêm a lógica anterior: não recebem esta área.
+    if(!eTecnico && !eJohanna) return [];
+
+    const idsVistos = new Set();
+
+    return atendimentos
+      .filter(atendimentoValidoParaLembreteCAICAVV)
+      .filter(item => !eTecnico || String(item.tecnico || "") === String(tecnicoLogado.nome || ""))
+      .filter(item => {
+        const chave = String(item.id);
+        if(idsVistos.has(chave)) return false;
+        idsVistos.add(chave);
+        return true;
+      })
+      .map(item => ({
+        item,
+        dias: diasAteAtendimentoCAICAVV(item.data)
+      }))
+      .sort((a,b) => {
+        if(a.dias !== b.dias) return a.dias - b.dias;
+        return String(a.item.hora || "").localeCompare(String(b.item.hora || ""));
+      });
+  }
+
+  function textoDiasFaltamCAICAVV(dias){
+    if(dias === 0) return "Faltam 0 dias • hoje";
+    if(dias === 1) return "Falta 1 dia";
+    return `Faltam ${dias} dias`;
+  }
+
+  function renderLembretesReagendamentoCAICAVV(){
+    const container = document.getElementById("lembretesReagendamento");
+    if(!container) return;
+
+    const visivelNaTela = typeof telaAtualCaicavv === "undefined" || telaAtualCaicavv === "agendamentos";
+    const usuarioAtual = typeof tecnicoLogado !== "undefined" && tecnicoLogado ? tecnicoLogado : null;
+    const eTecnico = !!usuarioAtual && usuarioAtual.role === "tecnico";
+    const eJohanna = !!usuarioAtual && usuarioAtual.role === "adm" &&
+      String(usuarioAtual.nome || "").trim().toLowerCase() === "johanna";
+
+    if(!visivelNaTela || (!eTecnico && !eJohanna)){
+      container.innerHTML = "";
+      container.classList.add("hidden");
+      return;
+    }
+
+    const lembretes = obterLembretesReagendamentoCAICAVV();
+    if(!lembretes.length){
+      container.innerHTML = "";
+      container.classList.add("hidden");
+      return;
+    }
+
+    const itensHTML = lembretes.map(({item, dias}) => {
+      const foiReagendado = item.reagendado === true;
+      const tipo = foiReagendado ? "Lembrete de reagendamento" : "Atendimento próximo";
+      const detalhe = foiReagendado
+        ? "Este atendimento foi reagendado e a nova data está próxima."
+        : "Este atendimento está dentro da janela de 7 dias.";
+      const classeDias = dias === 0 ? "hoje" : "";
+
+      return `
+        <article class="lembrete-reagendamento-card">
+          <div>
+            <div class="lembrete-reagendamento-card__nome">${escapeHTML(item.nome || `Pasta ${item.pasta || "—"}`)}</div>
+            <div class="lembrete-reagendamento-card__linha">
+              <span>👤 Técnico: ${escapeHTML(item.tecnico || "—")}</span>
+              <span>📁 Pasta ${escapeHTML(item.pasta || "—")}</span>
+              <span>📅 ${escapeHTML(formatarDataBR(item.data))}</span>
+              <span>🕒 ${escapeHTML(item.hora || "—")}</span>
+            </div>
+            <div class="lembrete-reagendamento-card__tipo">🔔 ${escapeHTML(tipo)}</div>
+            <div class="lembrete-reagendamento-card__linha" style="margin-top:6px;font-weight:600">${escapeHTML(detalhe)}</div>
+          </div>
+          <div class="lembrete-reagendamento-card__dias ${classeDias}">${escapeHTML(textoDiasFaltamCAICAVV(dias))}</div>
+        </article>`;
+    }).join("");
+
+    container.innerHTML = `
+      <div class="lembretes-reagendamento__topo">
+        <div class="lembretes-reagendamento__titulo">
+          <span class="lembretes-reagendamento__icone" aria-hidden="true">🔔</span>
+          <div>
+            <h3>Lembretes de atendimento</h3>
+            <p>${eJohanna
+              ? "Atendimentos de todos os técnicos entre hoje e os próximos 7 dias."
+              : "Atendimentos do seu cadastro entre hoje e os próximos 7 dias."}</p>
+          </div>
+        </div>
+        <span class="lembretes-reagendamento__contador" aria-label="Quantidade de lembretes">${lembretes.length}</span>
+      </div>
+      <div class="lembretes-reagendamento__lista">${itensHTML}</div>`;
+    container.classList.remove("hidden");
+  }
+
+  window.renderLembretesReagendamentoCAICAVV = renderLembretesReagendamentoCAICAVV;
+  window.obterLembretesReagendamentoCAICAVV = obterLembretesReagendamentoCAICAVV;
+  window.diasAteAtendimentoCAICAVV = diasAteAtendimentoCAICAVV;
+
+  function envolverRenderCAICAVV(){
+    if(window.__caicavvLembretesRenderWrapped) return;
+    if(typeof window.render !== "function") return;
+
+    const renderOriginal = window.render;
+    window.render = function(){
+      const retorno = renderOriginal.apply(this, arguments);
+      renderLembretesReagendamentoCAICAVV();
+      return retorno;
+    };
+    window.__caicavvLembretesRenderWrapped = true;
+  }
+
+  function iniciarMonitorCAICAVV(){
+    envolverRenderCAICAVV();
+    renderLembretesReagendamentoCAICAVV();
+
+    if(intervaloLembretesReagendamento) return;
+    intervaloLembretesReagendamento = window.setInterval(function(){
+      envolverRenderCAICAVV();
+      renderLembretesReagendamentoCAICAVV();
+    }, 60000);
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", iniciarMonitorCAICAVV, { once:true });
+  } else {
+    iniciarMonitorCAICAVV();
+  }
+})();
+</script>
+
 </body>
 </html>
 
@@ -973,6 +1319,16 @@ body.modo-app{
 
 
 
+<style id="caicavv-identificacao-style">
+.caicavv-identificacao-opcoes{display:grid;grid-template-columns:1fr;gap:11px;margin:18px 0 10px}
+.caicavv-identificacao-opcao{width:100%;min-height:52px;padding:13px 16px;border:1px solid rgba(37,99,235,.18);border-radius:13px;background:linear-gradient(180deg,#fff 0%,#f4f8ff 100%);color:#071943;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 7px 18px rgba(37,99,235,.08);transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.caicavv-identificacao-opcao:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(37,99,235,.13);border-color:var(--tema,#2563eb)}
+.caicavv-identificacao-opcao.perfil{background:linear-gradient(180deg,#f8fbff 0%,#eaf2ff 100%);color:#1d4ed8;font-size:17px;min-height:58px}
+.caicavv-identificacao-voltar{margin-top:6px!important;background:transparent!important;color:var(--tema,#2563eb)!important;border:1px solid #cfe0ff!important;box-shadow:none!important}
+.caicavv-identificacao-voltar:hover{background:#eff6ff!important}
+@media(min-width:520px){.caicavv-identificacao-opcoes{grid-template-columns:1fr 1fr}.caicavv-identificacao-opcao:first-child:last-child{grid-column:1/-1}}
+</style>
+
 <div id="loginDiv" class="login-screen">
   <div class="background">
     <div class="big-flower-bg"></div>
@@ -985,48 +1341,27 @@ body.modo-app{
   </div>
 
   <main class="login-area">
-    <section class="login-card">
+    <section class="login-card caicavv-identificacao-card">
       <div class="flower-logo">
-        <span class="petal p1"></span>
-        <span class="petal p2"></span>
-        <span class="petal p3"></span>
-        <span class="petal p4"></span>
-        <span class="petal p5"></span>
-        <span class="petal p6"></span>
-        <span class="petal p7"></span>
-        <span class="petal p8"></span>
+        <span class="petal p1"></span><span class="petal p2"></span>
+        <span class="petal p3"></span><span class="petal p4"></span>
+        <span class="petal p5"></span><span class="petal p6"></span>
+        <span class="petal p7"></span><span class="petal p8"></span>
         <span class="flower-center"></span>
       </div>
 
       <h1>CAICAVV</h1>
+      <div class="system-row"><span></span><p>SISTEMA INTERNO</p><span></span></div>
 
-      <div class="system-row">
-        <span></span>
-        <p>SISTEMA INTERNO</p>
-        <span></span>
-      </div>
+      <h2 id="identificacaoTitulo">Como você deseja entrar?</h2>
+      <p id="identificacaoDescricao" class="description">Selecione uma opção para continuar.</p>
 
-      <h2>Acesso ao Sistema</h2>
-      <p class="description">Informe suas credenciais para continuar</p>
+      <div id="identificacaoOpcoes" class="caicavv-identificacao-opcoes"></div>
 
-      <div class="input-group">
-        <div class="icon-box">👤</div>
-        <input id="user" type="text" placeholder="Usuário" autocomplete="username">
-        <span class="side-icon">♙</span>
-      </div>
+      <button type="button" id="btnVoltarIdentificacao" class="caicavv-identificacao-voltar hidden"
+              onclick="voltarIdentificacao()">← Voltar</button>
 
-      <div class="input-group">
-        <div class="icon-box">🔒</div>
-        <input id="pass" type="password" placeholder="Senha" autocomplete="current-password">
-        <button type="button" class="btn-olho login-eye" onclick="alternarSenha()" aria-label="Mostrar ou esconder senha">◉</button>
-      </div>
-
-      <button type="button" class="login-button" onclick="login()">
-        <span>↪</span>
-        Entrar
-      </button>
-
-      <p class="secure">🛡️ Sistema restrito para técnicos autorizados</p>
+      <p class="secure">🛡️ Selecione seu perfil para entrar no sistema</p>
 
       <div class="footer">
         <p>CAICAVV • Sistema Interno</p>
@@ -1035,7 +1370,6 @@ body.modo-app{
     </section>
   </main>
 </div>
-
 
 <div id="app" class="app-shell" style="display:none">
   <aside class="sidebar">
@@ -1070,7 +1404,7 @@ body.modo-app{
 
     <div class="logout" onclick="logout()">
       <div>↩</div>
-      <span>Sair</span>
+      <span>Trocar usuário</span>
     </div>
   </aside>
 
@@ -1093,6 +1427,9 @@ body.modo-app{
 
     <section class="content">
       <div id="boasVindas" class="user-card"></div>
+
+      <section id="lembretesReagendamento" class="lembretes-reagendamento hidden" aria-live="polite" aria-label="Lembretes de reagendamento"></section>
+
       <div id="menu" class="tabs"></div>
       <div id="relatorio" class="summary-card"></div>
 
@@ -1472,9 +1809,6 @@ function textoSeguro(valor, max=120){
 }
 
 function mostrarErro(msg){ mostrarToast(msg, "erro"); }
-function salvarSessao(login){ sessionStorage.setItem("caicavv_user", login); }
-function lerSessao(){ return sessionStorage.getItem("caicavv_user"); }
-function limparSessao(){ sessionStorage.removeItem("caicavv_user"); }
 
 gerarHorarios();
 gerarHorariosEdicao();
@@ -1536,86 +1870,120 @@ function confirmarPasta(){
   avisoCadastro.textContent = "Cadastro encontrado com sucesso.";
 }
 
-function alternarSenha(){
-  const campo = document.getElementById("pass");
-  if(!campo) return;
-  campo.type = campo.type === "password" ? "text" : "password";
+const CHAVE_USUARIO_CAICAVV = "caicavv_usuario_atual";
+
+function obterIdentidadesCAICAVV(){
+  return Object.entries(usuarios).map(([login, dados]) => ({
+    login,
+    nome: dados.nome,
+    role: dados.role
+  }));
 }
 
-function ativarEnterLogin(){
-  [user, pass].forEach(campo => {
-    campo.addEventListener("keydown", (event) => {
-      if(event.key === "Enter") {
-        event.preventDefault();
-        login();
-      }
-    });
-  });
+function salvarSessao(login){
+  // Apenas um identificador válido do catálogo local é persistido.
+  // As permissões nunca são lidas do localStorage: são derivadas de usuarios.
+  if(usuarios[login]){
+    localStorage.setItem(CHAVE_USUARIO_CAICAVV, login);
+  }
 }
 
-ativarEnterLogin();
+function lerSessao(){
+  const login = localStorage.getItem(CHAVE_USUARIO_CAICAVV);
+  return login && usuarios[login] ? login : null;
+}
 
-async function login(){
-  let u = String(user.value || "").trim().toLowerCase();
-  let p = String(pass.value || "");
+function limparSessao(){
+  localStorage.removeItem(CHAVE_USUARIO_CAICAVV);
+  // Remove também a sessão antiga baseada em senha, sem apagar nenhum dado do Firebase.
+  try{ sessionStorage.removeItem("caicavv_user"); }catch(e){}
+}
 
-  await carregarSenhasFirebase();
+function prepararTelaIdentificacao(){
+  const titulo = document.getElementById("identificacaoTitulo");
+  const descricao = document.getElementById("identificacaoDescricao");
+  const opcoes = document.getElementById("identificacaoOpcoes");
+  const voltar = document.getElementById("btnVoltarIdentificacao");
+  if(!titulo || !descricao || !opcoes || !voltar) return;
 
-  if(!u || !p){
-    mostrarErro("Preencha usuário e senha.");
+  titulo.textContent = "Como você deseja entrar?";
+  descricao.textContent = "Selecione Técnico ou Adm.";
+  opcoes.innerHTML = `
+    <button type="button" class="caicavv-identificacao-opcao perfil" onclick="mostrarIdentificacoes('tecnico')">👤 Técnico</button>
+    <button type="button" class="caicavv-identificacao-opcao perfil" onclick="mostrarIdentificacoes('adm')">🛡️ Adm</button>`;
+  voltar.classList.add("hidden");
+}
+
+function mostrarIdentificacoes(tipo){
+  const titulo = document.getElementById("identificacaoTitulo");
+  const descricao = document.getElementById("identificacaoDescricao");
+  const opcoes = document.getElementById("identificacaoOpcoes");
+  const voltar = document.getElementById("btnVoltarIdentificacao");
+  if(!titulo || !descricao || !opcoes || !voltar) return;
+
+  const identidades = obterIdentidadesCAICAVV().filter(item =>
+    tipo === "tecnico" ? item.role === "tecnico" : ["coordenacao","adm","recepcao"].includes(item.role)
+  );
+
+  titulo.textContent = tipo === "tecnico" ? "Técnico" : "Adm";
+  descricao.textContent = tipo === "tecnico"
+    ? "Selecione o técnico para continuar."
+    : "Selecione a função administrativa para continuar.";
+
+  opcoes.innerHTML = identidades.map(item => `
+    <button type="button" class="caicavv-identificacao-opcao"
+      onclick="entrarComo('${escapeHTML(item.login)}')">${escapeHTML(item.nome)}</button>
+  `).join("");
+  voltar.classList.remove("hidden");
+}
+
+async function entrarComo(login){
+  const identidade = usuarios[login];
+  if(!identidade || !permissoes[identidade.role]){
+    mostrarErro("Identificação inválida.");
+    limparSessao();
+    prepararTelaIdentificacao();
     return;
   }
 
-  if(usuarios[u] && senhas[u] === p){
-    tecnicoLogado = usuarios[u];
+  // A seleção é feita a partir do catálogo existente; o localStorage só memoriza o identificador.
+  salvarSessao(login);
+  tecnicoLogado = identidade;
+  filtroAtual = identidade.role === "tecnico" ? identidade.nome : "";
 
-    if(tecnicoLogado.role === "tecnico"){
-      filtroAtual = tecnicoLogado.nome;
-    } else {
-      filtroAtual = "";
-    }
+  loginDiv.style.display = "none";
+  app.style.display = "block";
+  document.body.classList.add("modo-app");
+  aplicarTemaSalvo();
 
-    salvarSessao(u);
-    loginDiv.style.display = "none";
-    app.style.display = "block";
-    document.body.classList.add("modo-app");
-    aplicarTemaSalvo();
-
-    montarMenu();
-    carregarFiltrosAvancados();
-    aplicarPermissoesNaTela();
-    await carregar();
-  } else {
-    mostrarErro("Senha ou usuário incorretos");
-  }
+  montarMenu();
+  carregarFiltrosAvancados();
+  aplicarPermissoesNaTela();
+  await carregar();
 }
 
 (async function restaurarSessao(){
-  await carregarSenhasFirebase();
-  const u = lerSessao();
-  if(u && usuarios[u]){
-    tecnicoLogado = usuarios[u];
+  const loginSalvo = lerSessao();
 
-    if(tecnicoLogado.role === "tecnico"){
-      filtroAtual = tecnicoLogado.nome;
-    } else {
-      filtroAtual = "";
-    }
-
-    loginDiv.style.display = "none";
-    app.style.display = "block";
-    document.body.classList.add("modo-app");
-    aplicarTemaSalvo();
-
-    montarMenu();
-    carregarFiltrosAvancados();
-    aplicarPermissoesNaTela();
-    await carregar();
+  if(loginSalvo && usuarios[loginSalvo]){
+    await entrarComo(loginSalvo);
+  }else{
+    limparSessao();
+    loginDiv.style.display = "block";
+    app.style.display = "none";
+    document.body.classList.remove("modo-app");
+    prepararTelaIdentificacao();
   }
 })();
 
+function voltarIdentificacao(){
+  prepararTelaIdentificacao();
+}
+
 function logout(){
   limparSessao();
+  tecnicoLogado = null;
+  filtroAtual = "";
   location.reload();
 }
 
@@ -1946,6 +2314,7 @@ async function salvarEdicao(){
     }
   }
 
+  const dataOuHoraReagendada = item.data !== novaData || item.hora !== novaHora;
   const mudancas = [];
   if(item.pasta !== novaPasta) mudancas.push(`pasta: ${item.pasta || "—"} → ${novaPasta}`);
   if(item.nome !== novoNome) mudancas.push(`nome: ${item.nome || "—"} → ${novoNome}`);
@@ -1962,6 +2331,13 @@ async function salvarEdicao(){
   item.hora = novaHora;
   item.descricao = novaDescricao;
   item.status = novoStatus;
+
+  if(dataOuHoraReagendada){
+    item.reagendado = true;
+    item.reagendadoEm = new Date().toISOString();
+    item.reagendadoPor = tecnicoLogado.nome;
+  }
+
   if(mudancas.length) registrarLog("Agendamento editado", item, mudancas.join("; "));
   item.atualizadoPor = tecnicoLogado.nome;
   item.atualizadoEm = new Date().toISOString();
@@ -2629,8 +3005,8 @@ function setTelaAtiva(nome){
   document.body.classList.toggle("tela-configuracoes", nome === "configuracoes");
   document.querySelectorAll(".app-shell .nav").forEach(nav=>nav.classList.toggle("active",nav.dataset.tela===nome));
 }
-function mostrarBlocosAgendamento(mostrar){["boasVindas","menu","relatorio","filtrosV6","formAtendimento","abasPassadasContainer","btnCriarAbaPassada"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("hidden",!mostrar);});}
-function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();}
+function mostrarBlocosAgendamento(mostrar){["boasVindas","lembretesReagendamento","menu","relatorio","filtrosV6","formAtendimento","abasPassadasContainer","btnCriarAbaPassada"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("hidden",!mostrar);});}
+function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();if(typeof renderLembretesReagendamentoCAICAVV === "function") renderLembretesReagendamentoCAICAVV();if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();}
 function abrirTelaPacientes(){setTelaAtiva("pacientes");mostrarBlocosAgendamento(false);const totalPastas=Object.keys(cadastros).length;const totalNomes=Object.values(cadastros).reduce((s,nomes)=>s+nomes.length,0);let cards="";Object.entries(cadastros).forEach(([pasta,nomes])=>{nomes.forEach(nome=>{cards+=`<div class="paciente-card"><strong>${escapeHTML(nome)}</strong><span>📁 Pasta ${escapeHTML(pasta)}</span></div>`;});});lista.innerHTML=`<div class="pagina-titulo">Pastas</div><div class="pagina-sub">Busca rápida por nome ou nº da pasta.</div><div class="search-card" style="margin-bottom:14px"><div class="search-box"><span>🔍</span><input id="buscaPacientes" placeholder="Buscar por nome ou nº" oninput="filtrarPacientes()"></div></div><div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div><div id="listaPacientes" class="pacientes-grid">${cards}</div>`;}
 function filtrarPacientes(){const termo=normalizarBusca(document.getElementById("buscaPacientes")?.value||"");document.querySelectorAll(".paciente-card").forEach(card=>{card.style.display=normalizarBusca(card.innerText).includes(termo)?"block":"none";});}
 function abrirTelaTecnicos(){setTelaAtiva("tecnicos");mostrarBlocosAgendamento(false);const tecnicos=Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);const mesAtual=new Date().toISOString().slice(0,7);lista.innerHTML=`<div class="pagina-titulo">Relatório por técnico</div><div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div><div class="tecnico-relatorio-box"><label><b>Técnico</b></label><select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select><label><b>Mês</b></label><input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}"><button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button></div><div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;}
