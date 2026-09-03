@@ -26,6 +26,8 @@
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
         const DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos");
+        // Cadastro de pacientes em documento próprio para não ser sobrescrito por gravações de atendimentos.
+        const DOC_CADASTROS = db.collection("caicavv").doc("cadastros");
     </script>
 </head>
 <body>
@@ -333,6 +335,7 @@ body.modo-app.aparencia-noturna .lembretes-reagendamento__icone{
 
   const LIMITE_DIAS_LEMBRETE_REAGENDAMENTO = 7;
   const MILISSEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
+  const CHAVE_LEMBRETES_REAGENDAMENTO_OK = "caicavv_lembretes_reagendamento_ok_v1";
   let intervaloLembretesReagendamento = null;
 
   function partesDataCalendarioCAICAVV(dataISO){
@@ -417,6 +420,43 @@ body.modo-app.aparencia-noturna .lembretes-reagendamento__icone{
       });
   }
 
+  function obterLembretesReagendamentoOkCAICAVV(){
+    try{
+      const valor = localStorage.getItem(CHAVE_LEMBRETES_REAGENDAMENTO_OK);
+      if(!valor) return new Set();
+      const lista = JSON.parse(valor);
+      return new Set(Array.isArray(lista) ? lista.map(String) : []);
+    }catch(e){
+      return new Set();
+    }
+  }
+
+  function salvarLembretesReagendamentoOkCAICAVV(set){
+    try{
+      localStorage.setItem(CHAVE_LEMBRETES_REAGENDAMENTO_OK, JSON.stringify(Array.from(set)));
+    }catch(e){}
+  }
+
+  function chaveLembreteReagendamentoCAICAVV(item){
+    return `${item.id}__${item.data || ""}__${item.hora || ""}`;
+  }
+
+  window.confirmarLembreteReagendamentoCAICAVV = function(chave){
+    const ok = obterLembretesReagendamentoOkCAICAVV();
+    ok.add(String(chave));
+    salvarLembretesReagendamentoOkCAICAVV(ok);
+    renderLembretesReagendamentoCAICAVV();
+  };
+
+  document.addEventListener("click", function(event){
+    const botao = event.target.closest("button[data-acao=\"confirmar-lembrete\"]");
+    if(!botao) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const chave = botao.getAttribute("data-chave-lembrete");
+    if(chave) window.confirmarLembreteReagendamentoCAICAVV(chave);
+  });
+
   function textoDiasFaltamCAICAVV(dias){
     if(dias === 0) return "Faltam 0 dias • hoje";
     if(dias === 1) return "Falta 1 dia";
@@ -439,7 +479,9 @@ body.modo-app.aparencia-noturna .lembretes-reagendamento__icone{
       return;
     }
 
-    const lembretes = obterLembretesReagendamentoCAICAVV();
+    const lembretesOk = obterLembretesReagendamentoOkCAICAVV();
+    const lembretes = obterLembretesReagendamentoCAICAVV()
+      .filter(({item}) => !lembretesOk.has(chaveLembreteReagendamentoCAICAVV(item)));
     if(!lembretes.length){
       container.innerHTML = "";
       container.classList.add("hidden");
@@ -453,6 +495,7 @@ body.modo-app.aparencia-noturna .lembretes-reagendamento__icone{
         ? "Este atendimento foi reagendado e a nova data está próxima."
         : "Este atendimento está dentro da janela de 7 dias.";
       const classeDias = dias === 0 ? "hoje" : "";
+      const chave = chaveLembreteReagendamentoCAICAVV(item);
 
       return `
         <article class="lembrete-reagendamento-card">
@@ -467,7 +510,10 @@ body.modo-app.aparencia-noturna .lembretes-reagendamento__icone{
             <div class="lembrete-reagendamento-card__tipo">🔔 ${escapeHTML(tipo)}</div>
             <div class="lembrete-reagendamento-card__linha" style="margin-top:6px;font-weight:600">${escapeHTML(detalhe)}</div>
           </div>
-          <div class="lembrete-reagendamento-card__dias ${classeDias}">${escapeHTML(textoDiasFaltamCAICAVV(dias))}</div>
+          <div style="display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:92px;">
+            <div class="lembrete-reagendamento-card__dias ${classeDias}">${escapeHTML(textoDiasFaltamCAICAVV(dias))}</div>
+            <button type="button" class="btn btn-primary" style="min-width:92px;padding:8px 12px;border-radius:10px;font-weight:800;cursor:pointer;" data-acao="confirmar-lembrete" data-chave-lembrete="${escapeHTML(chave)}" aria-label="Confirmar lembrete">OK</button>
+          </div>
         </article>`;
     }).join("");
 
@@ -3166,23 +3212,26 @@ async function salvarCadastrosFirebase(){
     }
   });
 
-  Object.keys(cadastros).forEach(pasta => delete cadastros[pasta]);
-  Object.assign(cadastros, cadastrosLimpos);
-
-  const payload = {
-    cadastros: cadastrosLimpos,
-    atualizadoEm: new Date().toISOString()
-  };
-
   try{
-    // update substitui o campo cadastros inteiro. Assim, pastas apagadas não voltam ao dar F5.
-    await DOC_ATENDIMENTOS.update(payload);
+    // O cadastro de pacientes tem documento próprio no mesmo Firebase.
+    // Isso evita que um salvamento de atendimentos substitua a lista de pacientes.
+    await DOC_CADASTROS.set({
+      cadastros: cadastrosLimpos,
+      atualizadoEm: new Date().toISOString()
+    }, { merge: true });
+
+    // Mantém também a cópia legada no documento de atendimentos para compatibilidade
+    // com a estrutura anterior do sistema.
+    await DOC_ATENDIMENTOS.set({
+      cadastros: cadastrosLimpos,
+      atualizadoEm: new Date().toISOString()
+    }, { merge: true });
+
+    // Usa exatamente a versão confirmada que foi enviada ao Firebase.
+    Object.keys(cadastros).forEach(pasta => delete cadastros[pasta]);
+    Object.assign(cadastros, cadastrosLimpos);
   }catch(e){
-    // Se o documento ainda não existir, cria normalmente.
-    if(e && (e.code === "not-found" || String(e.message || "").toLowerCase().includes("no document"))){
-      await DOC_ATENDIMENTOS.set(payload, { merge: true });
-      return;
-    }
+    console.error("Erro ao salvar pacientes no Firebase:", e);
     throw e;
   }
 }
@@ -3207,12 +3256,39 @@ async function carregarAtendimentosFirebase(){
         await salvarSenhasFirebase(false);
       }
 
-      if(dados.cadastros && typeof dados.cadastros === "object"){
+      // Primeiro tenta o documento dedicado de pacientes. Se ele ainda não existir,
+      // usa a estrutura legada dentro de "atendimentos" e migra sem perder os dados.
+      let dadosCadastros = null;
+      try{
+        const snapCadastros = await DOC_CADASTROS.get();
+        if(snapCadastros.exists){
+          const dc = snapCadastros.data() || {};
+          if(dc.cadastros && typeof dc.cadastros === "object") dadosCadastros = dc.cadastros;
+        }
+      }catch(e){
+        console.warn("Não foi possível ler o documento dedicado de cadastros; usando a cópia legada.", e);
+      }
+
+      if(!dadosCadastros && dados.cadastros && typeof dados.cadastros === "object"){
+        dadosCadastros = dados.cadastros;
+        // Migra a base legada para o documento dedicado.
+        try{
+          await DOC_CADASTROS.set({
+            cadastros: dadosCadastros,
+            atualizadoEm: new Date().toISOString()
+          }, { merge: true });
+        }catch(e){
+          console.warn("Migração dos cadastros para o documento dedicado falhou; a cópia legada continuará sendo usada.", e);
+        }
+      }
+
+      if(dadosCadastros){
         Object.keys(cadastros).forEach(pasta => delete cadastros[pasta]);
-        Object.entries(dados.cadastros).forEach(([pasta, nomes]) => {
+        Object.entries(dadosCadastros).forEach(([pasta, nomes]) => {
           const pastaLimpa = normalizarPasta(pasta);
           if(!pastaLimpa) return;
-          cadastros[pastaLimpa] = Array.isArray(nomes) ? nomes.map(prepararNomePaciente).filter(Boolean) : [];
+          const lista = Array.isArray(nomes) ? nomes.map(prepararNomePaciente).filter(Boolean) : [];
+          if(lista.length) cadastros[pastaLimpa] = lista;
         });
       } else {
         await salvarCadastrosFirebase();
@@ -3346,6 +3422,9 @@ async function criarNovoPaciente(){
     return;
   }
 
+  const cadastrosAntes = JSON.parse(JSON.stringify(cadastros));
+
+  // Permite adicionar quantos pacientes forem necessários na mesma pasta.
   if(!Array.isArray(cadastros[pastaNova])) cadastros[pastaNova] = [];
   cadastros[pastaNova].push(nomeNovo);
 
@@ -3354,7 +3433,10 @@ async function criarNovoPaciente(){
     abrirTelaPacientes();
     mostrarSucesso("Paciente adicionado com sucesso.");
   }catch(e){
-    mostrarErro("Não foi possível salvar o paciente.");
+    Object.keys(cadastros).forEach(pasta => delete cadastros[pasta]);
+    Object.assign(cadastros, cadastrosAntes);
+    abrirTelaPacientes();
+    mostrarErro("Não foi possível salvar o paciente no Firebase.");
   }
 }
 
@@ -7983,3 +8065,4 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
   setInterval(aplicarIconeUploadCAICAVV, 1200);
 })();
 </script>
+
