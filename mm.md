@@ -2145,13 +2145,13 @@ async function add(){
   btnAdicionar.disabled = true;
 
   atendimentos.unshift(obj);
-  // Atendimento novo: cadastra o paciente apenas neste momento.
-  // Não usamos mais o histórico inteiro como fonte de reconstrução da aba Pacientes.
-  try{
-    await adicionarPacientesAutomaticamenteCAICAVV([obj]);
-  }catch(e){
-    // O atendimento continua sendo salvo; o aviso informa que o cadastro automático falhou.
-    mostrarToast("Agendamento salvo, mas o paciente não pôde ser cadastrado automaticamente.", "erro");
+  // Todo atendimento novo com pasta/nome também cadastra automaticamente o paciente,
+  // sem duplicar quando a pasta/nome já estiver na aba Pacientes.
+  const listaPacienteAuto = Array.isArray(cadastros[pastaValor]) ? cadastros[pastaValor] : (cadastros[pastaValor] = []);
+  if(!listaPacienteAuto.some(n => normalizarPacienteDuplicidade(n) === normalizarPacienteDuplicidade(nomeValor))){
+    listaPacienteAuto.push(prepararNomePaciente(nomeValor));
+    try{ await salvarCadastrosFirebase({ substituir: true }); }
+    catch(e){ console.warn("Paciente do atendimento não pôde ser sincronizado imediatamente.", e); }
   }
   registrarLog("Agendamento criado", obj, `Atendimento marcado para ${formatarDataBR(obj.data)} às ${obj.hora}, com ${obj.tecnico}.`);
   await salvarAtendimentosFirebase();
@@ -3334,44 +3334,23 @@ async function salvarCadastrosFirebase(opcoes={}){
   }
 }
 
-async function adicionarPacientesAutomaticamenteCAICAVV(itens){
-  const lista = Array.isArray(itens) ? itens : [itens];
-  let adicionou = false;
+async function sincronizarPacientesDasFontesCAICAVV(){
+  const encontrados = obterCadastrosDasFontesCAICAVV();
+  if(!Object.keys(encontrados).length) return;
 
-  lista.forEach(item => {
-    const pasta = normalizarPasta(item?.pasta);
-    const nome = prepararNomePaciente(item?.nome);
-    if(!pasta || !nome) return;
+  const antes = JSON.stringify(clonarCadastrosCAICAVV(cadastros));
+  const depois = JSON.stringify(mesclarCadastrosCAICAVV(cadastros, encontrados));
+  if(antes === depois){
+    salvarCacheCadastrosLocalCAICAVV();
+    return;
+  }
 
-    if(!Array.isArray(cadastros[pasta])) cadastros[pasta] = [];
-    const existe = cadastros[pasta].some(n =>
-      normalizarPacienteDuplicidade(n) === normalizarPacienteDuplicidade(nome)
-    );
-
-    if(!existe){
-      cadastros[pasta].push(nome);
-      adicionou = true;
-    }
-  });
-
-  if(!adicionou) return false;
-
+  cadastros = mesclarCadastrosCAICAVV(cadastros, encontrados);
   try{
     await salvarCadastrosFirebase({ substituir: true });
-    return true;
   }catch(e){
-    console.warn("Paciente não pôde ser sincronizado automaticamente.", e);
-    throw e;
+    console.warn("Não foi possível sincronizar automaticamente os pacientes das fontes.", e);
   }
-}
-
-// IMPORTANTE: esta função não reconstrói mais a aba Pacientes a partir de
-// todas as entradas/agendamentos antigos. Isso fazia pacientes excluídos
-// voltarem após F5/relogin. A sincronização agora acontece somente no
-// momento em que uma nova entrada/agendamento é criado/importado.
-async function sincronizarPacientesDasFontesCAICAVV(itensNovos=[]){
-  if(!Array.isArray(itensNovos) || !itensNovos.length) return false;
-  return adicionarPacientesAutomaticamenteCAICAVV(itensNovos);
 }
 
 async function carregarAtendimentosFirebase(){
@@ -3453,8 +3432,9 @@ async function carregarAtendimentosFirebase(){
       await salvarCadastrosFirebase({ substituir: true });
     }
 
-    // Não reconstruímos Pacientes a partir do histórico aqui.
-    // Exclusões/edições feitas no cadastro permanecem persistentes após F5/relogin.
+    // Sempre que uma pasta/nome já usado no sistema ainda não estiver em Pacientes,
+    // ele é incorporado automaticamente.
+    await sincronizarPacientesDasFontesCAICAVV();
   }catch(e){
     console.error(e);
     const cacheLocal = lerCacheCadastrosLocalCAICAVV();
@@ -4190,7 +4170,7 @@ function renderizarEntradasCAICAVV(){
   desenharGraficoEntradasCAICAVV(porViolencia);
 }
 
-async function adicionarEntradaCAICAVV(){
+function adicionarEntradaCAICAVV(){
   if(!podeAlterarEntradasCAICAVV()){ mostrarErro ? mostrarErro("Somente Maiyara/coordenação pode alterar as entradas.") : alert("Somente Maiyara/coordenação pode alterar as entradas."); return; }
   const nova = {
     id: "manual-" + Date.now(),
@@ -4209,14 +4189,7 @@ async function adicionarEntradaCAICAVV(){
   entradasManuaisCAICAVV.push(nova);
   salvarEntradasManuaisCAICAVV();
   renderizarEntradasCAICAVV();
-
-  try{
-    await adicionarPacientesAutomaticamenteCAICAVV([nova]);
-    mostrarSucesso("Entrada salva e paciente sincronizado com a aba Pacientes.");
-  }catch(e){
-    console.warn("Sincronização da entrada para Pacientes falhou.", e);
-    mostrarErro("Entrada salva, mas não foi possível cadastrar o paciente automaticamente.");
-  }
+  sincronizarPacientesDasFontesCAICAVV().catch(e => console.warn("Sincronização da entrada para Pacientes falhou.", e));
 }
 
 function excluirEntradaCAICAVV(id){
@@ -7876,13 +7849,8 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
     var novas = uploadEntradasLinhasCAICAVV.filter(function(e){ var chave = [e.pasta||"", e.nome||"", e.data||""].join("||"); if(existentes.has(chave)) return false; existentes.add(chave); return true; });
     entradasManuaisCAICAVV.push.apply(entradasManuaisCAICAVV, novas);
     if(typeof salvarEntradasManuaisCAICAVV === "function") salvarEntradasManuaisCAICAVV();
-
-    adicionarPacientesAutomaticamenteCAICAVV(novas).then(function(){
-      if(typeof mostrarSucesso === "function") mostrarSucesso(novas.length + " entrada(s) importada(s). Duplicadas foram ignoradas e os novos pacientes foram cadastrados.");
-    }).catch(function(e){
-      console.warn("Sincronização das entradas importadas para Pacientes falhou.", e);
-      if(typeof mostrarErro === "function") mostrarErro("Entradas importadas, mas alguns pacientes não puderam ser sincronizados.");
-    });
+    if(typeof sincronizarPacientesDasFontesCAICAVV === "function") sincronizarPacientesDasFontesCAICAVV().catch(function(e){ console.warn("Sincronização das entradas importadas para Pacientes falhou.", e); });
+    if(typeof mostrarSucesso === "function") mostrarSucesso(novas.length + " entrada(s) importada(s). Duplicadas foram ignoradas.");
     var preview = document.getElementById("uploadEntradasPreview");
     if(preview){ preview.className = "upload-sucesso-caicavv"; preview.innerHTML = "<b>Entradas importadas.</b><br>"+novas.length+" entrada(s) salvas no sistema."; }
     uploadEntradasLinhasCAICAVV = [];
@@ -7907,6 +7875,7 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
           dados.entradasManuaisCAICAVV.forEach(function(e){ mapa.set([e.pasta||"", e.nome||"", e.data||""].join("||"), e); });
           entradasManuaisCAICAVV = Array.from(mapa.values());
           localStorage.setItem("entradasManuaisCAICAVV", JSON.stringify(entradasManuaisCAICAVV));
+          if(typeof sincronizarPacientesDasFontesCAICAVV === "function") sincronizarPacientesDasFontesCAICAVV().catch(function(e){ console.warn("Sincronização dos pacientes após carregar entradas falhou.", e); });
         }
       });
     }catch(e){}
