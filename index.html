@@ -371,20 +371,27 @@ body.modo-app.aparencia-noturna .lembretes-reagendamento__icone{
     return Math.round((alvoUTC - hojeCalendarioUTC()) / MILISSEGUNDOS_POR_DIA);
   }
 
+  function dataCriacaoAtendimentoCAICAVV(item){
+    const bruto = item?.criadoEm || item?.criadoEmAtendimento || item?.createdAt || item?.dataCriacao || item?.criado || item?.reagendadoEm || "";
+    if(!bruto) return null;
+    const d = bruto instanceof Date ? bruto : new Date(bruto);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+
   function atendimentoValidoParaLembreteCAICAVV(item){
-    if(!item || !item.id || !item.data) return false;
-
-    // Só atendimentos ainda agendados geram lembrete. Assim, compareceu,
-    // faltou, aguardando, cancelado ou qualquer outro estado finalizado não reaparece.
+    if(!item || !item.data) return false;
     if(String(item.status || "agendado") !== "agendado") return false;
-
-    // Mantém o mesmo alcance da agenda atual: registros importados/arquivados
-    // não são transformados em novos avisos na área principal do técnico.
     if(String(item.origem || "") === "upload" || String(item.tipo || "") === "importado") return false;
-    if(typeof window.atendimentoEstaEmAbaPassada === "function" && window.atendimentoEstaEmAbaPassada(item)) return false;
 
-    const dias = diasAteAtendimentoCAICAVV(item.data);
-    return Number.isInteger(dias) && dias >= 0 && dias <= LIMITE_DIAS_LEMBRETE_REAGENDAMENTO;
+    // O aviso agora depende da antecedência em que o agendamento foi criado,
+    // e não de quantos dias faltam para o atendimento.
+    const criadoEm = dataCriacaoAtendimentoCAICAVV(item);
+    const atendimento = new Date(`${String(item.data).slice(0,10)}T00:00:00`);
+    if(!criadoEm || Number.isNaN(atendimento.getTime())) return false;
+    const criadoDia = new Date(criadoEm.getFullYear(), criadoEm.getMonth(), criadoEm.getDate());
+    const diasAntecedencia = Math.floor((atendimento.getTime() - criadoDia.getTime()) / 86400000);
+    const diasAte = diasAteAtendimentoCAICAVV(item.data);
+    return Number.isInteger(diasAntecedencia) && diasAntecedencia >= 8 && Number.isInteger(diasAte) && diasAte >= 0 && diasAte <= LIMITE_DIAS_LEMBRETE_REAGENDAMENTO;
   }
 
   function obterLembretesReagendamentoCAICAVV(){
@@ -567,6 +574,178 @@ body.modo-app.aparencia-noturna .lembretes-reagendamento__icone{
   } else {
     iniciarMonitorCAICAVV();
   }
+})();
+</script>
+
+
+<script id="caicavv-priorizacao-alertas-script">
+(function(){
+  window.pacienteAlertaFocoCAICAVV = window.pacienteAlertaFocoCAICAVV || "";
+  window.relatoriosPacientesCAICAVV = window.relatoriosPacientesCAICAVV || {};
+
+  function obterPacientesComTresFaltasCAICAVV(){
+    const porPasta = {};
+    (Array.isArray(atendimentos) ? atendimentos : []).forEach(a => {
+      const pasta = normalizarPasta(a?.pasta);
+      if(!pasta || !a?.data) return;
+      if(!porPasta[pasta]) porPasta[pasta] = [];
+      porPasta[pasta].push(a);
+    });
+    return Object.entries(porPasta).filter(([pasta, lista]) => {
+      const ultimos = lista.slice().sort((a,b)=>getDataHoraAtendimento(b).localeCompare(getDataHoraAtendimento(a))).slice(0,3);
+      return ultimos.length === 3 && ultimos.every(a => String(a.status || "").toLowerCase() === "faltou");
+    }).map(([pasta]) => {
+      const nomes = Array.isArray(cadastros[pasta]) ? cadastros[pasta] : [];
+      return {pasta, nome: nomes[0] || `Pasta ${pasta}`};
+    });
+  }
+  window.obterPacientesComTresFaltasCAICAVV = obterPacientesComTresFaltasCAICAVV;
+
+  function obterUltimosTresAgendamentosCAICAVV(pasta){
+    return (Array.isArray(atendimentos) ? atendimentos : [])
+      .filter(a => normalizarPasta(a?.pasta) === normalizarPasta(pasta) && a?.data)
+      .sort((a,b)=>getDataHoraAtendimento(b).localeCompare(getDataHoraAtendimento(a)))
+      .slice(0,3);
+  }
+
+  function obterRelatorioPacienteCAICAVV(pasta, nome){
+    const chave = normalizarPasta(pasta) + "||" + normalizarPacienteDuplicidade(nome);
+    return String(window.relatoriosPacientesCAICAVV[chave] || "");
+  }
+
+  async function salvarRelatorioPacienteCAICAVV(pasta, nome, texto){
+    const chave = normalizarPasta(pasta) + "||" + normalizarPacienteDuplicidade(nome);
+    window.relatoriosPacientesCAICAVV[chave] = String(texto || "");
+    try{
+      const snap = await DOC_CADASTROS.get();
+      const existente = snap.exists ? (snap.data() || {}).relatoriosPacientes || {} : {};
+      existente[chave] = String(texto || "");
+      await DOC_CADASTROS.set({relatoriosPacientes: existente, relatoriosAtualizadosEm: new Date().toISOString()}, {merge:true});
+      mostrarSucesso("Relatório salvo com sucesso.");
+    }catch(e){
+      console.error("Erro ao salvar relatório do paciente:", e);
+      mostrarErro("Não foi possível salvar o relatório.");
+    }
+  }
+
+  async function carregarRelatoriosPacientesCAICAVV(){
+    try{
+      const snap = await DOC_CADASTROS.get();
+      if(snap.exists){
+        const r = (snap.data() || {}).relatoriosPacientes;
+        if(r && typeof r === "object") window.relatoriosPacientesCAICAVV = {...r};
+      }
+    }catch(e){ console.warn("Relatórios de pacientes não puderam ser carregados.", e); }
+  }
+
+  function criarModalDetalhePacienteCAICAVV(){
+    let modal = document.getElementById("modalDetalhePacienteCAICAVV");
+    if(modal) return modal;
+    modal = document.createElement("div");
+    modal.id = "modalDetalhePacienteCAICAVV";
+    modal.className = "modal-fundo animado";
+    modal.innerHTML = '<div class="modal-box modal-detalhe-paciente" onclick="event.stopPropagation()"><div id="conteudoDetalhePacienteCAICAVV"></div></div>';
+    modal.addEventListener("click", ()=>modal.classList.remove("show"));
+    document.body.appendChild(modal);
+    return modal;
+  }
+
+  function abrirDetalhesPacienteCAICAVV(pasta, index){
+    const p = normalizarPasta(pasta);
+    const nomes = cadastros[p];
+    const nome = Array.isArray(nomes) ? nomes[index] : "";
+    if(!nome){ mostrarErro("Paciente não encontrado."); return; }
+
+    const entrada = obterEntradaPacienteCAICAVV(p, nome) || {};
+    const statusVisual = obterStatusVisualPastaCAICAVV(p, entrada);
+    const alerta = pacienteTemAlertaFaltasCAICAVV(p);
+    const ultimos = obterUltimosTresAgendamentosCAICAVV(p);
+    const tecnicoPodeRelatorio = !!tecnicoLogado && tecnicoLogado.role === "tecnico";
+    const modal = criarModalDetalhePacienteCAICAVV();
+    const relatorio = obterRelatorioPacienteCAICAVV(p,nome);
+
+    const conteudo = document.getElementById("conteudoDetalhePacienteCAICAVV");
+    conteudo.innerHTML = `
+      <div class="paciente-detalhe-cabecalho">
+        <div><h3>${alerta ? '❗ ' : ''}${escapeHTML(nome)}</h3><p>📁 Pasta ${escapeHTML(p)}</p></div>
+        <span class="paciente-status-chip ${statusVisual.classe}">${statusVisual.label}</span>
+      </div>
+      ${alerta ? `<div class="paciente-alerta-box">EXCEDIDO O LIMITE DE FALTAS<br><span style="font-weight:700">(ENTER) SOLICITAR BUSCA ATIVA</span></div>` : ''}
+      <div class="paciente-info-grid">
+        <div class="paciente-info-item"><small>Tipo de violência</small><b>${escapeHTML(entrada.violencia || "Não informado")}</b></div>
+        <div class="paciente-info-item"><small>Prioridade</small><b>${escapeHTML(entrada.prioridade || entrada.urgencia || "Não informada")}</b></div>
+        <div class="paciente-info-item"><small>Bairro</small><b>${escapeHTML(entrada.bairro || "Não informado")}</b></div>
+        <div class="paciente-info-item"><small>Escola</small><b>${escapeHTML(entrada.escola || entrada.instituicao || "Não informado")}</b></div>
+        <div class="paciente-info-item"><small>Data de admissão</small><b>${escapeHTML(formatarDataBR(entrada.data || entrada.data_vinculacao || "" ) || "Não informado")}</b></div>
+        <div class="paciente-info-item"><small>Origem / encaminhamento</small><b>${escapeHTML(entrada.origem || "Não informado")}</b></div>
+        <div class="paciente-info-item"><small>Vinculação</small><b>${escapeHTML(entrada.vinculacao || entrada.status || "Não informado")}</b></div>
+        <div class="paciente-info-item"><small>Idade</small><b>${escapeHTML(entrada.idade || "Não informado")}</b></div>
+        <div class="paciente-info-item"><small>Sexo</small><b>${escapeHTML(entrada.sexo || "Não informado")}</b></div>
+      </div>
+      ${alerta ? `<div class="paciente-info-item" style="margin-bottom:12px"><small>Últimos 3 agendamentos</small><b>${ultimos.map(a=>`${escapeHTML(formatarDataBR(a.data))} • ${escapeHTML(a.tecnico || "—")} • Faltou`).join('<br>')}</b></div>` : ''}
+      ${tecnicoPodeRelatorio ? `
+        <div class="paciente-relatorio">
+          <h4>RELATÓRIO</h4>
+          <textarea id="relatorioPacienteTextoCAICAVV" placeholder="Registre o relatório deste paciente..."></textarea>
+          <div class="acoes"><button type="button" onclick="salvarRelatorioPacienteTelaCAICAVV('${escapeHTML(p)}','${escapeHTML(nome)}')">Salvar relatório</button></div>
+        </div>` : ''}
+    `;
+    const textarea = document.getElementById("relatorioPacienteTextoCAICAVV");
+    if(textarea) textarea.value = relatorio;
+    modal.classList.add("show");
+    window.pacienteDetalheAtualCAICAVV = {pasta:p,nome};
+  }
+  window.abrirDetalhesPacienteCAICAVV = abrirDetalhesPacienteCAICAVV;
+
+  window.abrirDetalhesPacientePorPastaCAICAVV = function(pasta){
+    const p = normalizarPasta(pasta);
+    window.pacienteAlertaFocoCAICAVV = p;
+    abrirTelaPacientes();
+  };
+
+  window.salvarRelatorioPacienteTelaCAICAVV = function(pasta,nome){
+    const texto = document.getElementById("relatorioPacienteTextoCAICAVV")?.value || "";
+    return salvarRelatorioPacienteCAICAVV(pasta,nome,texto);
+  };
+
+  function renderAlertasFaltasCAICAVV(){
+    const container = document.getElementById("alertasFaltasCAICAVV");
+    if(!container || !tecnicoLogado || telaAtualCaicavv !== "agendamentos") return;
+    const alertas = obterPacientesComTresFaltasCAICAVV();
+    // Exibe o alerta apenas para técnicos, como os demais avisos de acompanhamento.
+    if(tecnicoLogado.role !== "tecnico"){
+      container.innerHTML = ""; container.classList.add("hidden"); return;
+    }
+    if(!alertas.length){ container.innerHTML=""; container.classList.add("hidden"); return; }
+    container.innerHTML = `<div class="alertas-faltas-caicavv__topo"><div><div class="alertas-faltas-caicavv__titulo">❗ Alertas de faltas</div><div class="alertas-faltas-caicavv__sub">Pacientes com falta nos últimos 3 agendamentos.</div></div><strong>${alertas.length}</strong></div>${alertas.map(x=>`<div class="alerta-falta-card"><div><strong>${escapeHTML(x.nome)}</strong><span>📁 Pasta ${escapeHTML(x.pasta)}</span></div><button type="button" onclick="abrirDetalhesPacientePorPastaCAICAVV('${escapeHTML(x.pasta)}')">Ver</button></div>`).join("")}`;
+    container.classList.remove("hidden");
+  }
+  window.renderAlertasFaltasCAICAVV = renderAlertasFaltasCAICAVV;
+
+  // Regra do lembrete: a notificação de proximidade continua sendo outra coisa.
+  // Este bloco não depende dela e não cria notificações duplicadas: o alerta é derivado do estado atual.
+  const renderOriginalAntesAlertas = window.render;
+  if(typeof renderOriginalAntesAlertas === "function" && !window.__caicavvAlertasFaltasWrapped){
+    window.render = function(){
+      const retorno = renderOriginalAntesAlertas.apply(this,arguments);
+      renderAlertasFaltasCAICAVV();
+      return retorno;
+    };
+    window.__caicavvAlertasFaltasWrapped = true;
+  }
+
+  // Permite a ação de teclado pedida no detalhe do alerta sem capturar ENTER de inputs.
+  document.addEventListener("keydown", function(e){
+    if(e.key !== "Enter" || e.target?.matches?.("input,textarea,select,button")) return;
+    const atual = window.pacienteDetalheAtualCAICAVV;
+    if(!atual || !pacienteTemAlertaFaltasCAICAVV(atual.pasta)) return;
+    e.preventDefault();
+    mostrarToast("Solicitação de busca ativa preparada para o paciente.","sucesso");
+  });
+
+  // Carrega os relatórios persistidos sem interferir no carregamento dos atendimentos.
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", carregarRelatoriosPacientesCAICAVV, {once:true});
+  else carregarRelatoriosPacientesCAICAVV();
 })();
 </script>
 
@@ -1076,6 +1255,44 @@ body.modo-app{
 
 
 
+
+/* ===== ALERTAS E DETALHES DE PACIENTES ===== */
+.alertas-faltas-caicavv{background:#fff7ed;border:1px solid #fed7aa;border-radius:14px;padding:14px 16px;margin:0 0 14px;box-shadow:0 8px 20px rgba(180,83,9,.08);}
+.alertas-faltas-caicavv__topo{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:10px;}
+.alertas-faltas-caicavv__titulo{font-weight:900;color:#9a3412;font-size:16px;}
+.alertas-faltas-caicavv__sub{font-size:12px;color:#92400e;margin-top:3px;}
+.alerta-falta-card{display:grid;grid-template-columns:1fr auto;gap:12px;align-items:center;background:#fff;border:1px solid #fed7aa;border-radius:12px;padding:11px 12px;margin-top:8px;}
+.alerta-falta-card strong{display:block;color:#071957;}
+.alerta-falta-card span{font-size:12px;color:#64748b;}
+.alerta-falta-card button{height:36px;border:0;border-radius:9px;background:#dc2626;color:#fff;font-weight:900;padding:0 16px;cursor:pointer;}
+.paciente-card{cursor:pointer;transition:transform .16s ease,box-shadow .16s ease,border-color .16s ease;}
+.paciente-card:hover{transform:translateY(-1px);box-shadow:0 14px 28px rgba(23,70,150,.14);}
+.paciente-card.status-ativo{border-left:6px solid #16a34a;}
+.paciente-card.status-inativo{border-left:6px solid #dc2626;}
+.paciente-card.status-esquecido{border-left:6px solid #eab308;}
+.paciente-card.alerta-faltas{box-shadow:0 0 0 2px #dc2626 inset,0 10px 24px rgba(220,38,38,.12);}
+.paciente-status-linha{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-top:8px;}
+.paciente-status-chip{display:inline-flex;align-items:center;border-radius:999px;padding:4px 9px;font-size:11px!important;font-weight:900!important;}
+.paciente-status-chip.ativo{background:#dcfce7;color:#166534!important;}
+.paciente-status-chip.inativo{background:#fee2e2;color:#991b1b!important;}
+.paciente-status-chip.esquecido{background:#fef9c3;color:#854d0e!important;}
+.paciente-alerta-chip{background:#fee2e2;color:#991b1b!important;}
+.modal-detalhe-paciente{max-width:760px!important;width:min(760px,94vw)!important;max-height:88vh;overflow:auto;}
+.paciente-detalhe-cabecalho{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;border-bottom:1px solid #e2e8f0;padding-bottom:14px;margin-bottom:14px;}
+.paciente-detalhe-cabecalho h3{margin:0;color:#071957;font-size:22px;}
+.paciente-detalhe-cabecalho p{margin:5px 0 0;color:#64748b;}
+.paciente-alerta-box{background:#fff1f2;border:1px solid #fecdd3;color:#9f1239;border-radius:12px;padding:12px 14px;margin-bottom:14px;font-weight:900;}
+.paciente-info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:16px;}
+.paciente-info-item{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;}
+.paciente-info-item small{display:block;color:#64748b;font-size:10px;font-weight:900;text-transform:uppercase;margin-bottom:4px;}
+.paciente-info-item b{color:#071957;font-size:14px;}
+.paciente-relatorio{border-top:1px solid #e2e8f0;padding-top:14px;margin-top:10px;}
+.paciente-relatorio h4{margin:0 0 8px;color:#071957;font-size:16px;}
+.paciente-relatorio textarea{width:100%;min-height:150px;resize:vertical;border:1px solid #ccd9f5;border-radius:10px;padding:11px 12px;box-sizing:border-box;font:inherit;color:#071957;}
+.paciente-relatorio .acoes{display:flex;justify-content:flex-end;gap:8px;margin-top:9px;}
+.paciente-relatorio button{height:40px;border:0;border-radius:10px;background:#166534;color:#fff;font-weight:900;padding:0 15px;cursor:pointer;}
+@media(max-width:650px){.paciente-info-grid{grid-template-columns:1fr}.alerta-falta-card{grid-template-columns:1fr}.paciente-detalhe-cabecalho{flex-direction:column;}}
+
 /* ===== PACIENTES: adicionar, editar, excluir e bloquear duplicados ===== */
 .pacientes-form-card{
   padding:16px 18px!important;
@@ -1475,6 +1692,7 @@ body.modo-app{
       <div id="boasVindas" class="user-card"></div>
 
       <section id="lembretesReagendamento" class="lembretes-reagendamento hidden" aria-live="polite" aria-label="Lembretes de reagendamento"></section>
+      <section id="alertasFaltasCAICAVV" class="alertas-faltas-caicavv hidden" aria-live="polite" aria-label="Alertas de faltas"></section>
 
       <div id="menu" class="tabs"></div>
       <div id="relatorio" class="summary-card"></div>
@@ -2137,9 +2355,9 @@ async function add(){
     hora: horaValor,
     descricao: descricaoValor,
     status: "agendado",
+    criadoEm: new Date().toISOString(),
     criadoPor: tecnicoLogado.nome,
-    roleCriador: tecnicoLogado.role,
-    criadoEm: new Date().toISOString()
+    roleCriador: tecnicoLogado.role
   };
 
   btnAdicionar.disabled = true;
@@ -3059,7 +3277,7 @@ function setTelaAtiva(nome){
   document.body.classList.toggle("tela-configuracoes", nome === "configuracoes");
   document.querySelectorAll(".app-shell .nav").forEach(nav=>nav.classList.toggle("active",nav.dataset.tela===nome));
 }
-function mostrarBlocosAgendamento(mostrar){["boasVindas","lembretesReagendamento","menu","relatorio","filtrosV6","formAtendimento","abasPassadasContainer","btnCriarAbaPassada"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("hidden",!mostrar);});}
+function mostrarBlocosAgendamento(mostrar){["boasVindas","lembretesReagendamento","alertasFaltasCAICAVV","menu","relatorio","filtrosV6","formAtendimento","abasPassadasContainer","btnCriarAbaPassada"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("hidden",!mostrar);});}
 function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();if(typeof renderLembretesReagendamentoCAICAVV === "function") renderLembretesReagendamentoCAICAVV();if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();}
 function abrirTelaPacientes(){setTelaAtiva("pacientes");mostrarBlocosAgendamento(false);const totalPastas=Object.keys(cadastros).length;const totalNomes=Object.values(cadastros).reduce((s,nomes)=>s+nomes.length,0);let cards="";Object.entries(cadastros).forEach(([pasta,nomes])=>{nomes.forEach(nome=>{cards+=`<div class="paciente-card"><strong>${escapeHTML(nome)}</strong><span>📁 Pasta ${escapeHTML(pasta)}</span></div>`;});});lista.innerHTML=`<div class="pagina-titulo">Pastas</div><div class="pagina-sub">Busca rápida por nome ou nº da pasta.</div><div class="search-card" style="margin-bottom:14px"><div class="search-box"><span>🔍</span><input id="buscaPacientes" placeholder="Buscar por nome ou nº" oninput="filtrarPacientes()"></div></div><div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div><div id="listaPacientes" class="pacientes-grid">${cards}</div>`;}
 function filtrarPacientes(){const termo=normalizarBusca(document.getElementById("buscaPacientes")?.value||"");document.querySelectorAll(".paciente-card").forEach(card=>{card.style.display=normalizarBusca(card.innerText).includes(termo)?"block":"none";});}
@@ -3318,13 +3536,9 @@ async function salvarCadastrosFirebase(opcoes={}){
       cadastros = finalMap;
     });
 
-    // Compatibilidade com a estrutura legada: mantém somente o campo cadastros,
-    // sem substituir itens/logs/senhas existentes.
-    await DOC_ATENDIMENTOS.set({
-      cadastros: clonarCadastrosCAICAVV(cadastros),
-      cadastrosAtualizadosEm: atualizadoEm
-    }, { merge: true });
-
+    // O documento dedicado é a única fonte de verdade dos pacientes.
+    // Não regravamos mais `cadastros` em `atendimentos`, pois isso podia falhar
+    // por regras de permissão e, pior, ressuscitar pacientes excluídos durante a migração.
     salvarCacheCadastrosLocalCAICAVV(atualizadoEm);
   }catch(e){
     console.error("Erro ao salvar pacientes no Firebase:", e);
@@ -3423,16 +3637,15 @@ async function carregarAtendimentosFirebase(){
       : {};
 
     if(remotoCadastros){
-      // Junta o documento dedicado com a cópia legada. Assim, nenhum cadastro antigo
-      // desaparece só porque os dois formatos coexistem durante a migração.
-      cadastros = mesclarCadastrosCAICAVV(remotoCadastros, legado);
+      // Quando o documento dedicado existe, ele é a fonte de verdade.
+      // NÃO mesclar automaticamente a cópia legada: uma exclusão feita no cadastro
+      // poderia ser desfeita no próximo F5/relogin pelo campo antigo de atendimentos.
+      cadastros = remotoCadastros;
 
-      // Um cadastro local mais novo pode existir caso a pessoa tenha salvo imediatamente
-      // antes de perder/recarregar a conexão. Nesse caso, preservamos as inclusões novas.
-      const remotoDoc = await DOC_CADASTROS.get();
-      const remotoData = String((remotoDoc.data() || {}).atualizadoEm || "");
+      const remotoData = String((await DOC_CADASTROS.get()).data()?.atualizadoEm || "");
       if(cacheLocal && cacheLocal.atualizadoEm && (!remotoData || cacheLocal.atualizadoEm > remotoData)){
-        cadastros = mesclarCadastrosCAICAVV(cadastros, cacheLocal.cadastros);
+        // Só preserva cache se ele for realmente mais novo que o documento dedicado.
+        cadastros = cacheLocal.cadastros;
         await salvarCadastrosFirebase({ substituir: true });
       }else{
         salvarCacheCadastrosLocalCAICAVV(remotoData || new Date().toISOString());
@@ -3465,13 +3678,61 @@ async function carregarAtendimentosFirebase(){
   }
 }
 
+function obterEntradaPacienteCAICAVV(pasta, nome){
+  const p = normalizarPasta(pasta);
+  const n = normalizarPacienteDuplicidade(nome);
+  const lista = typeof todasEntradasCAICAVV === "function" ? todasEntradasCAICAVV() : [];
+  return lista.find(e => normalizarPasta(e?.pasta) === p && normalizarPacienteDuplicidade(e?.nome) === n)
+    || lista.find(e => normalizarPasta(e?.pasta) === p)
+    || null;
+}
+
+function obterUltimoAgendamentoPacienteCAICAVV(pasta){
+  const p = normalizarPasta(pasta);
+  return (Array.isArray(atendimentos) ? atendimentos : [])
+    .filter(a => normalizarPasta(a?.pasta) === p && a?.data)
+    .sort((a,b) => getDataHoraAtendimento(b).localeCompare(getDataHoraAtendimento(a)))[0] || null;
+}
+
+const DIAS_PASTA_ESQUECIDA_CAICAVV = 30;
+function obterPrioridadeCasoCAICAVV(entrada){
+  const prioridade = String(entrada?.prioridade || entrada?.urgencia || entrada?.nivelPrioridade || "").trim().toLowerCase();
+  if(/alta|urgente|emerg/.test(prioridade)) return {classe:"alta", label:"ATENÇÃO TÉCNICA"};
+  const texto = [entrada?.violencia, entrada?.origem, entrada?.observacao, entrada?.observacoes].map(v=>String(v||"")).join(" ").toLowerCase();
+  if(/urgente|emergencia|emergência|risco imediato|grave/.test(texto)) return {classe:"alta", label:"ATENÇÃO TÉCNICA"};
+  return {classe:"normal", label:""};
+}
+
+function obterStatusVisualPastaCAICAVV(pasta, entrada){
+  const status = String(entrada?.status || entrada?.vinculacao || "").trim().toLowerCase();
+  if(status.includes("inativ")) return {classe:"inativo", label:"Inativa"};
+
+  const ultimo = obterUltimoAgendamentoPacienteCAICAVV(pasta);
+  const referencia = ultimo?.data || entrada?.data || entrada?.data_vinculacao || "";
+  if(referencia){
+    const d = new Date(`${String(referencia).slice(0,10)}T00:00:00`);
+    const hoje = new Date(); hoje.setHours(0,0,0,0);
+    const dias = Math.floor((hoje.getTime()-d.getTime())/86400000);
+    if(dias >= DIAS_PASTA_ESQUECIDA_CAICAVV) return {classe:"esquecido", label:"Esquecida"};
+  }
+  return {classe:"ativo", label:"Ativa"};
+}
+
+function pacienteTemAlertaFaltasCAICAVV(pasta){
+  return obterPacientesComTresFaltasCAICAVV().some(x => normalizarPasta(x.pasta) === normalizarPasta(pasta));
+}
+
 function montarCardPaciente(pasta, nome, index){
   const pastaHTML = escapeHTML(pasta);
   const nomeHTML = escapeHTML(nome);
+  const entrada = obterEntradaPacienteCAICAVV(pasta, nome);
+  const statusVisual = obterStatusVisualPastaCAICAVV(pasta, entrada);
+  const prioridade = obterPrioridadeCasoCAICAVV(entrada);
+  const alertaFaltas = pacienteTemAlertaFaltasCAICAVV(pasta);
   const idMenu = `menuPaciente_${pasta}_${index}`;
 
   return `
-    <div class="paciente-card" data-paciente-card data-busca="${nomeHTML} ${pastaHTML}">
+    <div class="paciente-card status-${statusVisual.classe} ${alertaFaltas ? 'alerta-faltas' : ''}" data-paciente-card data-busca="${nomeHTML} ${pastaHTML}" onclick="abrirDetalhesPacienteCAICAVV('${pastaHTML}',${index})">
       <div class="paciente-menu-wrap">
         <button type="button" class="btn-menu-paciente" onclick="alternarMenuPaciente(event,'${pastaHTML}',${index})">⋮</button>
         <div class="menu-paciente" id="${idMenu}">
@@ -3479,8 +3740,13 @@ function montarCardPaciente(pasta, nome, index){
           <button type="button" class="danger" onclick="event.stopPropagation(); excluirPaciente('${pastaHTML}',${index})">🗑️ Excluir</button>
         </div>
       </div>
-      <strong>${nomeHTML}</strong>
+      <strong>${alertaFaltas ? '❗ ' : ''}${nomeHTML}</strong>
       <span>📁 Pasta ${pastaHTML}</span>
+      <div class="paciente-status-linha">
+        <span class="paciente-status-chip ${statusVisual.classe}">${statusVisual.label}</span>
+        ${alertaFaltas ? '<span class="paciente-status-chip paciente-alerta-chip">3 FALTAS</span>' : ''}
+        ${prioridade.classe === "alta" ? '<span class="paciente-status-chip paciente-alerta-chip">⚠️ ATENÇÃO</span>' : ''}
+      </div>
     </div>
   `;
 }
@@ -3489,17 +3755,25 @@ function abrirTelaPacientes(){
   setTelaAtiva("pacientes");
   mostrarBlocosAgendamento(false);
 
+  const alertas = obterPacientesComTresFaltasCAICAVV();
+  const foco = window.pacienteAlertaFocoCAICAVV ? normalizarPasta(window.pacienteAlertaFocoCAICAVV) : "";
   const totalPastas = Object.keys(cadastros).length;
   const totalNomes = contarPacientes();
   let cards = "";
 
-  Object.entries(cadastros)
-    .sort((a,b) => Number(a[0]) - Number(b[0]))
-    .forEach(([pasta, nomes]) => {
-      (Array.isArray(nomes) ? nomes : []).forEach((nome, index) => {
-        cards += montarCardPaciente(pasta, nome, index);
-      });
+  const entradasOrdenadas = Object.entries(cadastros)
+    .sort((a,b) => {
+      const aa = pacienteTemAlertaFaltasCAICAVV(a[0]) ? 0 : 1;
+      const bb = pacienteTemAlertaFaltasCAICAVV(b[0]) ? 0 : 1;
+      if(aa !== bb) return aa - bb;
+      return Number(a[0]) - Number(b[0]);
     });
+
+  entradasOrdenadas.forEach(([pasta, nomes]) => {
+    (Array.isArray(nomes) ? nomes : []).forEach((nome, index) => {
+      cards += montarCardPaciente(pasta, nome, index);
+    });
+  });
 
   lista.innerHTML = `
     <div class="pagina-titulo">Pastas</div>
@@ -3527,11 +3801,31 @@ function abrirTelaPacientes(){
       </div>
     </div>
 
+    <div class="search-card" style="margin-bottom:14px">
+      <h3>ALERTA</h3>
+      <div class="pagina-sub" style="margin-bottom:8px">Pacientes cujos 3 últimos agendamentos foram registrados como falta.</div>
+      <div id="listaAlertasPacientesCAICAVV">
+        ${alertas.length ? alertas.map(x => `
+          <div class="alerta-falta-card" data-pasta-alerta="${escapeHTML(x.pasta)}">
+            <div><strong>❗ ${escapeHTML(x.nome)}</strong><span>📁 Pasta ${escapeHTML(x.pasta)} • Últimos 3 agendamentos: falta</span></div>
+            <button type="button" onclick="abrirDetalhesPacientePorPastaCAICAVV('${escapeHTML(x.pasta)}')">Ver</button>
+          </div>`).join("") : '<div class="pagina-sub">Nenhum alerta de faltas no momento.</div>'}
+      </div>
+    </div>
+
     <div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div>
     <div id="listaPacientes" class="pacientes-grid">
       ${cards || `<div class="paciente-card"><strong>Nenhum paciente cadastrado.</strong></div>`}
     </div>
   `;
+
+  if(foco){
+    setTimeout(() => {
+      const el = document.querySelector(`[data-paciente-card][data-busca*="${foco}"]`);
+      if(el) el.scrollIntoView({behavior:"smooth", block:"center"});
+      window.pacienteAlertaFocoCAICAVV = "";
+    }, 60);
+  }
 }
 
 function filtrarPacientes(){
