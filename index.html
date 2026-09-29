@@ -30,7 +30,8 @@
         const DOC_CADASTROS = db.collection("caicavv").doc("cadastros");
     </script>
 
-<style id="caicavv-alertas-faltas-v3">
+<style>
+
   .caicavv-alertas-faltas{margin:12px 0 16px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%);border:1px solid #dfe7f5;border-radius:16px;box-shadow:0 8px 24px rgba(15,23,42,.07);overflow:hidden}
   .caicavv-alertas-faltas__cabecalho{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 18px;cursor:pointer;user-select:none;transition:.18s ease}
   .caicavv-alertas-faltas__cabecalho:hover{background:#f8fbff}
@@ -76,21 +77,15 @@
   .caicavv-nova-observacao textarea{width:100%;min-height:120px;box-sizing:border-box;border:1px solid #ccd7e8;border-radius:11px;padding:12px;font:inherit;resize:vertical;background:#fff}
   .caicavv-nova-observacao button{margin-top:9px;border:0;border-radius:9px;background:#166534;color:#fff;padding:11px 16px;font-weight:900;cursor:pointer}
   @media(max-width:760px){.caicavv-dados-entrada{grid-template-columns:1fr}.caicavv-alerta-falta-item,.caicavv-alerta-paciente-linha{grid-template-columns:1fr;align-items:start}.caicavv-alerta-falta-item button,.caicavv-alerta-paciente-linha button{width:100%!important}}
-</style>
 
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
 
-<style id="caicavv-status-pasta-v2">
 .status-pasta-ativa{border-left:5px solid #16a34a!important}
 .status-pasta-inativa{border-left:5px solid #dc2626!important}
 .status-pasta-esquecida{border-left:5px solid #eab308!important}
-</style>
 
-</head>
-<body>
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
 
-
-<!-- ===== AJUSTE FINO: PEÃO NO RELATÓRIO + AGENDA DECORATIVA MAIOR ===== -->
-<style id="caicavv-ajuste-peao-agenda">
   .relatorio-card .rel-icone.caicavv-relatorio-peao{
     background-image:url("img/peao.png")!important;
     background-size:70%!important;
@@ -117,12 +112,9 @@
       opacity:.16!important;
     }
   }
-</style>
 
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
 
-
-<!-- ===== AJUSTE FINAL: flor sempre amarela + peão/agenda corrigidos no noturno ===== -->
-<style id="caicavv-ajuste-final-flor-peao-agenda">
 /* A flor é a única que NÃO muda de cor no modo noturno. */
 body.modo-app .caicavv-flor-img,
 body.modo-app.aparencia-noturna .caicavv-flor-img,
@@ -234,10 +226,9 @@ body.modo-app.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
     drop-shadow(0 0 12px color-mix(in srgb, var(--tema) 30%, transparent))!important;
   opacity:.14!important;
 }
-</style>
 
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
 
-<style id="caicavv-lembretes-reagendamento-style">
 .lembretes-reagendamento{
   margin:14px 0 0;
   padding:16px 18px;
@@ -382,255 +373,9 @@ body.modo-app.aparencia-noturna .lembrete-reagendamento-card{
 body.modo-app.aparencia-noturna .lembretes-reagendamento__icone{
   background:rgba(37,99,235,.20)!important;
 }
-</style>
 
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
 
-<script id="caicavv-lembretes-reagendamento-script">
-(function(){
-  "use strict";
-
-  const LIMITE_DIAS_LEMBRETE_REAGENDAMENTO = 7;
-  const MILISSEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
-  const CHAVE_LEMBRETES_REAGENDAMENTO_OK = "caicavv_lembretes_reagendamento_ok_v1";
-  let intervaloLembretesReagendamento = null;
-
-  function partesDataCalendarioCAICAVV(dataISO){
-    const partes = String(dataISO || "").split("-");
-    if(partes.length !== 3) return null;
-
-    const ano = Number(partes[0]);
-    const mes = Number(partes[1]);
-    const dia = Number(partes[2]);
-
-    if(!Number.isInteger(ano) || !Number.isInteger(mes) || !Number.isInteger(dia)) return null;
-    if(ano < 1900 || mes < 1 || mes > 12 || dia < 1 || dia > 31) return null;
-
-    const dataUTC = new Date(Date.UTC(ano, mes - 1, dia));
-    if(
-      dataUTC.getUTCFullYear() !== ano ||
-      dataUTC.getUTCMonth() !== mes - 1 ||
-      dataUTC.getUTCDate() !== dia
-    ) return null;
-
-    return { ano, mes, dia };
-  }
-
-  function hojeCalendarioUTC(){
-    const agora = new Date();
-    return Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate());
-  }
-
-  function diasAteAtendimentoCAICAVV(dataISO){
-    const partes = partesDataCalendarioCAICAVV(dataISO);
-    if(!partes) return null;
-    const alvoUTC = Date.UTC(partes.ano, partes.mes - 1, partes.dia);
-    return Math.round((alvoUTC - hojeCalendarioUTC()) / MILISSEGUNDOS_POR_DIA);
-  }
-
-  function atendimentoValidoParaLembreteCAICAVV(item){
-    if(!item || !item.id || !item.data) return false;
-
-    // Só atendimentos ainda agendados geram lembrete. Assim, compareceu,
-    // faltou, aguardando, cancelado ou qualquer outro estado finalizado não reaparece.
-    if(String(item.status || "agendado") !== "agendado") return false;
-
-    // Mantém o mesmo alcance da agenda atual: registros importados/arquivados
-    // não são transformados em novos avisos na área principal do técnico.
-    if(String(item.origem || "") === "upload" || String(item.tipo || "") === "importado") return false;
-    if(typeof window.atendimentoEstaEmAbaPassada === "function" && window.atendimentoEstaEmAbaPassada(item)) return false;
-
-    const dias = diasAteAtendimentoCAICAVV(item.data);
-    return Number.isInteger(dias) && dias >= 0 && dias <= LIMITE_DIAS_LEMBRETE_REAGENDAMENTO;
-  }
-
-  function obterLembretesReagendamentoCAICAVV(){
-    if(typeof atendimentos === "undefined" || !Array.isArray(atendimentos)) return [];
-    if(typeof tecnicoLogado === "undefined" || !tecnicoLogado) return [];
-
-    const eTecnico = tecnicoLogado.role === "tecnico";
-    const eJohanna = tecnicoLogado.role === "adm" && String(tecnicoLogado.nome || "").trim().toLowerCase() === "johanna";
-
-    // Técnicos veem somente seus próprios atendimentos.
-    // Johanna, por ser a ADM responsável por essa visão, vê todos os técnicos.
-    // Outros perfis administrativos mantêm a lógica anterior: não recebem esta área.
-    if(!eTecnico && !eJohanna) return [];
-
-    const idsVistos = new Set();
-
-    return atendimentos
-      .filter(atendimentoValidoParaLembreteCAICAVV)
-      .filter(item => !eTecnico || String(item.tecnico || "") === String(tecnicoLogado.nome || ""))
-      .filter(item => {
-        const chave = String(item.id);
-        if(idsVistos.has(chave)) return false;
-        idsVistos.add(chave);
-        return true;
-      })
-      .map(item => ({
-        item,
-        dias: diasAteAtendimentoCAICAVV(item.data)
-      }))
-      .sort((a,b) => {
-        if(a.dias !== b.dias) return a.dias - b.dias;
-        return String(a.item.hora || "").localeCompare(String(b.item.hora || ""));
-      });
-  }
-
-  function obterLembretesReagendamentoOkCAICAVV(){
-    try{
-      const valor = localStorage.getItem(CHAVE_LEMBRETES_REAGENDAMENTO_OK);
-      if(!valor) return new Set();
-      const lista = JSON.parse(valor);
-      return new Set(Array.isArray(lista) ? lista.map(String) : []);
-    }catch(e){
-      return new Set();
-    }
-  }
-
-  function salvarLembretesReagendamentoOkCAICAVV(set){
-    try{
-      localStorage.setItem(CHAVE_LEMBRETES_REAGENDAMENTO_OK, JSON.stringify(Array.from(set)));
-    }catch(e){}
-  }
-
-  function chaveLembreteReagendamentoCAICAVV(item){
-    return `${item.id}__${item.data || ""}__${item.hora || ""}`;
-  }
-
-  window.confirmarLembreteReagendamentoCAICAVV = function(chave){
-    const ok = obterLembretesReagendamentoOkCAICAVV();
-    ok.add(String(chave));
-    salvarLembretesReagendamentoOkCAICAVV(ok);
-    renderLembretesReagendamentoCAICAVV();
-  };
-
-  document.addEventListener("click", function(event){
-    const botao = event.target.closest("button[data-acao=\"confirmar-lembrete\"]");
-    if(!botao) return;
-    event.preventDefault();
-    event.stopPropagation();
-    const chave = botao.getAttribute("data-chave-lembrete");
-    if(chave) window.confirmarLembreteReagendamentoCAICAVV(chave);
-  });
-
-  function textoDiasFaltamCAICAVV(dias){
-    if(dias === 0) return "Faltam 0 dias • hoje";
-    if(dias === 1) return "Falta 1 dia";
-    return `Faltam ${dias} dias`;
-  }
-
-  function renderLembretesReagendamentoCAICAVV(){
-    const container = document.getElementById("lembretesReagendamento");
-    if(!container) return;
-
-    const visivelNaTela = typeof telaAtualCaicavv === "undefined" || telaAtualCaicavv === "agendamentos";
-    const usuarioAtual = typeof tecnicoLogado !== "undefined" && tecnicoLogado ? tecnicoLogado : null;
-    const eTecnico = !!usuarioAtual && usuarioAtual.role === "tecnico";
-    const eJohanna = !!usuarioAtual && usuarioAtual.role === "adm" &&
-      String(usuarioAtual.nome || "").trim().toLowerCase() === "johanna";
-
-    if(!visivelNaTela || (!eTecnico && !eJohanna)){
-      container.innerHTML = "";
-      container.classList.add("hidden");
-      return;
-    }
-
-    const lembretesOk = obterLembretesReagendamentoOkCAICAVV();
-    const lembretes = obterLembretesReagendamentoCAICAVV()
-      .filter(({item}) => !lembretesOk.has(chaveLembreteReagendamentoCAICAVV(item)));
-    if(!lembretes.length){
-      container.innerHTML = "";
-      container.classList.add("hidden");
-      return;
-    }
-
-    const itensHTML = lembretes.map(({item, dias}) => {
-      const foiReagendado = item.reagendado === true;
-      const tipo = foiReagendado ? "Lembrete de reagendamento" : "Atendimento próximo";
-      const detalhe = foiReagendado
-        ? "Este atendimento foi reagendado e a nova data está próxima."
-        : "Este atendimento está dentro da janela de 7 dias.";
-      const classeDias = dias === 0 ? "hoje" : "";
-      const chave = chaveLembreteReagendamentoCAICAVV(item);
-
-      return `
-        <article class="lembrete-reagendamento-card">
-          <div>
-            <div class="lembrete-reagendamento-card__nome">${escapeHTML(item.nome || `Pasta ${item.pasta || "—"}`)}</div>
-            <div class="lembrete-reagendamento-card__linha">
-              <span>👤 Técnico: ${escapeHTML(item.tecnico || "—")}</span>
-              <span>📁 Pasta ${escapeHTML(item.pasta || "—")}</span>
-              <span>📅 ${escapeHTML(formatarDataBR(item.data))}</span>
-              <span>🕒 ${escapeHTML(item.hora || "—")}</span>
-            </div>
-            <div class="lembrete-reagendamento-card__tipo">🔔 ${escapeHTML(tipo)}</div>
-            <div class="lembrete-reagendamento-card__linha" style="margin-top:6px;font-weight:600">${escapeHTML(detalhe)}</div>
-          </div>
-          <div style="display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:92px;">
-            <div class="lembrete-reagendamento-card__dias ${classeDias}">${escapeHTML(textoDiasFaltamCAICAVV(dias))}</div>
-            <button type="button" class="btn btn-primary" style="min-width:92px;padding:8px 12px;border-radius:10px;font-weight:800;cursor:pointer;" data-acao="confirmar-lembrete" data-chave-lembrete="${escapeHTML(chave)}" aria-label="Confirmar lembrete">OK</button>
-          </div>
-        </article>`;
-    }).join("");
-
-    container.innerHTML = `
-      <div class="lembretes-reagendamento__topo">
-        <div class="lembretes-reagendamento__titulo">
-          <span class="lembretes-reagendamento__icone" aria-hidden="true">🔔</span>
-          <div>
-            <h3>Lembretes de atendimento</h3>
-            <p>${eJohanna
-              ? "Atendimentos de todos os técnicos entre hoje e os próximos 7 dias."
-              : "Atendimentos do seu cadastro entre hoje e os próximos 7 dias."}</p>
-          </div>
-        </div>
-        <span class="lembretes-reagendamento__contador" aria-label="Quantidade de lembretes">${lembretes.length}</span>
-      </div>
-      <div class="lembretes-reagendamento__lista">${itensHTML}</div>`;
-    container.classList.remove("hidden");
-  }
-
-  window.renderLembretesReagendamentoCAICAVV = renderLembretesReagendamentoCAICAVV;
-  window.obterLembretesReagendamentoCAICAVV = obterLembretesReagendamentoCAICAVV;
-  window.diasAteAtendimentoCAICAVV = diasAteAtendimentoCAICAVV;
-
-  function envolverRenderCAICAVV(){
-    if(window.__caicavvLembretesRenderWrapped) return;
-    if(typeof window.render !== "function") return;
-
-    const renderOriginal = window.render;
-    window.render = function(){
-      const retorno = renderOriginal.apply(this, arguments);
-      renderLembretesReagendamentoCAICAVV();
-      return retorno;
-    };
-    window.__caicavvLembretesRenderWrapped = true;
-  }
-
-  function iniciarMonitorCAICAVV(){
-    envolverRenderCAICAVV();
-    renderLembretesReagendamentoCAICAVV();
-
-    if(intervaloLembretesReagendamento) return;
-    intervaloLembretesReagendamento = window.setInterval(function(){
-      envolverRenderCAICAVV();
-      renderLembretesReagendamentoCAICAVV();
-    }, 60000);
-  }
-
-  if(document.readyState === "loading"){
-    document.addEventListener("DOMContentLoaded", iniciarMonitorCAICAVV, { once:true });
-  } else {
-    iniciarMonitorCAICAVV();
-  }
-})();
-</script>
-
-</body>
-</html>
-
-
-<style>
 body{font-family:Arial;background:#f1f5f9;margin:0}
 header{background:#0f172a;color:#fff;padding:15px;text-align:center}
 .container{max-width:900px;margin:auto;padding:20px}
@@ -1289,7 +1034,1400 @@ body.modo-app{
 .arquivo-titulo-mes{font-size:14px;font-weight:900;color:#52699d;margin-top:4px;}
 @media(max-width:950px){.search-row{grid-template-columns:1fr!important;}.search-row input[type="date"]{width:100%!important;}}
 
+
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+.caicavv-identificacao-opcoes{display:grid;grid-template-columns:1fr;gap:11px;margin:18px 0 10px}
+.caicavv-identificacao-opcao{width:100%;min-height:52px;padding:13px 16px;border:1px solid rgba(37,99,235,.18);border-radius:13px;background:linear-gradient(180deg,#fff 0%,#f4f8ff 100%);color:#071943;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 7px 18px rgba(37,99,235,.08);transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
+.caicavv-identificacao-opcao:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(37,99,235,.13);border-color:var(--tema,#2563eb)}
+.caicavv-identificacao-opcao.perfil{background:linear-gradient(180deg,#f8fbff 0%,#eaf2ff 100%);color:#1d4ed8;font-size:17px;min-height:58px}
+.caicavv-identificacao-voltar{margin-top:6px!important;background:transparent!important;color:var(--tema,#2563eb)!important;border:1px solid #cfe0ff!important;box-shadow:none!important}
+.caicavv-identificacao-voltar:hover{background:#eff6ff!important}
+@media(min-width:520px){.caicavv-identificacao-opcoes{grid-template-columns:1fr 1fr}.caicavv-identificacao-opcao:first-child:last-child{grid-column:1/-1}}
+
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+body{font-family:Arial,sans-serif;background:#f3f6fb;color:#081946;margin:0;padding:26px}.wrap{max-width:1100px;margin:auto;background:#fff;border:1px solid #e8edf7;border-radius:16px;padding:26px;box-shadow:0 10px 32px rgba(15,23,42,.08)}h1{margin:0 0 4px;font-size:28px}.sub{color:#64748b;margin-bottom:22px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.card{background:#f8fafc;border:1px solid #e8edf7;border-radius:12px;padding:16px}.num{font-size:28px;font-weight:900;color:#2563eb}.lbl{color:#64748b;font-size:13px;font-weight:800}.acoes{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.acoes button{border:0;border-radius:10px;background:#2563eb;color:#fff;font-weight:800;padding:12px 16px;cursor:pointer}.acoes button.sec{background:#0f766e}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #e2e8f0;padding:10px;text-align:left;font-size:14px}th{background:#0f172a;color:#fff}.tecnico td{background:#eaf1ff;color:#0f172a;font-weight:900}.aviso{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;margin-top:14px}@media print{body{background:#fff;padding:0}.wrap{box-shadow:none;border:0}.acoes{display:none}.cards{grid-template-columns:repeat(4,1fr)}}@media(max-width:800px){.cards{grid-template-columns:1fr 1fr}}
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+        body{font-family:Arial,sans-serif;color:#071957;background:#fff;padding:28px}
+        .cabecalho-impressao{border-bottom:3px solid #005bff;margin-bottom:20px;padding-bottom:12px}
+        h1{margin:0 0 6px;color:#005bff;font-size:24px}
+        h2{margin:0;color:#071957;font-size:16px}
+        .entrada-exportar-acoes,.entradas-toolbar,.entrada-acoes,button{display:none!important}
+        .entradas-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+        .entradas-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+        .entrada-kpi,.entrada-box{border:1px solid #d8e4fa;border-radius:10px;padding:10px;margin-bottom:10px;box-shadow:none!important;background:#fff}
+        .entrada-kpi b{display:block;font-size:20px;color:#005bff}.entrada-kpi span{font-size:11px;color:#52699d;font-weight:bold;text-transform:uppercase}
+        .entrada-box h3{margin:0 0 8px;color:#061852;font-size:15px}.entrada-box p{line-height:1.45}
+        .entrada-alerta{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:8px;margin:8px 0;font-size:12px}
+        .entrada-tabela-wrap{max-height:none!important;overflow:visible!important}
+        table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #d8e4fa;padding:5px;text-align:left;vertical-align:top}th{background:#005bff;color:#fff}
+        canvas{max-width:100%;border:1px solid #d8e4fa;border-radius:8px}
+        @media print{body{padding:8px}.entrada-box{break-inside:avoid}.entrada-tabela-wrap{break-inside:auto}}
+      
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+  body{font-family:Arial,sans-serif;color:#071957;background:#fff;padding:28px}
+  .cabecalho-impressao{border-bottom:3px solid #005bff;margin-bottom:20px;padding-bottom:12px}
+  h1{margin:0 0 6px;color:#005bff;font-size:24px} h2{margin:0;color:#071957;font-size:16px}
+  .entradas-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+  .entradas-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
+  .entrada-kpi,.entrada-box{border:1px solid #d8e4fa;border-radius:10px;padding:10px;margin-bottom:10px;box-shadow:none!important;background:#fff}
+  .entrada-kpi b{display:block;font-size:20px;color:#005bff}.entrada-kpi span{font-size:11px;color:#52699d;font-weight:bold;text-transform:uppercase}
+  .entrada-box h3{margin:0 0 8px;color:#061852;font-size:15px}.entrada-box p{line-height:1.45}
+  .entrada-alerta{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:8px;margin:8px 0;font-size:12px}
+  .entrada-tabela-wrap{max-height:none!important;overflow:visible!important}
+  table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #d8e4fa;padding:5px;text-align:left;vertical-align:top}th{background:#005bff;color:#fff}
+  canvas{max-width:100%;border:1px solid #d8e4fa;border-radius:8px}
+  @media print{body{padding:8px}.entrada-box{break-inside:avoid}.entrada-tabela-wrap{break-inside:auto}}
+
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+  :root{
+    --img-flor-caicavv: url("img/flor-amarela.png");
+    --img-usuario-caicavv: url("img/usuario.png");
+    --img-peao-caicavv: url("img/peao.png");
+    --img-paciente-caicavv: url("img/paciente-coracao.png");
+    --img-tecnicos-caicavv: url("img/tecnicos.png");
+    --img-entradas-caicavv: url("img/bandeja-entrada.png");
+    --img-agenda-caicavv: url("img/agenda.png");
+    --img-engrenagem-caicavv: url("img/engrenagem.png");
+    --img-agenda-decorativa-caicavv: url("img/agenda-decorativa.png");
+  }
+
+  .caicavv-png-icon{
+    display:inline-block!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    background-size:contain!important;
+    line-height:0!important;
+    font-size:0!important;
+    color:transparent!important;
+    flex:0 0 auto;
+  }
+
+  .caicavv-flor-img{
+    width:100%!important;
+    height:100%!important;
+    object-fit:contain!important;
+    display:block!important;
+    filter:drop-shadow(0 0 8px rgba(250,204,21,.28));
+  }
+
+  .flower-logo,
+  .app-shell .flower{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    background:none!important;
+  }
+
+  .flower-logo .petal,
+  .flower-logo .flower-center,
+  .app-shell .flower span,
+  .app-shell .flower b{
+    display:none!important;
+  }
+
+  .big-flower-bg{
+    background-image:var(--img-flor-caicavv)!important;
+    background-size:contain!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    opacity:.10!important;
+  }
+  .big-flower-bg::before{content:""!important;}
+
+  .icon-box.caicavv-usuario-login,
+  .user-panel .avatar.caicavv-avatar-usuario{
+    background-image:var(--img-usuario-caicavv)!important;
+    background-size:72%!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    font-size:0!important;
+    color:transparent!important;
+  }
+
+  .relatorio-card .rel-icone.caicavv-relatorio-peao{
+    background-image:var(--img-peao-caicavv)!important;
+    background-size:70%!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    font-size:0!important;
+    color:transparent!important;
+  }
+
+  .side-icon.caicavv-peao-login{
+    width:24px!important;
+    height:24px!important;
+    background-image:var(--img-peao-caicavv)!important;
+    background-repeat:no-repeat!important;
+    background-size:contain!important;
+    background-position:center!important;
+    font-size:0!important;
+  }
+
+  .menu button::before{
+    content:""!important;
+    width:20px!important;
+    height:20px!important;
+    display:inline-block!important;
+    background-image:var(--img-peao-caicavv)!important;
+    background-repeat:no-repeat!important;
+    background-size:contain!important;
+    background-position:center!important;
+    filter:none!important;
+  }
+
+  .app-shell .nav-icon.caicavv-nav-img{
+    width:30px!important;
+    height:30px!important;
+    background-repeat:no-repeat!important;
+    background-size:contain!important;
+    background-position:center!important;
+    font-size:0!important;
+    color:transparent!important;
+  }
+
+  .app-shell .nav[data-tela="agendamentos"] .nav-icon{background-image:var(--img-agenda-caicavv)!important;}
+  .app-shell .nav[data-tela="pacientes"] .nav-icon{background-image:var(--img-paciente-caicavv)!important;}
+  .app-shell .nav[data-tela="tecnicos"] .nav-icon{background-image:var(--img-tecnicos-caicavv)!important;}
+  .app-shell .nav[data-tela="entradas"] .nav-icon{background-image:var(--img-entradas-caicavv)!important;}
+  .app-shell .nav[data-tela="configuracoes"] .nav-icon{background-image:var(--img-engrenagem-caicavv)!important;}
+
+  .search-card{
+    position:relative!important;
+    overflow:hidden!important;
+  }
+  .caicavv-agenda-decorativa{
+    position:absolute!important;
+    right:190px!important;
+    top:-42px!important;
+    width:155px!important;
+    height:155px!important;
+    object-fit:contain!important;
+    opacity:.24!important;
+    pointer-events:none!important;
+    transform:rotate(-6deg)!important;
+    z-index:0!important;
+  }
+  .search-card > *{
+    position:relative;
+    z-index:1;
+  }
+
+  @media(max-width:760px){
+    .caicavv-agenda-decorativa{
+      right:16px!important;
+      top:-18px!important;
+      width:105px!important;
+      height:105px!important;
+      opacity:.16!important;
+    }
+  }
+
+/* Correção dos caminhos: as imagens devem ficar dentro da pasta img/ */
+.caicavv-flor-img,
+.caicavv-agenda-decorativa{
+  max-width:100%!important;
+  max-height:100%!important;
+}
+
+
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+/*
+  Quando a aparência noturna estiver ativa, os PNGs usados como ícones
+  ficam brancos usando apenas CSS. Não precisa criar versões novas das imagens.
+*/
+body.modo-app.aparencia-noturna .caicavv-flor-img,
+body.modo-app.aparencia-noturna .caicavv-agenda-decorativa,
+body.modo-app.aparencia-noturna .icon-box.caicavv-usuario-login,
+body.modo-app.aparencia-noturna .user-panel .avatar.caicavv-avatar-usuario,
+body.modo-app.aparencia-noturna .relatorio-card .rel-icone.caicavv-relatorio-peao,
+body.modo-app.aparencia-noturna .side-icon.caicavv-peao-login,
+body.modo-app.aparencia-noturna .app-shell .nav-icon.caicavv-nav-img,
+body.modo-app.aparencia-noturna .menu button::before{
+  filter:brightness(0) invert(1) drop-shadow(0 0 8px rgba(255,255,255,.18))!important;
+}
+
+/* No modo noturno + neon, os ícones continuam brancos, mas ganham um brilho leve da cor escolhida. */
+body.modo-app.aparencia-noturna.neon-ativo .caicavv-flor-img,
+body.modo-app.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa,
+body.modo-app.aparencia-noturna.neon-ativo .icon-box.caicavv-usuario-login,
+body.modo-app.aparencia-noturna.neon-ativo .user-panel .avatar.caicavv-avatar-usuario,
+body.modo-app.aparencia-noturna.neon-ativo .relatorio-card .rel-icone.caicavv-relatorio-peao,
+body.modo-app.aparencia-noturna.neon-ativo .side-icon.caicavv-peao-login,
+body.modo-app.aparencia-noturna.neon-ativo .app-shell .nav-icon.caicavv-nav-img,
+body.modo-app.aparencia-noturna.neon-ativo .menu button::before{
+  filter:brightness(0) invert(1)
+    drop-shadow(0 0 6px rgba(255,255,255,.24))
+    drop-shadow(0 0 14px color-mix(in srgb, var(--tema) 38%, transparent))!important;
+}
+
+/* Mantém os ícones coloridos normalmente quando a aparência noturna estiver desligada. */
+body.modo-app:not(.aparencia-noturna) .caicavv-flor-img{
+  filter:drop-shadow(0 0 8px rgba(250,204,21,.28))!important;
+}
+body.modo-app:not(.aparencia-noturna) .caicavv-agenda-decorativa,
+body.modo-app:not(.aparencia-noturna) .icon-box.caicavv-usuario-login,
+body.modo-app:not(.aparencia-noturna) .user-panel .avatar.caicavv-avatar-usuario,
+body.modo-app:not(.aparencia-noturna) .relatorio-card .rel-icone.caicavv-relatorio-peao,
+body.modo-app:not(.aparencia-noturna) .side-icon.caicavv-peao-login,
+body.modo-app:not(.aparencia-noturna) .app-shell .nav-icon.caicavv-nav-img,
+body.modo-app:not(.aparencia-noturna) .menu button::before{
+  filter:none!important;
+}
+
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+/* ===== Integração: Aguardando + campainha dos técnicos ===== */
+.v10-actions .aguardando{
+  background:linear-gradient(180deg,#f59e0b,#d97706)!important;
+  color:#fff!important;
+}
+.v10-actions .finalizado{
+  background:linear-gradient(180deg,#16c765,#079341)!important;
+  color:#fff!important;
+}
+.status-chip.aguardando-chip,
+.status-chip.v10-pendente.aguardando-chip{
+  background:#fef3c7!important;
+  color:#92400e!important;
+}
+.card.atendimento-card.v10-card.status-aguardando{
+  border-left-color:#f59e0b!important;
+}
+.card.atendimento-card.v10-card.status-aguardando::before{
+  background:#f59e0b!important;
+}
+.caicavv-ativar-som{
+  position:fixed;
+  right:18px;
+  bottom:18px;
+  width:auto!important;
+  min-width:180px;
+  z-index:99999;
+  border-radius:999px!important;
+  background:linear-gradient(135deg,#f59e0b,#d97706)!important;
+  color:#fff!important;
+  font-weight:900!important;
+  box-shadow:0 16px 36px rgba(15,23,42,.22)!important;
+}
+.config-som-card select{margin-top:8px!important}
+.config-som-card .linha-botoes-som{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.config-som-card .linha-botoes-som button{margin-top:0!important}
+@media(max-width:650px){.caicavv-ativar-som{left:12px;right:12px;bottom:12px;width:calc(100% - 24px)!important}.config-som-card .linha-botoes-som{grid-template-columns:1fr}}
+
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+/* ===== Correção: blocos de agendamento somente na aba Agendamentos ===== */
+body.modo-app:not(.tela-agendamentos) #boasVindas,
+body.modo-app:not(.tela-agendamentos) #menu,
+body.modo-app:not(.tela-agendamentos) #relatorio,
+body.modo-app:not(.tela-agendamentos) #filtrosV6,
+body.modo-app:not(.tela-agendamentos) #formAtendimento,
+body.modo-app:not(.tela-agendamentos) #abasPassadasContainer,
+body.modo-app:not(.tela-agendamentos) #btnCriarAbaPassada{
+  display:none!important;
+}
+
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+/* ===== Configurações: aparência noturna + neons com a cor do usuário ===== */
+body.modo-app.aparencia-noturna{
+  background:
+    radial-gradient(circle at 82% 4%, color-mix(in srgb, var(--tema) 24%, transparent), transparent 32%),
+    radial-gradient(circle at 8% 92%, color-mix(in srgb, var(--tema) 14%, transparent), transparent 30%),
+    linear-gradient(180deg,#071126 0%,#080f24 45%,#050a18 100%)!important;
+  color:#eaf1ff!important;
+}
+body.modo-app.aparencia-noturna .app-shell .sidebar{
+  background:linear-gradient(180deg,#071126,#030816)!important;
+  border-right:1px solid rgba(255,255,255,.08)!important;
+  box-shadow:12px 0 35px rgba(0,0,0,.36)!important;
+}
+body.modo-app.aparencia-noturna .app-shell .topbar{
+  background:
+    radial-gradient(circle at 92% 15%, color-mix(in srgb, var(--tema) 34%, transparent), transparent 28%),
+    linear-gradient(135deg,#071126,var(--tema-escuro) 62%,#060b19)!important;
+  border-bottom:1px solid color-mix(in srgb, var(--tema) 34%, transparent)!important;
+}
+body.modo-app.aparencia-noturna .app-shell .user-panel,
+body.modo-app.aparencia-noturna .app-shell #menu,
+body.modo-app.aparencia-noturna .app-shell .relatorio-card,
+body.modo-app.aparencia-noturna .app-shell .search-card,
+body.modo-app.aparencia-noturna .app-shell .form-card,
+body.modo-app.aparencia-noturna .app-shell .v10-card,
+body.modo-app.aparencia-noturna .app-shell .lista-vazia,
+body.modo-app.aparencia-noturna .paciente-card,
+body.modo-app.aparencia-noturna .config-card,
+body.modo-app.aparencia-noturna .tecnico-relatorio-box,
+body.modo-app.aparencia-noturna .menu-lateral,
+body.modo-app.aparencia-noturna .menu-bloco,
+body.modo-app.aparencia-noturna .modal-box{
+  background:rgba(12,21,45,.94)!important;
+  border-color:rgba(148,163,184,.20)!important;
+  color:#eaf1ff!important;
+  box-shadow:0 16px 40px rgba(0,0,0,.24)!important;
+}
+body.modo-app.aparencia-noturna .pagina-titulo,
+body.modo-app.aparencia-noturna .config-card h3,
+body.modo-app.aparencia-noturna .paciente-card strong,
+body.modo-app.aparencia-noturna .v10-nome,
+body.modo-app.aparencia-noturna .v10-meta-value,
+body.modo-app.aparencia-noturna .relatorio-card .rel-nome,
+body.modo-app.aparencia-noturna .user-panel b,
+body.modo-app.aparencia-noturna .modal-box h3{
+  color:#f8fbff!important;
+}
+body.modo-app.aparencia-noturna .pagina-sub,
+body.modo-app.aparencia-noturna .paciente-card span,
+body.modo-app.aparencia-noturna .v10-sub,
+body.modo-app.aparencia-noturna .v10-meta-label,
+body.modo-app.aparencia-noturna .relatorio-card .rel-responsavel,
+body.modo-app.aparencia-noturna .aviso{
+  color:#aebde0!important;
+}
+body.modo-app.aparencia-noturna .app-shell #menu button,
+body.modo-app.aparencia-noturna .search-box,
+body.modo-app.aparencia-noturna .v10-meta-item,
+body.modo-app.aparencia-noturna .form-card input,
+body.modo-app.aparencia-noturna .form-card select,
+body.modo-app.aparencia-noturna .search-box input,
+body.modo-app.aparencia-noturna .search-row button,
+body.modo-app.aparencia-noturna .config-card input,
+body.modo-app.aparencia-noturna .config-card select,
+body.modo-app.aparencia-noturna .tecnico-relatorio-box input,
+body.modo-app.aparencia-noturna .tecnico-relatorio-box select,
+body.modo-app.aparencia-noturna .modal-box input,
+body.modo-app.aparencia-noturna .modal-box select{
+  background:rgba(5,10,24,.72)!important;
+  border-color:rgba(148,163,184,.22)!important;
+  color:#eaf1ff!important;
+}
+body.modo-app.aparencia-noturna input::placeholder{
+  color:#94a3c7!important;
+}
+body.modo-app.aparencia-noturna .status-chip,
+body.modo-app.aparencia-noturna .relatorio-card .rel-icone,
+body.modo-app.aparencia-noturna .user-panel .avatar{
+  background:color-mix(in srgb, var(--tema) 18%, #081126)!important;
+  color:#ffffff!important;
+  border:1px solid color-mix(in srgb, var(--tema) 45%, transparent)!important;
+}
+body.modo-app.neon-ativo .app-shell .topbar,
+body.modo-app.neon-ativo .app-shell .nav.active,
+body.modo-app.neon-ativo .app-shell #menu button.ativo,
+body.modo-app.neon-ativo .search-row .active-filter,
+body.modo-app.neon-ativo .search-row .ativo,
+body.modo-app.neon-ativo .linha-pasta button,
+body.modo-app.neon-ativo #btnAdicionar,
+body.modo-app.neon-ativo .tecnico-relatorio-box button,
+body.modo-app.neon-ativo .config-card button,
+body.modo-app.neon-ativo .login-button{
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--tema) 42%, transparent),
+    0 0 22px color-mix(in srgb, var(--tema) 52%, transparent),
+    0 14px 36px color-mix(in srgb, var(--tema) 22%, transparent)!important;
+}
+body.modo-app.neon-ativo .app-shell .user-panel,
+body.modo-app.neon-ativo .app-shell .relatorio-card,
+body.modo-app.neon-ativo .app-shell .search-card,
+body.modo-app.neon-ativo .app-shell .form-card,
+body.modo-app.neon-ativo .app-shell .v10-card,
+body.modo-app.neon-ativo .config-card,
+body.modo-app.neon-ativo .paciente-card,
+body.modo-app.neon-ativo .tecnico-relatorio-box{
+  border-color:color-mix(in srgb, var(--tema) 42%, transparent)!important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--tema) 13%, transparent),
+    0 0 28px color-mix(in srgb, var(--tema) 18%, transparent),
+    0 14px 32px rgba(0,0,0,.12)!important;
+}
+body.modo-app.neon-ativo .app-shell .v10-card{
+  border-left-color:var(--tema)!important;
+}
+body.modo-app.neon-ativo .app-shell .brand h1,
+body.modo-app.neon-ativo .pagina-titulo,
+body.modo-app.neon-ativo .v10-nome{
+  text-shadow:0 0 16px color-mix(in srgb, var(--tema) 45%, transparent)!important;
+}
+body.modo-app.neon-ativo .menu-icon,
+body.modo-app.neon-ativo .app-shell .nav.active{
+  border-color:color-mix(in srgb, var(--tema) 74%, #fff)!important;
+}
+body.modo-app.neon-ativo .config-aparencia-card input[type="checkbox"]{
+  accent-color:var(--tema);
+  filter:drop-shadow(0 0 8px color-mix(in srgb, var(--tema) 55%, transparent));
+}
+@supports not (color: color-mix(in srgb, red, blue)){
+  body.modo-app.neon-ativo .app-shell .user-panel,
+  body.modo-app.neon-ativo .app-shell .relatorio-card,
+  body.modo-app.neon-ativo .app-shell .search-card,
+  body.modo-app.neon-ativo .app-shell .form-card,
+  body.modo-app.neon-ativo .app-shell .v10-card,
+  body.modo-app.neon-ativo .config-card{
+    border-color:var(--tema)!important;
+    box-shadow:0 0 22px rgba(37,99,235,.22)!important;
+  }
+}
+
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+/* ===== AJUSTE FINAL: realizados corrigidos + neon mais forte ===== */
+body.modo-app.aparencia-noturna .card.realizado,
+body.modo-app.aparencia-noturna .card.atendimento-card.realizado,
+body.modo-app.aparencia-noturna .app-shell .v10-card.realizado{
+  filter:none!important;
+  opacity:1!important;
+  background:linear-gradient(145deg,rgba(13,22,47,.98),rgba(8,14,31,.98))!important;
+  border-color:rgba(148,163,184,.22)!important;
+  color:#eaf1ff!important;
+}
+body.modo-app.aparencia-noturna .app-shell .v10-card.realizado{
+  border-left:8px solid color-mix(in srgb, var(--tema) 70%, #ffffff 8%)!important;
+}
+body.modo-app.aparencia-noturna .v10-card.realizado .v10-nome,
+body.modo-app.aparencia-noturna .v10-card.realizado .v10-meta-value,
+body.modo-app.aparencia-noturna .v10-card.realizado .info-valor,
+body.modo-app.aparencia-noturna .v10-card.realizado .info-valor.destaque,
+body.modo-app.aparencia-noturna .v10-card.realizado .info-valor.pasta{
+  color:#f8fbff!important;
+  opacity:1!important;
+}
+body.modo-app.aparencia-noturna .v10-card.realizado .v10-sub,
+body.modo-app.aparencia-noturna .v10-card.realizado .v10-meta-label,
+body.modo-app.aparencia-noturna .v10-card.realizado .info-label{
+  color:#b9c7e8!important;
+  opacity:1!important;
+}
+body.modo-app.aparencia-noturna .v10-card.realizado .v10-meta-item,
+body.modo-app.aparencia-noturna .card.realizado .v10-meta-item,
+body.modo-app.aparencia-noturna .card.realizado .info-bloco{
+  background:rgba(15,25,52,.96)!important;
+  border:1px solid rgba(148,163,184,.18)!important;
+  color:#eaf1ff!important;
+  opacity:1!important;
+}
+body.modo-app.aparencia-noturna .selo-realizado,
+body.modo-app.aparencia-noturna .status-chip,
+body.modo-app.aparencia-noturna .v10-card.realizado .status-chip{
+  background:color-mix(in srgb, var(--tema) 28%, #101827)!important;
+  color:#fff!important;
+  border:1px solid color-mix(in srgb, var(--tema) 58%, transparent)!important;
+  box-shadow:0 0 14px color-mix(in srgb, var(--tema) 28%, transparent)!important;
+}
+body.modo-app.aparencia-noturna .btn-menu-atendimento{
+  background:rgba(15,25,52,.95)!important;
+  color:#f8fbff!important;
+  border-color:rgba(148,163,184,.24)!important;
+}
+body.modo-app.aparencia-noturna .menu-atendimento{
+  background:#0b1328!important;
+  border-color:rgba(148,163,184,.22)!important;
+  box-shadow:0 22px 55px rgba(0,0,0,.42)!important;
+}
+body.modo-app.aparencia-noturna .menu-atendimento button{
+  color:#eaf1ff!important;
+}
+body.modo-app.aparencia-noturna .menu-atendimento button:hover{
+  background:rgba(255,255,255,.06)!important;
+}
+
+/* Neon forte seguindo a cor escolhida pelo usuário */
+body.modo-app.neon-ativo{
+  --neon-a:color-mix(in srgb, var(--tema) 85%, #ffffff 8%);
+  --neon-b:color-mix(in srgb, var(--tema) 55%, transparent);
+  --neon-c:color-mix(in srgb, var(--tema) 28%, transparent);
+}
+body.modo-app.neon-ativo .app-shell .topbar{
+  box-shadow:
+    0 0 0 1px var(--neon-a),
+    0 0 30px var(--neon-b),
+    0 0 70px var(--neon-c),
+    0 16px 35px rgba(0,0,0,.28)!important;
+}
+body.modo-app.neon-ativo .app-shell .sidebar{
+  box-shadow:
+    10px 0 28px rgba(0,0,0,.30),
+    0 0 34px var(--neon-c),
+    inset -1px 0 0 var(--neon-a)!important;
+}
+body.modo-app.neon-ativo .app-shell .user-panel,
+body.modo-app.neon-ativo .app-shell .relatorio-card,
+body.modo-app.neon-ativo .app-shell .search-card,
+body.modo-app.neon-ativo .app-shell .form-card,
+body.modo-app.neon-ativo .app-shell #menu,
+body.modo-app.neon-ativo .app-shell .v10-card,
+body.modo-app.neon-ativo .config-card,
+body.modo-app.neon-ativo .paciente-card,
+body.modo-app.neon-ativo .tecnico-relatorio-box,
+body.modo-app.neon-ativo .menu-bloco{
+  border-color:var(--neon-a)!important;
+  box-shadow:
+    0 0 0 1px color-mix(in srgb, var(--tema) 34%, transparent),
+    0 0 24px var(--neon-b),
+    0 0 54px var(--neon-c),
+    0 16px 36px rgba(0,0,0,.18)!important;
+}
+body.modo-app.neon-ativo .app-shell .v10-card{
+  border-left-color:var(--neon-a)!important;
+}
+body.modo-app.neon-ativo .app-shell .v10-card::after,
+body.modo-app.neon-ativo .config-card::after,
+body.modo-app.neon-ativo .search-card::after,
+body.modo-app.neon-ativo .relatorio-card::after{
+  content:"";
+  position:absolute;
+  inset:-2px;
+  border-radius:inherit;
+  pointer-events:none;
+  box-shadow:inset 0 0 22px color-mix(in srgb, var(--tema) 22%, transparent);
+}
+body.modo-app.neon-ativo .app-shell .v10-card,
+body.modo-app.neon-ativo .config-card,
+body.modo-app.neon-ativo .search-card,
+body.modo-app.neon-ativo .relatorio-card{
+  position:relative!important;
+}
+body.modo-app.neon-ativo .app-shell .nav.active,
+body.modo-app.neon-ativo .app-shell #menu button.ativo,
+body.modo-app.neon-ativo .search-row .active-filter,
+body.modo-app.neon-ativo .search-row .ativo,
+body.modo-app.neon-ativo .linha-pasta button,
+body.modo-app.neon-ativo #btnAdicionar,
+body.modo-app.neon-ativo .tecnico-relatorio-box button,
+body.modo-app.neon-ativo .config-card button,
+body.modo-app.neon-ativo .login-button,
+body.modo-app.neon-ativo .btn-relatorio,
+body.modo-app.neon-ativo .btn-secundario{
+  background:linear-gradient(135deg,var(--tema),var(--tema-escuro))!important;
+  border:1px solid var(--neon-a)!important;
+  box-shadow:
+    0 0 12px var(--neon-a),
+    0 0 30px var(--neon-b),
+    0 0 58px var(--neon-c),
+    inset 0 1px 0 rgba(255,255,255,.25)!important;
+}
+body.modo-app.neon-ativo .v10-nome,
+body.modo-app.neon-ativo .pagina-titulo,
+body.modo-app.neon-ativo .app-shell .brand h1,
+body.modo-app.neon-ativo .relatorio-card .rel-nome{
+  text-shadow:
+    0 0 10px color-mix(in srgb, var(--tema) 55%, transparent),
+    0 0 24px color-mix(in srgb, var(--tema) 35%, transparent)!important;
+}
+body.modo-app.neon-ativo .status-chip,
+body.modo-app.neon-ativo .relatorio-card .rel-icone,
+body.modo-app.neon-ativo .user-panel .avatar,
+body.modo-app.neon-ativo .menu-icon,
+body.modo-app.neon-ativo .btn-menu-atendimento{
+  border-color:var(--neon-a)!important;
+  box-shadow:
+    0 0 10px var(--neon-a),
+    0 0 26px var(--neon-b)!important;
+}
+body.modo-app.neon-ativo .search-box,
+body.modo-app.neon-ativo .v10-meta-item,
+body.modo-app.neon-ativo input,
+body.modo-app.neon-ativo select{
+  border-color:color-mix(in srgb, var(--tema) 38%, transparent)!important;
+  box-shadow:0 0 16px color-mix(in srgb, var(--tema) 14%, transparent)!important;
+}
+body.modo-app.neon-ativo .app-shell .v10-card:hover,
+body.modo-app.neon-ativo .config-card:hover,
+body.modo-app.neon-ativo .paciente-card:hover{
+  transform:translateY(-2px)!important;
+  box-shadow:
+    0 0 0 1px var(--neon-a),
+    0 0 34px var(--neon-b),
+    0 0 75px var(--neon-c),
+    0 22px 44px rgba(0,0,0,.24)!important;
+}
+
+@supports not (color: color-mix(in srgb, red, blue)){
+  body.modo-app.neon-ativo .app-shell .user-panel,
+  body.modo-app.neon-ativo .app-shell .relatorio-card,
+  body.modo-app.neon-ativo .app-shell .search-card,
+  body.modo-app.neon-ativo .app-shell .form-card,
+  body.modo-app.neon-ativo .app-shell #menu,
+  body.modo-app.neon-ativo .app-shell .v10-card,
+  body.modo-app.neon-ativo .config-card,
+  body.modo-app.neon-ativo .paciente-card,
+  body.modo-app.neon-ativo .tecnico-relatorio-box{
+    border-color:var(--tema)!important;
+    box-shadow:0 0 34px rgba(37,99,235,.45),0 0 70px rgba(37,99,235,.22)!important;
+  }
+  body.modo-app.aparencia-noturna .card.realizado,
+  body.modo-app.aparencia-noturna .app-shell .v10-card.realizado{
+    background:#0b1328!important;
+    filter:none!important;
+    opacity:1!important;
+  }
+}
+
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+/*
+  Correção dos 3 ícones que estavam virando "manchas" no modo noturno:
+  - flor: fica clara sem perder totalmente o contorno;
+  - usuário: o filtro não pega mais o círculo inteiro, só o PNG;
+  - agenda: fica bem mais discreta para não estourar atrás da busca.
+*/
+
+/* 1) Flor: deixa clara/branca, mas sem transformar tudo em uma bolha sólida */
+body.modo-app.aparencia-noturna .caicavv-flor-img{
+  filter:grayscale(1) brightness(2.15) contrast(1.08)
+         drop-shadow(0 0 8px rgba(255,255,255,.24))!important;
+  opacity:.96!important;
+}
+
+body.modo-app.aparencia-noturna.neon-ativo .caicavv-flor-img{
+  filter:grayscale(1) brightness(2.15) contrast(1.08)
+         drop-shadow(0 0 7px rgba(255,255,255,.30))
+         drop-shadow(0 0 14px color-mix(in srgb, var(--tema) 35%, transparent))!important;
+}
+
+/* 2) Usuário: remove o filtro do círculo e aplica somente no desenho do PNG */
+.icon-box.caicavv-usuario-login,
+.user-panel .avatar.caicavv-avatar-usuario{
+  position:relative!important;
+  overflow:hidden!important;
+  background-image:none!important;
+}
+
+.icon-box.caicavv-usuario-login::before,
+.user-panel .avatar.caicavv-avatar-usuario::before{
+  content:""!important;
+  position:absolute!important;
+  inset:14%!important;
+  background-image:var(--img-usuario-caicavv)!important;
+  background-size:contain!important;
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  pointer-events:none!important;
+  filter:none!important;
+}
+
+body.modo-app.aparencia-noturna .icon-box.caicavv-usuario-login,
+body.modo-app.aparencia-noturna .user-panel .avatar.caicavv-avatar-usuario{
+  filter:none!important;
+  background:rgba(255,255,255,.08)!important;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14), 0 0 18px rgba(255,255,255,.10)!important;
+}
+
+body.modo-app.aparencia-noturna .icon-box.caicavv-usuario-login::before,
+body.modo-app.aparencia-noturna .user-panel .avatar.caicavv-avatar-usuario::before{
+  filter:brightness(0) invert(1) drop-shadow(0 0 6px rgba(255,255,255,.22))!important;
+}
+
+body.modo-app.aparencia-noturna.neon-ativo .icon-box.caicavv-usuario-login::before,
+body.modo-app.aparencia-noturna.neon-ativo .user-panel .avatar.caicavv-avatar-usuario::before{
+  filter:brightness(0) invert(1)
+         drop-shadow(0 0 6px rgba(255,255,255,.30))
+         drop-shadow(0 0 12px color-mix(in srgb, var(--tema) 36%, transparent))!important;
+}
+
+/* 3) Agenda decorativa: branca, mas com baixa opacidade para não virar bloco cinza/branco */
+body.modo-app.aparencia-noturna .caicavv-agenda-decorativa{
+  filter:brightness(0) invert(1) drop-shadow(0 0 10px rgba(255,255,255,.12))!important;
+  opacity:.085!important;
+}
+
+body.modo-app.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
+  filter:brightness(0) invert(1)
+         drop-shadow(0 0 12px color-mix(in srgb, var(--tema) 30%, transparent))!important;
+  opacity:.11!important;
+}
+
+/* Garante que os filtros antigos não voltem a afetar esses 3 de forma errada */
+body.modo-app.aparencia-noturna .icon-box.caicavv-usuario-login,
+body.modo-app.aparencia-noturna .user-panel .avatar.caicavv-avatar-usuario{
+  color:transparent!important;
+  font-size:0!important;
+}
+
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+/* 
+  IMPORTANTE:
+  Este bloco fica no final do arquivo para sobrescrever os estilos anteriores.
+  A flor NÃO entra no modo branco. Ela permanece amarela sempre.
+*/
+
+/* FLOR: sempre amarela, no modo normal, noturno e neon */
+body .caicavv-flor-img,
+body.modo-app .caicavv-flor-img,
+body.modo-app.aparencia-noturna .caicavv-flor-img,
+body.modo-app.aparencia-noturna.neon-ativo .caicavv-flor-img,
+body.aparencia-noturna .caicavv-flor-img,
+body.aparencia-noturna.neon-ativo .caicavv-flor-img{
+  filter:drop-shadow(0 0 8px rgba(250,204,21,.28))!important;
+}
+
+/* Remove a regra antiga que deixava a flor branca */
+body.modo-app.aparencia-noturna .caicavv-flor-img{
+  opacity:1!important;
+}
+
+/* PEÃO DO RELATÓRIO: o filtro não pode cair no círculo inteiro */
+body.modo-app.aparencia-noturna .relatorio-card .rel-icone.caicavv-relatorio-peao,
+body.modo-app.aparencia-noturna.neon-ativo .relatorio-card .rel-icone.caicavv-relatorio-peao{
+  position:relative!important;
+  overflow:hidden!important;
+  background-image:none!important;
+  filter:none!important;
+  background-color:rgba(255,255,255,.10)!important;
+  box-shadow:0 0 14px rgba(255,255,255,.20)!important;
+}
+
+body.modo-app.aparencia-noturna .relatorio-card .rel-icone.caicavv-relatorio-peao::after,
+body.modo-app.aparencia-noturna.neon-ativo .relatorio-card .rel-icone.caicavv-relatorio-peao::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  background-image:var(--img-peao-caicavv)!important;
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  background-size:68%!important;
+  filter:brightness(0) invert(1)!important;
+  opacity:.95!important;
+}
+
+body.modo-app.aparencia-noturna.neon-ativo .relatorio-card .rel-icone.caicavv-relatorio-peao::after{
+  filter:brightness(0) invert(1)
+    drop-shadow(0 0 6px rgba(255,255,255,.28))
+    drop-shadow(0 0 12px color-mix(in srgb, var(--tema) 35%, transparent))!important;
+}
+
+/* PEÃO DO MENU/TABS: branco sem estourar */
+body.modo-app.aparencia-noturna .menu button::before,
+body.modo-app.aparencia-noturna.neon-ativo .menu button::before,
+body.aparencia-noturna .menu button::before,
+body.aparencia-noturna.neon-ativo .menu button::before{
+  filter:brightness(0) invert(1)!important;
+  opacity:.92!important;
+}
+
+/* USUÁRIO: mantém o círculo, mas embranquece só o desenho */
+body.modo-app.aparencia-noturna .user-panel .avatar.caicavv-avatar-usuario,
+body.modo-app.aparencia-noturna.neon-ativo .user-panel .avatar.caicavv-avatar-usuario{
+  position:relative!important;
+  overflow:hidden!important;
+  background-image:none!important;
+  filter:none!important;
+  background-color:rgba(255,255,255,.10)!important;
+}
+
+body.modo-app.aparencia-noturna .user-panel .avatar.caicavv-avatar-usuario::after,
+body.modo-app.aparencia-noturna.neon-ativo .user-panel .avatar.caicavv-avatar-usuario::after{
+  content:""!important;
+  position:absolute!important;
+  inset:0!important;
+  background-image:var(--img-usuario-caicavv)!important;
+  background-repeat:no-repeat!important;
+  background-position:center!important;
+  background-size:72%!important;
+  filter:brightness(0) invert(1)!important;
+  opacity:.95!important;
+}
+
+/* AGENDA DECORATIVA: menor, discreta e usando a agenda normal */
+.caicavv-agenda-decorativa{
+  content:url("img/agenda-decorativa.png")!important;
+  right:138px!important;
+  top:-4px!important;
+  width:96px!important;
+  height:96px!important;
+  object-fit:contain!important;
+  transform:rotate(-5deg)!important;
+  opacity:.10!important;
+  filter:none!important;
+  pointer-events:none!important;
+}
+
+body.modo-app.aparencia-noturna .caicavv-agenda-decorativa,
+body.aparencia-noturna .caicavv-agenda-decorativa{
+  content:url("img/agenda-decorativa.png")!important;
+  filter:brightness(0) invert(1)!important;
+  opacity:.075!important;
+}
+
+body.modo-app.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa,
+body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
+  content:url("img/agenda-decorativa.png")!important;
+  filter:brightness(0) invert(1)
+    drop-shadow(0 0 7px rgba(255,255,255,.14))
+    drop-shadow(0 0 12px color-mix(in srgb, var(--tema) 28%, transparent))!important;
+  opacity:.095!important;
+}
+
+@media(max-width:760px){
+  .caicavv-agenda-decorativa{
+    right:12px!important;
+    top:2px!important;
+    width:68px!important;
+    height:68px!important;
+    opacity:.08!important;
+  }
+}
+
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+  /*
+    A imagem antiga era inserida como <img> dentro da barra de busca.
+    Quando o CSS não pegava direito, ela empurrava a barra para baixo.
+    Então aqui ela fica escondida e a agenda decorativa aparece via ::before,
+    sem ocupar espaço nenhum. Sim, HTML resolveu dramatizar de novo.
+  */
+
+  #filtrosV6.search-card{
+    position:relative!important;
+    overflow:hidden!important;
+    height:auto!important;
+    min-height:0!important;
+    padding:16px 18px!important;
+    margin-bottom:14px!important;
+  }
+
+  #filtrosV6 .search-row{
+    grid-template-columns:1fr 170px 120px!important;
+    gap:10px!important;
+    align-items:center!important;
+  }
+
+  #filtrosV6 .search-box,
+  #filtrosV6 .search-row button,
+  #filtrosV6 .search-row input[type="date"]{
+    height:44px!important;
+    min-height:44px!important;
+  }
+
+  #filtrosV6 > *{
+    position:relative!important;
+    z-index:1!important;
+  }
+
+  /* Esconde o img antigo para ele nunca mais aumentar a barra. */
+  #filtrosV6 .caicavv-agenda-decorativa,
+  .search-card .caicavv-agenda-decorativa{
+    display:none!important;
+    width:0!important;
+    height:0!important;
+    max-width:0!important;
+    max-height:0!important;
+    margin:0!important;
+    padding:0!important;
+    opacity:0!important;
+    pointer-events:none!important;
+  }
+
+  /* Agenda decorativa ilustrativa, sem mexer no tamanho da barra. */
+  #filtrosV6.search-card::before{
+    content:""!important;
+    position:absolute!important;
+    right:128px!important;
+    top:4px!important;
+    width:132px!important;
+    height:132px!important;
+    background-image:url("img/agenda-decorativa.png")!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    background-size:contain!important;
+    transform:rotate(-5deg)!important;
+    opacity:.18!important;
+    pointer-events:none!important;
+    z-index:0!important;
+  }
+
+  body.modo-app.aparencia-noturna #filtrosV6.search-card::before,
+  body.aparencia-noturna #filtrosV6.search-card::before{
+    filter:brightness(0) invert(1)!important;
+    opacity:.15!important;
+  }
+
+  body.modo-app.aparencia-noturna.neon-ativo #filtrosV6.search-card::before,
+  body.aparencia-noturna.neon-ativo #filtrosV6.search-card::before{
+    filter:brightness(0) invert(1)
+      drop-shadow(0 0 7px rgba(255,255,255,.18))
+      drop-shadow(0 0 14px color-mix(in srgb, var(--tema) 34%, transparent))!important;
+    opacity:.18!important;
+  }
+
+  @media(max-width:950px){
+    #filtrosV6 .search-row{
+      grid-template-columns:1fr!important;
+    }
+
+    #filtrosV6.search-card::before{
+      right:8px!important;
+      top:8px!important;
+      width:82px!important;
+      height:82px!important;
+      opacity:.10!important;
+    }
+  }
+
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+  .caicavv-msg-fundo{
+    position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+    background:rgba(4,18,64,.56);backdrop-filter:blur(5px);z-index:999999;padding:18px;
+  }
+  .caicavv-msg-fundo.show{display:flex;animation:caicavvMsgFade .18s ease both;}
+  .caicavv-msg-card{
+    width:min(460px,100%);border-radius:24px;background:linear-gradient(180deg,#ffffff,#f7fbff);
+    border:1px solid #d8e4fa;box-shadow:0 26px 90px rgba(0,23,76,.36);padding:24px 24px 20px;
+    color:#071957;text-align:left;position:relative;overflow:hidden;animation:caicavvMsgPop .22s cubic-bezier(.2,1.15,.35,1) both;
+  }
+  .caicavv-msg-card::before{
+    content:"";position:absolute;right:-44px;top:-54px;width:145px;height:145px;border-radius:50%;
+    background:rgba(0,91,255,.10);box-shadow:0 0 0 24px rgba(0,91,255,.045);pointer-events:none;
+  }
+  .caicavv-msg-icone{
+    width:58px;height:58px;border-radius:18px;display:grid;place-items:center;font-size:30px;font-weight:900;
+    background:#edf3ff;color:var(--tema,#005bff);margin-bottom:14px;
+  }
+  .caicavv-msg-card.sucesso .caicavv-msg-icone{background:#ecfdf5;color:#15803d;}
+  .caicavv-msg-card.erro .caicavv-msg-icone{background:#fef2f2;color:#b91c1c;}
+  .caicavv-msg-card.aviso .caicavv-msg-icone{background:#fff7ed;color:#c2410c;}
+  .caicavv-msg-card h3{margin:0 0 8px;font-size:21px;color:#061852;line-height:1.2;position:relative;z-index:1;}
+  .caicavv-msg-card p{margin:0;color:#405783;font-size:15px;line-height:1.5;white-space:pre-wrap;position:relative;z-index:1;}
+  .caicavv-msg-acoes{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;position:relative;z-index:1;}
+  .caicavv-msg-acoes button{width:auto!important;min-width:112px!important;height:42px!important;border-radius:999px!important;margin:0!important;padding:0 18px!important;font-weight:900!important;}
+  .caicavv-msg-ok{background:var(--tema,#005bff)!important;color:#fff!important;}
+  .caicavv-msg-cancelar{background:#e2e8f0!important;color:#334155!important;}
+  .caicavv-msg-confirmar{background:#dc2626!important;color:#fff!important;}
+  @keyframes caicavvMsgFade{from{opacity:0}to{opacity:1}}
+  @keyframes caicavvMsgPop{from{opacity:0;transform:translateY(14px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+  .nav-upload.hidden{display:none!important;}
+  .upload-grid-caicavv{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;align-items:start;margin-top:14px;}
+  .upload-card-caicavv{background:#fff;border:1px solid #d8e4fa;border-radius:14px;padding:16px;box-shadow:0 14px 32px rgba(23,70,150,.10);color:#071957;}
+  .upload-card-caicavv h3{margin:0 0 8px;font-size:18px;color:#061852;}
+  .upload-card-caicavv p{margin:0 0 12px;color:#52699d;font-size:13px;line-height:1.45;}
+  .upload-card-caicavv label{display:block;font-size:12px;font-weight:900;color:#52699d;text-transform:uppercase;letter-spacing:.04em;margin-top:10px;}
+  .upload-card-caicavv input,.upload-card-caicavv select{width:100%;height:42px;border:1px solid #ccd9f5;border-radius:10px;padding:0 12px;margin-top:6px;font-size:14px;color:#071957;background:#fff;box-sizing:border-box;}
+  .upload-card-caicavv input[type="file"]{height:auto;padding:10px;background:#f8fbff;}
+  .upload-card-caicavv button{height:42px;border:0;border-radius:10px;background:var(--tema,#005bff);color:#fff;font-weight:900;margin-top:12px;width:100%;cursor:pointer;}
+  .upload-card-caicavv button.secundario{background:#0f766e;}
+  .upload-card-caicavv button.perigo{background:#b91c1c;}
+  .upload-card-caicavv button:disabled{background:#94a3b8;cursor:not-allowed;}
+  .upload-resumo-caicavv{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px;}
+  .upload-kpi-caicavv{border:1px solid #e4ecfb;background:#f8fbff;border-radius:12px;padding:12px;}
+  .upload-kpi-caicavv span{display:block;color:#52699d;font-size:12px;font-weight:900;text-transform:uppercase;}
+  .upload-kpi-caicavv b{display:block;color:#061852;font-size:24px;margin-top:4px;}
+  .upload-tabela-wrap{max-height:430px;overflow:auto;border:1px solid #e4ecfb;border-radius:12px;margin-top:12px;background:#fff;}
+  .upload-tabela-caicavv{width:100%;border-collapse:collapse;font-size:13px;}
+  .upload-tabela-caicavv th{position:sticky;top:0;background:#f1f6ff;color:#061852;text-align:left;padding:10px;border-bottom:1px solid #d8e4fa;z-index:1;}
+  .upload-tabela-caicavv td{padding:9px 10px;border-bottom:1px solid #eef3fb;color:#071957;vertical-align:top;}
+  .upload-status-ok{color:#166534;font-weight:900;}
+  .upload-status-falta{color:#991b1b;font-weight:900;}
+  .upload-status-pendente{color:#1d4ed8;font-weight:900;}
+  .upload-aviso-caicavv{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;margin-top:12px;font-size:13px;line-height:1.45;}
+  .upload-sucesso-caicavv{background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;border-radius:12px;padding:12px;margin-top:12px;font-size:13px;line-height:1.45;}
+  .upload-pasta-caicavv{border:1px solid #d8e4fa;background:#fff;border-radius:14px;margin-top:12px;overflow:hidden;box-shadow:0 12px 28px rgba(23,70,150,.08);}
+  .upload-pasta-caicavv summary{cursor:pointer;list-style:none;padding:14px 16px;background:#f8fbff;display:flex;align-items:center;justify-content:space-between;gap:12px;color:#061852;font-weight:900;}
+  .upload-pasta-caicavv summary::-webkit-details-marker{display:none;}
+  .upload-pasta-caicavv summary span{display:block;font-size:15px;}
+  .upload-pasta-caicavv summary small{display:block;color:#52699d;font-size:12px;font-weight:800;margin-top:3px;}
+  .upload-pasta-conteudo{padding:14px 16px;background:#fff;}
+  .upload-resumo-final-caicavv{margin-top:12px;border:1px solid #bbf7d0;background:#ecfdf5;border-radius:12px;padding:12px;color:#14532d;}
+  .upload-acoes-pasta-caicavv{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 12px;}
+  .upload-acoes-pasta-caicavv button{width:auto!important;min-width:150px!important;height:38px!important;margin:0!important;border-radius:10px!important;padding:0 14px!important;font-size:13px!important;font-weight:900!important;}
+  .upload-acoes-pasta-caicavv .imprimir{background:#2563eb!important;}
+  .upload-acoes-pasta-caicavv .exportar{background:#0f766e!important;}
+  .upload-acoes-pasta-caicavv .excluir{background:#b91c1c!important;}
+  .upload-entradas-area{margin-top:14px;}
+  .upload-ano-caicavv{border:1px solid #c9d9f7;background:#f7faff;border-radius:16px;margin-top:14px;overflow:hidden;box-shadow:0 14px 32px rgba(23,70,150,.09);}
+  .upload-ano-caicavv>summary{cursor:pointer;list-style:none;padding:16px 18px;background:linear-gradient(135deg,#edf4ff,#f9fbff);display:flex;align-items:center;justify-content:space-between;gap:14px;color:#061852;font-weight:900;}
+  .upload-ano-caicavv>summary::-webkit-details-marker{display:none;}
+  .upload-ano-caicavv>summary span{display:block;font-size:19px;}
+  .upload-ano-caicavv>summary small{display:block;color:#52699d;font-size:12px;font-weight:800;margin-top:4px;}
+  .upload-ano-caicavv>summary b{min-width:52px;height:34px;border-radius:999px;background:#dce9ff;color:#1747a6;display:grid;place-items:center;padding:0 12px;font-size:13px;}
+  .upload-ano-conteudo-caicavv{padding:4px 14px 16px;}
+  .upload-carregando-caicavv{display:flex;align-items:center;gap:10px;padding:14px;border:1px dashed #b9cbed;border-radius:12px;background:#f8fbff;color:#52699d;font-weight:800;}
+  body.modo-app.aparencia-noturna .upload-ano-caicavv{background:rgba(9,20,54,.86)!important;border-color:rgba(148,163,184,.28)!important;}
+  body.modo-app.aparencia-noturna .upload-ano-caicavv>summary{background:linear-gradient(135deg,rgba(18,43,94,.95),rgba(9,25,62,.95))!important;color:#f8fbff!important;}
+  body.modo-app.aparencia-noturna .upload-ano-caicavv>summary small{color:#b9c9e8!important;}
+  body.modo-app.aparencia-noturna .upload-ano-caicavv>summary b{background:rgba(59,130,246,.22)!important;color:#dbeafe!important;}
+
+  @media(max-width:900px){.upload-grid-caicavv{grid-template-columns:1fr}.upload-resumo-caicavv{grid-template-columns:1fr 1fr;}}
+  @media(max-width:620px){.upload-resumo-caicavv{grid-template-columns:1fr}.upload-tabela-caicavv{font-size:12px}.upload-acoes-pasta-caicavv{display:grid;grid-template-columns:1fr}.upload-acoes-pasta-caicavv button{width:100%!important;}}
+
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+body{font-family:Arial;padding:22px;color:#071957}table{width:100%;border-collapse:collapse}th,td{border:1px solid #d8e4fa;padding:7px;font-size:12px;text-align:left}th{background:#f1f6ff}
+/* CAICAVV — CSS consolidado na v6; ordem original preservada. */
+
+  :root{
+    --img-upload-caicavv:url("data:image/png;base64,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");
+  }
+
+  /* Ícone novo da aba Upload */
+  .app-shell .nav[data-tela="upload"] .nav-icon,
+  .app-shell #navUpload .nav-icon{
+    width:30px!important;
+    height:30px!important;
+    display:block!important;
+    background-image:var(--img-upload-caicavv)!important;
+    background-repeat:no-repeat!important;
+    background-position:center!important;
+    background-size:contain!important;
+    font-size:0!important;
+    color:transparent!important;
+    filter:none!important;
+  }
+  body.modo-app.aparencia-noturna .app-shell .nav[data-tela="upload"] .nav-icon,
+  body.modo-app.aparencia-noturna .app-shell #navUpload .nav-icon{
+    filter:brightness(0) invert(1) drop-shadow(0 0 8px rgba(255,255,255,.18))!important;
+  }
+  body.modo-app.aparencia-noturna.neon-ativo .app-shell .nav[data-tela="upload"] .nav-icon,
+  body.modo-app.aparencia-noturna.neon-ativo .app-shell #navUpload .nav-icon{
+    filter:brightness(0) invert(1)
+      drop-shadow(0 0 6px rgba(255,255,255,.24))
+      drop-shadow(0 0 14px color-mix(in srgb, var(--tema) 38%, transparent))!important;
+  }
+
+  /* Cabeçalho visual dentro da tela Upload */
+  .upload-hero-caicavv{
+    display:flex;align-items:center;gap:16px;
+    background:linear-gradient(135deg,#ffffff,#f3f8ff)!important;
+    border:1px solid #d8e4fa;border-radius:16px;
+    box-shadow:0 14px 32px rgba(23,70,150,.10);
+    padding:18px 20px;margin:0 0 14px;color:#071957;
+  }
+  .upload-hero-icon-caicavv{
+    width:58px;height:58px;border-radius:18px;flex:0 0 58px;
+    background:var(--tema-claro,#edf3ff);display:grid;place-items:center;
+    box-shadow:inset 0 0 0 1px rgba(0,91,255,.12);
+  }
+  .upload-hero-icon-caicavv::before{
+    content:"";width:32px;height:32px;display:block;
+    background-image:var(--img-upload-caicavv);
+    background-repeat:no-repeat;background-position:center;background-size:contain;
+  }
+  .upload-hero-caicavv h2{margin:0;color:#061852;font-size:22px;line-height:1.15;font-weight:900;}
+  .upload-hero-caicavv p{margin:6px 0 0;color:#52699d;font-size:14px;line-height:1.4;}
+  body.modo-app.aparencia-noturna .upload-hero-caicavv{
+    background:linear-gradient(135deg,rgba(9,20,54,.96),rgba(11,31,78,.94))!important;
+    border-color:rgba(148,163,184,.28)!important;color:#e5eefc!important;
+  }
+  body.modo-app.aparencia-noturna .upload-hero-caicavv h2{color:#f8fbff!important;}
+  body.modo-app.aparencia-noturna .upload-hero-caicavv p{color:#b9c7e6!important;}
+  body.modo-app.aparencia-noturna .upload-hero-icon-caicavv{background:rgba(255,255,255,.08)!important;}
+  body.modo-app.aparencia-noturna .upload-hero-icon-caicavv::before{
+    filter:brightness(0) invert(1) drop-shadow(0 0 8px rgba(255,255,255,.18))!important;
+  }
+  body.modo-app.aparencia-noturna.neon-ativo .upload-hero-icon-caicavv::before{
+    filter:brightness(0) invert(1)
+      drop-shadow(0 0 6px rgba(255,255,255,.24))
+      drop-shadow(0 0 14px color-mix(in srgb, var(--tema) 38%, transparent))!important;
+  }
+
+  /* Mensagens comuns viram aviso discreto. Confirmação fica só para ações críticas, tipo excluir. */
+  .caicavv-toast-bonito{
+    position:fixed;right:18px;top:18px;z-index:1000000;
+    width:min(380px,calc(100vw - 36px));
+    border-radius:18px;background:linear-gradient(180deg,#fff,#f8fbff);
+    border:1px solid #d8e4fa;box-shadow:0 20px 60px rgba(0,23,76,.28);
+    padding:14px 16px 14px 54px;color:#071957;
+    opacity:0;transform:translateY(-10px);pointer-events:none;
+    transition:.2s ease;
+  }
+  .caicavv-toast-bonito.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+  .caicavv-toast-bonito::before{
+    content:"i";position:absolute;left:14px;top:14px;width:28px;height:28px;border-radius:10px;
+    display:grid;place-items:center;background:#edf3ff;color:var(--tema,#005bff);font-weight:900;
+  }
+  .caicavv-toast-bonito.sucesso::before{content:"✓";background:#ecfdf5;color:#15803d;}
+  .caicavv-toast-bonito.erro::before{content:"!";background:#fef2f2;color:#b91c1c;}
+  .caicavv-toast-bonito.aviso::before{content:"!";background:#fff7ed;color:#c2410c;}
+  .caicavv-toast-bonito b{display:block;color:#061852;font-size:14px;margin-bottom:3px;}
+  .caicavv-toast-bonito span{display:block;color:#405783;font-size:13px;line-height:1.35;}
+
+  .caicavv-msg-card.confirmacao-critica{border-color:#fecaca!important;}
+  .caicavv-msg-detalhes{
+    margin-top:12px;padding:11px 12px;border-radius:13px;
+    background:#f8fafc;border:1px solid #e2e8f0;color:#334155!important;
+    font-size:13px!important;line-height:1.45!important;
+  }
+
 </style>
+
+
+
+
+<script>
+/* CAICAVV v6: diagnóstico técnico não invasivo. Mantém a aplicação intacta e expõe métricas em window.__caicavvDiagnostico. */
+window.__caicavvDiagnostico = window.__caicavvDiagnostico || { versao: "6.0", inicio: Date.now() };
+</script>
+</head>
+<body>
+
+
+<!-- ===== AJUSTE FINO: PEÃO NO RELATÓRIO + AGENDA DECORATIVA MAIOR ===== -->
+
+
+
+
+<!-- ===== AJUSTE FINAL: flor sempre amarela + peão/agenda corrigidos no noturno ===== -->
+
+
+
+
+
+
+<script id="caicavv-lembretes-reagendamento-script">
+(function(){
+  "use strict";
+
+  const LIMITE_DIAS_LEMBRETE_REAGENDAMENTO = 7;
+  const MILISSEGUNDOS_POR_DIA = 24 * 60 * 60 * 1000;
+  const CHAVE_LEMBRETES_REAGENDAMENTO_OK = "caicavv_lembretes_reagendamento_ok_v1";
+  let intervaloLembretesReagendamento = null;
+
+  function partesDataCalendarioCAICAVV(dataISO){
+    const partes = String(dataISO || "").split("-");
+    if(partes.length !== 3) return null;
+
+    const ano = Number(partes[0]);
+    const mes = Number(partes[1]);
+    const dia = Number(partes[2]);
+
+    if(!Number.isInteger(ano) || !Number.isInteger(mes) || !Number.isInteger(dia)) return null;
+    if(ano < 1900 || mes < 1 || mes > 12 || dia < 1 || dia > 31) return null;
+
+    const dataUTC = new Date(Date.UTC(ano, mes - 1, dia));
+    if(
+      dataUTC.getUTCFullYear() !== ano ||
+      dataUTC.getUTCMonth() !== mes - 1 ||
+      dataUTC.getUTCDate() !== dia
+    ) return null;
+
+    return { ano, mes, dia };
+  }
+
+  function hojeCalendarioUTC(){
+    const agora = new Date();
+    return Date.UTC(agora.getFullYear(), agora.getMonth(), agora.getDate());
+  }
+
+  function diasAteAtendimentoCAICAVV(dataISO){
+    const partes = partesDataCalendarioCAICAVV(dataISO);
+    if(!partes) return null;
+    const alvoUTC = Date.UTC(partes.ano, partes.mes - 1, partes.dia);
+    return Math.round((alvoUTC - hojeCalendarioUTC()) / MILISSEGUNDOS_POR_DIA);
+  }
+
+  function atendimentoValidoParaLembreteCAICAVV(item){
+    if(!item || !item.id || !item.data) return false;
+
+    // Só atendimentos ainda agendados geram lembrete. Assim, compareceu,
+    // faltou, aguardando, cancelado ou qualquer outro estado finalizado não reaparece.
+    if(String(item.status || "agendado") !== "agendado") return false;
+
+    // Mantém o mesmo alcance da agenda atual: registros importados/arquivados
+    // não são transformados em novos avisos na área principal do técnico.
+    if(String(item.origem || "") === "upload" || String(item.tipo || "") === "importado") return false;
+    if(typeof window.atendimentoEstaEmAbaPassada === "function" && window.atendimentoEstaEmAbaPassada(item)) return false;
+
+    const dias = diasAteAtendimentoCAICAVV(item.data);
+    return Number.isInteger(dias) && dias >= 0 && dias <= LIMITE_DIAS_LEMBRETE_REAGENDAMENTO;
+  }
+
+  function obterLembretesReagendamentoCAICAVV(){
+    if(typeof atendimentos === "undefined" || !Array.isArray(atendimentos)) return [];
+    if(typeof tecnicoLogado === "undefined" || !tecnicoLogado) return [];
+
+    const eTecnico = tecnicoLogado.role === "tecnico";
+    const eJohanna = tecnicoLogado.role === "adm" && String(tecnicoLogado.nome || "").trim().toLowerCase() === "johanna";
+
+    // Técnicos veem somente seus próprios atendimentos.
+    // Johanna, por ser a ADM responsável por essa visão, vê todos os técnicos.
+    // Outros perfis administrativos mantêm a lógica anterior: não recebem esta área.
+    if(!eTecnico && !eJohanna) return [];
+
+    const idsVistos = new Set();
+
+    return atendimentos
+      .filter(atendimentoValidoParaLembreteCAICAVV)
+      .filter(item => !eTecnico || String(item.tecnico || "") === String(tecnicoLogado.nome || ""))
+      .filter(item => {
+        const chave = String(item.id);
+        if(idsVistos.has(chave)) return false;
+        idsVistos.add(chave);
+        return true;
+      })
+      .map(item => ({
+        item,
+        dias: diasAteAtendimentoCAICAVV(item.data)
+      }))
+      .sort((a,b) => {
+        if(a.dias !== b.dias) return a.dias - b.dias;
+        return String(a.item.hora || "").localeCompare(String(b.item.hora || ""));
+      });
+  }
+
+  function obterLembretesReagendamentoOkCAICAVV(){
+    try{
+      const valor = localStorage.getItem(CHAVE_LEMBRETES_REAGENDAMENTO_OK);
+      if(!valor) return new Set();
+      const lista = JSON.parse(valor);
+      return new Set(Array.isArray(lista) ? lista.map(String) : []);
+    }catch(e){
+      return new Set();
+    }
+  }
+
+  function salvarLembretesReagendamentoOkCAICAVV(set){
+    try{
+      localStorage.setItem(CHAVE_LEMBRETES_REAGENDAMENTO_OK, JSON.stringify(Array.from(set)));
+    }catch(e){}
+  }
+
+  function chaveLembreteReagendamentoCAICAVV(item){
+    return `${item.id}__${item.data || ""}__${item.hora || ""}`;
+  }
+
+  window.confirmarLembreteReagendamentoCAICAVV = function(chave){
+    const ok = obterLembretesReagendamentoOkCAICAVV();
+    ok.add(String(chave));
+    salvarLembretesReagendamentoOkCAICAVV(ok);
+    renderLembretesReagendamentoCAICAVV();
+  };
+
+  document.addEventListener("click", function(event){
+    const botao = event.target.closest("button[data-acao=\"confirmar-lembrete\"]");
+    if(!botao) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const chave = botao.getAttribute("data-chave-lembrete");
+    if(chave) window.confirmarLembreteReagendamentoCAICAVV(chave);
+  });
+
+  function textoDiasFaltamCAICAVV(dias){
+    if(dias === 0) return "Faltam 0 dias • hoje";
+    if(dias === 1) return "Falta 1 dia";
+    return `Faltam ${dias} dias`;
+  }
+
+  function renderLembretesReagendamentoCAICAVV(){
+    const container = document.getElementById("lembretesReagendamento");
+    if(!container) return;
+
+    const visivelNaTela = typeof telaAtualCaicavv === "undefined" || telaAtualCaicavv === "agendamentos";
+    const usuarioAtual = typeof tecnicoLogado !== "undefined" && tecnicoLogado ? tecnicoLogado : null;
+    const eTecnico = !!usuarioAtual && usuarioAtual.role === "tecnico";
+    const eJohanna = !!usuarioAtual && usuarioAtual.role === "adm" &&
+      String(usuarioAtual.nome || "").trim().toLowerCase() === "johanna";
+
+    if(!visivelNaTela || (!eTecnico && !eJohanna)){
+      container.innerHTML = "";
+      container.classList.add("hidden");
+      return;
+    }
+
+    const lembretesOk = obterLembretesReagendamentoOkCAICAVV();
+    const lembretes = obterLembretesReagendamentoCAICAVV()
+      .filter(({item}) => !lembretesOk.has(chaveLembreteReagendamentoCAICAVV(item)));
+    if(!lembretes.length){
+      container.innerHTML = "";
+      container.classList.add("hidden");
+      return;
+    }
+
+    const itensHTML = lembretes.map(({item, dias}) => {
+      const foiReagendado = item.reagendado === true;
+      const tipo = foiReagendado ? "Lembrete de reagendamento" : "Atendimento próximo";
+      const detalhe = foiReagendado
+        ? "Este atendimento foi reagendado e a nova data está próxima."
+        : "Este atendimento está dentro da janela de 7 dias.";
+      const classeDias = dias === 0 ? "hoje" : "";
+      const chave = chaveLembreteReagendamentoCAICAVV(item);
+
+      return `
+        <article class="lembrete-reagendamento-card">
+          <div>
+            <div class="lembrete-reagendamento-card__nome">${escapeHTML(item.nome || `Pasta ${item.pasta || "—"}`)}</div>
+            <div class="lembrete-reagendamento-card__linha">
+              <span>👤 Técnico: ${escapeHTML(item.tecnico || "—")}</span>
+              <span>📁 Pasta ${escapeHTML(item.pasta || "—")}</span>
+              <span>📅 ${escapeHTML(formatarDataBR(item.data))}</span>
+              <span>🕒 ${escapeHTML(item.hora || "—")}</span>
+            </div>
+            <div class="lembrete-reagendamento-card__tipo">🔔 ${escapeHTML(tipo)}</div>
+            <div class="lembrete-reagendamento-card__linha" style="margin-top:6px;font-weight:600">${escapeHTML(detalhe)}</div>
+          </div>
+          <div style="display:flex;flex-direction:column;align-items:stretch;gap:8px;min-width:92px;">
+            <div class="lembrete-reagendamento-card__dias ${classeDias}">${escapeHTML(textoDiasFaltamCAICAVV(dias))}</div>
+            <button type="button" class="btn btn-primary" style="min-width:92px;padding:8px 12px;border-radius:10px;font-weight:800;cursor:pointer;" data-acao="confirmar-lembrete" data-chave-lembrete="${escapeHTML(chave)}" aria-label="Confirmar lembrete">OK</button>
+          </div>
+        </article>`;
+    }).join("");
+
+    container.innerHTML = `
+      <div class="lembretes-reagendamento__topo">
+        <div class="lembretes-reagendamento__titulo">
+          <span class="lembretes-reagendamento__icone" aria-hidden="true">🔔</span>
+          <div>
+            <h3>Lembretes de atendimento</h3>
+            <p>${eJohanna
+              ? "Atendimentos de todos os técnicos entre hoje e os próximos 7 dias."
+              : "Atendimentos do seu cadastro entre hoje e os próximos 7 dias."}</p>
+          </div>
+        </div>
+        <span class="lembretes-reagendamento__contador" aria-label="Quantidade de lembretes">${lembretes.length}</span>
+      </div>
+      <div class="lembretes-reagendamento__lista">${itensHTML}</div>`;
+    container.classList.remove("hidden");
+  }
+
+  window.renderLembretesReagendamentoCAICAVV = renderLembretesReagendamentoCAICAVV;
+  window.obterLembretesReagendamentoCAICAVV = obterLembretesReagendamentoCAICAVV;
+  window.diasAteAtendimentoCAICAVV = diasAteAtendimentoCAICAVV;
+
+  function envolverRenderCAICAVV(){
+    if(window.__caicavvLembretesRenderWrapped) return;
+    if(typeof window.render !== "function") return;
+
+    const renderOriginal = window.render;
+    window.render = function(){
+      const retorno = renderOriginal.apply(this, arguments);
+      renderLembretesReagendamentoCAICAVV();
+      return retorno;
+    };
+    window.__caicavvLembretesRenderWrapped = true;
+  }
+
+  function iniciarMonitorCAICAVV(){
+    envolverRenderCAICAVV();
+    renderLembretesReagendamentoCAICAVV();
+
+    if(intervaloLembretesReagendamento) return;
+    intervaloLembretesReagendamento = window.setInterval(function(){
+      envolverRenderCAICAVV();
+      renderLembretesReagendamentoCAICAVV();
+    }, 60000);
+  }
+
+  if(document.readyState === "loading"){
+    document.addEventListener("DOMContentLoaded", iniciarMonitorCAICAVV, { once:true });
+  } else {
+    iniciarMonitorCAICAVV();
+  }
+})();
+</script>
+
+</body>
+</html>
+
+
+
 </head>
 
 <body>
@@ -1421,15 +2559,7 @@ body.modo-app{
 
 
 
-<style id="caicavv-identificacao-style">
-.caicavv-identificacao-opcoes{display:grid;grid-template-columns:1fr;gap:11px;margin:18px 0 10px}
-.caicavv-identificacao-opcao{width:100%;min-height:52px;padding:13px 16px;border:1px solid rgba(37,99,235,.18);border-radius:13px;background:linear-gradient(180deg,#fff 0%,#f4f8ff 100%);color:#071943;font-weight:900;font-size:15px;cursor:pointer;box-shadow:0 7px 18px rgba(37,99,235,.08);transition:transform .15s ease,box-shadow .15s ease,border-color .15s ease}
-.caicavv-identificacao-opcao:hover{transform:translateY(-1px);box-shadow:0 10px 24px rgba(37,99,235,.13);border-color:var(--tema,#2563eb)}
-.caicavv-identificacao-opcao.perfil{background:linear-gradient(180deg,#f8fbff 0%,#eaf2ff 100%);color:#1d4ed8;font-size:17px;min-height:58px}
-.caicavv-identificacao-voltar{margin-top:6px!important;background:transparent!important;color:var(--tema,#2563eb)!important;border:1px solid #cfe0ff!important;box-shadow:none!important}
-.caicavv-identificacao-voltar:hover{background:#eff6ff!important}
-@media(min-width:520px){.caicavv-identificacao-opcoes{grid-template-columns:1fr 1fr}.caicavv-identificacao-opcao:first-child:last-child{grid-column:1/-1}}
-</style>
+
 
 <div id="loginDiv" class="login-screen">
   <div class="background">
@@ -1593,26 +2723,6 @@ async function salvarAtendimentosFirebase(){
     console.error(e);
     mostrarErro("Erro ao salvar no Firebase.");
     throw e;
-  }
-}
-
-async function carregarAtendimentosFirebase(){
-  try{
-    const snap = await DOC_ATENDIMENTOS.get();
-    if(snap.exists){
-      const dados = snap.data() || {};
-      atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
-      logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
-    } else {
-      atendimentos = [];
-      logsAlteracoes = [];
-      await DOC_ATENDIMENTOS.set({ itens: [], logs: [], criadoEm: new Date().toISOString() }, { merge: true });
-    }
-  }catch(e){
-    console.error(e);
-    atendimentos = [];
-    logsAlteracoes = [];
-    mostrarErro("Não foi possível carregar os dados do Firebase.");
   }
 }
 
@@ -2822,7 +3932,7 @@ function montarResumoCards(resumo){
 }
 
 function estiloJanelaRelatorio(){
-  return `<style>body{font-family:Arial,sans-serif;background:#f3f6fb;color:#081946;margin:0;padding:26px}.wrap{max-width:1100px;margin:auto;background:#fff;border:1px solid #e8edf7;border-radius:16px;padding:26px;box-shadow:0 10px 32px rgba(15,23,42,.08)}h1{margin:0 0 4px;font-size:28px}.sub{color:#64748b;margin-bottom:22px}.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:18px 0}.card{background:#f8fafc;border:1px solid #e8edf7;border-radius:12px;padding:16px}.num{font-size:28px;font-weight:900;color:#2563eb}.lbl{color:#64748b;font-size:13px;font-weight:800}.acoes{display:flex;gap:10px;flex-wrap:wrap;margin:18px 0}.acoes button{border:0;border-radius:10px;background:#2563eb;color:#fff;font-weight:800;padding:12px 16px;cursor:pointer}.acoes button.sec{background:#0f766e}table{width:100%;border-collapse:collapse;margin-top:16px}th,td{border:1px solid #e2e8f0;padding:10px;text-align:left;font-size:14px}th{background:#0f172a;color:#fff}.tecnico td{background:#eaf1ff;color:#0f172a;font-weight:900}.aviso{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;margin-top:14px}@media print{body{background:#fff;padding:0}.wrap{box-shadow:none;border:0}.acoes{display:none}.cards{grid-template-columns:repeat(4,1fr)}}@media(max-width:800px){.cards{grid-template-columns:1fr 1fr}}</style>`;
+  return ``;
 }
 
 function abrirJanelaRelatorio(titulo, subtitulo, conteudo){
@@ -3117,8 +4227,6 @@ function setTelaAtiva(nome){
 }
 function mostrarBlocosAgendamento(mostrar){["boasVindas","lembretesReagendamento","menu","relatorio","filtrosV6","formAtendimento","abasPassadasContainer","btnCriarAbaPassada"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("hidden",!mostrar);});}
 function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();if(typeof renderLembretesReagendamentoCAICAVV === "function") renderLembretesReagendamentoCAICAVV();if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();}
-function abrirTelaPacientes(){setTelaAtiva("pacientes");mostrarBlocosAgendamento(false);const totalPastas=Object.keys(cadastros).length;const totalNomes=Object.values(cadastros).reduce((s,nomes)=>s+nomes.length,0);let cards="";Object.entries(cadastros).forEach(([pasta,nomes])=>{nomes.forEach(nome=>{cards+=`<div class="paciente-card"><strong>${escapeHTML(nome)}</strong><span>📁 Pasta ${escapeHTML(pasta)}</span></div>`;});});lista.innerHTML=`<div class="pagina-titulo">Pastas</div><div class="pagina-sub">Busca rápida por nome ou nº da pasta.</div><div class="search-card" style="margin-bottom:14px"><div class="search-box"><span>🔍</span><input id="buscaPacientes" placeholder="Buscar por nome ou nº" oninput="filtrarPacientes()"></div></div><div class="pagina-sub">${totalNomes} nomes cadastrados em ${totalPastas} pastas.</div><div id="listaPacientes" class="pacientes-grid">${cards}</div>`;}
-function filtrarPacientes(){const termo=normalizarBusca(document.getElementById("buscaPacientes")?.value||"");document.querySelectorAll(".paciente-card").forEach(card=>{card.style.display=normalizarBusca(card.innerText).includes(termo)?"block":"none";});}
 function abrirTelaTecnicos(){setTelaAtiva("tecnicos");mostrarBlocosAgendamento(false);const tecnicos=Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);const mesAtual=new Date().toISOString().slice(0,7);lista.innerHTML=`<div class="pagina-titulo">Relatório por técnico</div><div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div><div class="tecnico-relatorio-box"><label><b>Técnico</b></label><select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select><label><b>Mês</b></label><input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}"><button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button></div><div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;}
 function gerarRelatorioTecnicoNaTela(){const tecnico=document.getElementById("tecnicoRelatorioTela").value;const mes=document.getElementById("mesRelatorioTecnicoTela").value;const dados=atendimentos.filter(a=>a.tecnico===tecnico&&String(a.data||"").startsWith(mes));const total=dados.length;const ok=dados.filter(a=>a.status==="compareceu").length;const falta=dados.filter(a=>a.status==="faltou").length;const pendente=dados.filter(a=>!a.status||a.status==="agendado").length;const linhas=dados.sort((a,b)=>getDataHoraAtendimento(a).localeCompare(getDataHoraAtendimento(b))).map(a=>`<div class="paciente-card"><strong>📁 Pasta ${escapeHTML(a.pasta)} · ${escapeHTML(formatarDataBR(a.data))}</strong><span>${escapeHTML(a.status||"agendado")} · ${escapeHTML(a.descricao||"Sem descrição")}</span></div>`).join("");document.getElementById("resultadoTecnicoTela").innerHTML=`<div class="relatorio-card"><div class="rel-icone">👥</div><div><span class="rel-nome">${escapeHTML(tecnico)}</span><br><span class="rel-metrica">Total: <b>${total}</b></span><span class="rel-metrica ok">Compareceu: <b>${ok}</b></span><span class="rel-metrica erro">Faltou: <b>${falta}</b></span><span class="rel-metrica">Pendente: <b>${pendente}</b></span></div></div><div class="pacientes-grid" style="margin-top:12px">${linhas||'<div class="paciente-card"><strong>Nenhum atendimento encontrado.</strong></div>'}</div>`;}
 function abrirTelaConfiguracoes(){
@@ -4394,23 +5502,7 @@ function imprimirRelatorioEntradasCAICAVV(){
     <head>
       <meta charset="UTF-8">
       <title>Relatório de Entradas - ${periodo}</title>
-      <style>
-        body{font-family:Arial,sans-serif;color:#071957;background:#fff;padding:28px}
-        .cabecalho-impressao{border-bottom:3px solid #005bff;margin-bottom:20px;padding-bottom:12px}
-        h1{margin:0 0 6px;color:#005bff;font-size:24px}
-        h2{margin:0;color:#071957;font-size:16px}
-        .entrada-exportar-acoes,.entradas-toolbar,.entrada-acoes,button{display:none!important}
-        .entradas-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
-        .entradas-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-        .entrada-kpi,.entrada-box{border:1px solid #d8e4fa;border-radius:10px;padding:10px;margin-bottom:10px;box-shadow:none!important;background:#fff}
-        .entrada-kpi b{display:block;font-size:20px;color:#005bff}.entrada-kpi span{font-size:11px;color:#52699d;font-weight:bold;text-transform:uppercase}
-        .entrada-box h3{margin:0 0 8px;color:#061852;font-size:15px}.entrada-box p{line-height:1.45}
-        .entrada-alerta{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:8px;margin:8px 0;font-size:12px}
-        .entrada-tabela-wrap{max-height:none!important;overflow:visible!important}
-        table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #d8e4fa;padding:5px;text-align:left;vertical-align:top}th{background:#005bff;color:#fff}
-        canvas{max-width:100%;border:1px solid #d8e4fa;border-radius:8px}
-        @media print{body{padding:8px}.entrada-box{break-inside:avoid}.entrada-tabela-wrap{break-inside:auto}}
-      </style>
+      
     </head>
     <body>
       <div class="cabecalho-impressao">
@@ -4585,21 +5677,7 @@ function baixarArquivoEntradasCAICAVV(conteudo, nomeArquivo, tipo){
 <head>
 <meta charset="UTF-8">
 <title>Relatório de Entradas - ${periodo}</title>
-<style>
-  body{font-family:Arial,sans-serif;color:#071957;background:#fff;padding:28px}
-  .cabecalho-impressao{border-bottom:3px solid #005bff;margin-bottom:20px;padding-bottom:12px}
-  h1{margin:0 0 6px;color:#005bff;font-size:24px} h2{margin:0;color:#071957;font-size:16px}
-  .entradas-kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
-  .entradas-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-  .entrada-kpi,.entrada-box{border:1px solid #d8e4fa;border-radius:10px;padding:10px;margin-bottom:10px;box-shadow:none!important;background:#fff}
-  .entrada-kpi b{display:block;font-size:20px;color:#005bff}.entrada-kpi span{font-size:11px;color:#52699d;font-weight:bold;text-transform:uppercase}
-  .entrada-box h3{margin:0 0 8px;color:#061852;font-size:15px}.entrada-box p{line-height:1.45}
-  .entrada-alerta{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:8px;padding:8px;margin:8px 0;font-size:12px}
-  .entrada-tabela-wrap{max-height:none!important;overflow:visible!important}
-  table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #d8e4fa;padding:5px;text-align:left;vertical-align:top}th{background:#005bff;color:#fff}
-  canvas{max-width:100%;border:1px solid #d8e4fa;border-radius:8px}
-  @media print{body{padding:8px}.entrada-box{break-inside:avoid}.entrada-tabela-wrap{break-inside:auto}}
-</style>
+
 </head>
 <body>
 <div class="cabecalho-impressao">
@@ -4610,34 +5688,7 @@ function baixarArquivoEntradasCAICAVV(conteudo, nomeArquivo, tipo){
 ${conteudo.innerHTML}
 
 <!-- ===== AJUSTE FINO: PEÃO NO RELATÓRIO + AGENDA DECORATIVA MAIOR ===== -->
-<style id="caicavv-ajuste-peao-agenda">
-  .relatorio-card .rel-icone.caicavv-relatorio-peao{
-    background-image:url("img/peao.png")!important;
-    background-size:70%!important;
-    background-repeat:no-repeat!important;
-    background-position:center!important;
-    font-size:0!important;
-    color:transparent!important;
-  }
 
-  .caicavv-agenda-decorativa{
-    right:190px!important;
-    top:-42px!important;
-    width:155px!important;
-    height:155px!important;
-    opacity:.24!important;
-  }
-
-  @media(max-width:760px){
-    .caicavv-agenda-decorativa{
-      right:16px!important;
-      top:-20px!important;
-      width:105px!important;
-      height:105px!important;
-      opacity:.16!important;
-    }
-  }
-</style>
 
 </body>
 </html>`);
@@ -5233,158 +6284,7 @@ ${conteudo.innerHTML}
 
 
 <!-- ===== TROCA DE ÍCONES POR PNG - CAICAVV ===== -->
-<style id="caicavv-png-icons-style">
-  :root{
-    --img-flor-caicavv: url("img/flor-amarela.png");
-    --img-usuario-caicavv: url("img/usuario.png");
-    --img-peao-caicavv: url("img/peao.png");
-    --img-paciente-caicavv: url("img/paciente-coracao.png");
-    --img-tecnicos-caicavv: url("img/tecnicos.png");
-    --img-entradas-caicavv: url("img/bandeja-entrada.png");
-    --img-agenda-caicavv: url("img/agenda.png");
-    --img-engrenagem-caicavv: url("img/engrenagem.png");
-    --img-agenda-decorativa-caicavv: url("img/agenda-decorativa.png");
-  }
 
-  .caicavv-png-icon{
-    display:inline-block!important;
-    background-repeat:no-repeat!important;
-    background-position:center!important;
-    background-size:contain!important;
-    line-height:0!important;
-    font-size:0!important;
-    color:transparent!important;
-    flex:0 0 auto;
-  }
-
-  .caicavv-flor-img{
-    width:100%!important;
-    height:100%!important;
-    object-fit:contain!important;
-    display:block!important;
-    filter:drop-shadow(0 0 8px rgba(250,204,21,.28));
-  }
-
-  .flower-logo,
-  .app-shell .flower{
-    display:flex!important;
-    align-items:center!important;
-    justify-content:center!important;
-    background:none!important;
-  }
-
-  .flower-logo .petal,
-  .flower-logo .flower-center,
-  .app-shell .flower span,
-  .app-shell .flower b{
-    display:none!important;
-  }
-
-  .big-flower-bg{
-    background-image:var(--img-flor-caicavv)!important;
-    background-size:contain!important;
-    background-repeat:no-repeat!important;
-    background-position:center!important;
-    opacity:.10!important;
-  }
-  .big-flower-bg::before{content:""!important;}
-
-  .icon-box.caicavv-usuario-login,
-  .user-panel .avatar.caicavv-avatar-usuario{
-    background-image:var(--img-usuario-caicavv)!important;
-    background-size:72%!important;
-    background-repeat:no-repeat!important;
-    background-position:center!important;
-    font-size:0!important;
-    color:transparent!important;
-  }
-
-  .relatorio-card .rel-icone.caicavv-relatorio-peao{
-    background-image:var(--img-peao-caicavv)!important;
-    background-size:70%!important;
-    background-repeat:no-repeat!important;
-    background-position:center!important;
-    font-size:0!important;
-    color:transparent!important;
-  }
-
-  .side-icon.caicavv-peao-login{
-    width:24px!important;
-    height:24px!important;
-    background-image:var(--img-peao-caicavv)!important;
-    background-repeat:no-repeat!important;
-    background-size:contain!important;
-    background-position:center!important;
-    font-size:0!important;
-  }
-
-  .menu button::before{
-    content:""!important;
-    width:20px!important;
-    height:20px!important;
-    display:inline-block!important;
-    background-image:var(--img-peao-caicavv)!important;
-    background-repeat:no-repeat!important;
-    background-size:contain!important;
-    background-position:center!important;
-    filter:none!important;
-  }
-
-  .app-shell .nav-icon.caicavv-nav-img{
-    width:30px!important;
-    height:30px!important;
-    background-repeat:no-repeat!important;
-    background-size:contain!important;
-    background-position:center!important;
-    font-size:0!important;
-    color:transparent!important;
-  }
-
-  .app-shell .nav[data-tela="agendamentos"] .nav-icon{background-image:var(--img-agenda-caicavv)!important;}
-  .app-shell .nav[data-tela="pacientes"] .nav-icon{background-image:var(--img-paciente-caicavv)!important;}
-  .app-shell .nav[data-tela="tecnicos"] .nav-icon{background-image:var(--img-tecnicos-caicavv)!important;}
-  .app-shell .nav[data-tela="entradas"] .nav-icon{background-image:var(--img-entradas-caicavv)!important;}
-  .app-shell .nav[data-tela="configuracoes"] .nav-icon{background-image:var(--img-engrenagem-caicavv)!important;}
-
-  .search-card{
-    position:relative!important;
-    overflow:hidden!important;
-  }
-  .caicavv-agenda-decorativa{
-    position:absolute!important;
-    right:190px!important;
-    top:-42px!important;
-    width:155px!important;
-    height:155px!important;
-    object-fit:contain!important;
-    opacity:.24!important;
-    pointer-events:none!important;
-    transform:rotate(-6deg)!important;
-    z-index:0!important;
-  }
-  .search-card > *{
-    position:relative;
-    z-index:1;
-  }
-
-  @media(max-width:760px){
-    .caicavv-agenda-decorativa{
-      right:16px!important;
-      top:-18px!important;
-      width:105px!important;
-      height:105px!important;
-      opacity:.16!important;
-    }
-  }
-
-/* Correção dos caminhos: as imagens devem ficar dentro da pasta img/ */
-.caicavv-flor-img,
-.caicavv-agenda-decorativa{
-  max-width:100%!important;
-  max-height:100%!important;
-}
-
-</style>
 
 <script id="caicavv-png-icons-script">
 (function(){
@@ -5465,125 +6365,17 @@ ${conteudo.innerHTML}
 
 
 <!-- ===== AJUSTE FINO: PEÃO NO RELATÓRIO + AGENDA DECORATIVA MAIOR ===== -->
-<style id="caicavv-ajuste-peao-agenda">
-  .relatorio-card .rel-icone.caicavv-relatorio-peao{
-    background-image:url("img/peao.png")!important;
-    background-size:70%!important;
-    background-repeat:no-repeat!important;
-    background-position:center!important;
-    font-size:0!important;
-    color:transparent!important;
-  }
 
-  .caicavv-agenda-decorativa{
-    right:190px!important;
-    top:-42px!important;
-    width:155px!important;
-    height:155px!important;
-    opacity:.24!important;
-  }
-
-  @media(max-width:760px){
-    .caicavv-agenda-decorativa{
-      right:16px!important;
-      top:-20px!important;
-      width:105px!important;
-      height:105px!important;
-      opacity:.16!important;
-    }
-  }
-</style>
 
 
 
 <!-- ===== AJUSTE: PNGs brancos no modo noturno, sem adicionar novas imagens ===== -->
-<style id="caicavv-pngs-brancos-modo-noturno">
-/*
-  Quando a aparência noturna estiver ativa, os PNGs usados como ícones
-  ficam brancos usando apenas CSS. Não precisa criar versões novas das imagens.
-*/
-body.modo-app.aparencia-noturna .caicavv-flor-img,
-body.modo-app.aparencia-noturna .caicavv-agenda-decorativa,
-body.modo-app.aparencia-noturna .icon-box.caicavv-usuario-login,
-body.modo-app.aparencia-noturna .user-panel .avatar.caicavv-avatar-usuario,
-body.modo-app.aparencia-noturna .relatorio-card .rel-icone.caicavv-relatorio-peao,
-body.modo-app.aparencia-noturna .side-icon.caicavv-peao-login,
-body.modo-app.aparencia-noturna .app-shell .nav-icon.caicavv-nav-img,
-body.modo-app.aparencia-noturna .menu button::before{
-  filter:brightness(0) invert(1) drop-shadow(0 0 8px rgba(255,255,255,.18))!important;
-}
 
-/* No modo noturno + neon, os ícones continuam brancos, mas ganham um brilho leve da cor escolhida. */
-body.modo-app.aparencia-noturna.neon-ativo .caicavv-flor-img,
-body.modo-app.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa,
-body.modo-app.aparencia-noturna.neon-ativo .icon-box.caicavv-usuario-login,
-body.modo-app.aparencia-noturna.neon-ativo .user-panel .avatar.caicavv-avatar-usuario,
-body.modo-app.aparencia-noturna.neon-ativo .relatorio-card .rel-icone.caicavv-relatorio-peao,
-body.modo-app.aparencia-noturna.neon-ativo .side-icon.caicavv-peao-login,
-body.modo-app.aparencia-noturna.neon-ativo .app-shell .nav-icon.caicavv-nav-img,
-body.modo-app.aparencia-noturna.neon-ativo .menu button::before{
-  filter:brightness(0) invert(1)
-    drop-shadow(0 0 6px rgba(255,255,255,.24))
-    drop-shadow(0 0 14px color-mix(in srgb, var(--tema) 38%, transparent))!important;
-}
-
-/* Mantém os ícones coloridos normalmente quando a aparência noturna estiver desligada. */
-body.modo-app:not(.aparencia-noturna) .caicavv-flor-img{
-  filter:drop-shadow(0 0 8px rgba(250,204,21,.28))!important;
-}
-body.modo-app:not(.aparencia-noturna) .caicavv-agenda-decorativa,
-body.modo-app:not(.aparencia-noturna) .icon-box.caicavv-usuario-login,
-body.modo-app:not(.aparencia-noturna) .user-panel .avatar.caicavv-avatar-usuario,
-body.modo-app:not(.aparencia-noturna) .relatorio-card .rel-icone.caicavv-relatorio-peao,
-body.modo-app:not(.aparencia-noturna) .side-icon.caicavv-peao-login,
-body.modo-app:not(.aparencia-noturna) .app-shell .nav-icon.caicavv-nav-img,
-body.modo-app:not(.aparencia-noturna) .menu button::before{
-  filter:none!important;
-}
-</style>
 
 </body>
 </html>
 
-<style id="caicavv-aguardando-style">
-/* ===== Integração: Aguardando + campainha dos técnicos ===== */
-.v10-actions .aguardando{
-  background:linear-gradient(180deg,#f59e0b,#d97706)!important;
-  color:#fff!important;
-}
-.v10-actions .finalizado{
-  background:linear-gradient(180deg,#16c765,#079341)!important;
-  color:#fff!important;
-}
-.status-chip.aguardando-chip,
-.status-chip.v10-pendente.aguardando-chip{
-  background:#fef3c7!important;
-  color:#92400e!important;
-}
-.card.atendimento-card.v10-card.status-aguardando{
-  border-left-color:#f59e0b!important;
-}
-.card.atendimento-card.v10-card.status-aguardando::before{
-  background:#f59e0b!important;
-}
-.caicavv-ativar-som{
-  position:fixed;
-  right:18px;
-  bottom:18px;
-  width:auto!important;
-  min-width:180px;
-  z-index:99999;
-  border-radius:999px!important;
-  background:linear-gradient(135deg,#f59e0b,#d97706)!important;
-  color:#fff!important;
-  font-weight:900!important;
-  box-shadow:0 16px 36px rgba(15,23,42,.22)!important;
-}
-.config-som-card select{margin-top:8px!important}
-.config-som-card .linha-botoes-som{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
-.config-som-card .linha-botoes-som button{margin-top:0!important}
-@media(max-width:650px){.caicavv-ativar-som{left:12px;right:12px;bottom:12px;width:calc(100% - 24px)!important}.config-som-card .linha-botoes-som{grid-template-columns:1fr}}
-</style>
+
 
 <script id="caicavv-aguardando-script">
 /* ===== Integração: botão Aguardando, campainha e escolha de som ===== */
@@ -5863,18 +6655,7 @@ body.modo-app:not(.aparencia-noturna) .menu button::before{
 })();
 </script>
 
-<style id="caicavv-visibilidade-agendamentos-style">
-/* ===== Correção: blocos de agendamento somente na aba Agendamentos ===== */
-body.modo-app:not(.tela-agendamentos) #boasVindas,
-body.modo-app:not(.tela-agendamentos) #menu,
-body.modo-app:not(.tela-agendamentos) #relatorio,
-body.modo-app:not(.tela-agendamentos) #filtrosV6,
-body.modo-app:not(.tela-agendamentos) #formAtendimento,
-body.modo-app:not(.tela-agendamentos) #abasPassadasContainer,
-body.modo-app:not(.tela-agendamentos) #btnCriarAbaPassada{
-  display:none!important;
-}
-</style>
+
 <script id="caicavv-visibilidade-agendamentos-script">
 (function(){
   function aplicarVisibilidadeAgendamentos(){
@@ -5921,647 +6702,20 @@ body.modo-app:not(.tela-agendamentos) #btnCriarAbaPassada{
 })();
 </script>
 
-<style id="caicavv-aparencia-noturna-neon-style">
-/* ===== Configurações: aparência noturna + neons com a cor do usuário ===== */
-body.modo-app.aparencia-noturna{
-  background:
-    radial-gradient(circle at 82% 4%, color-mix(in srgb, var(--tema) 24%, transparent), transparent 32%),
-    radial-gradient(circle at 8% 92%, color-mix(in srgb, var(--tema) 14%, transparent), transparent 30%),
-    linear-gradient(180deg,#071126 0%,#080f24 45%,#050a18 100%)!important;
-  color:#eaf1ff!important;
-}
-body.modo-app.aparencia-noturna .app-shell .sidebar{
-  background:linear-gradient(180deg,#071126,#030816)!important;
-  border-right:1px solid rgba(255,255,255,.08)!important;
-  box-shadow:12px 0 35px rgba(0,0,0,.36)!important;
-}
-body.modo-app.aparencia-noturna .app-shell .topbar{
-  background:
-    radial-gradient(circle at 92% 15%, color-mix(in srgb, var(--tema) 34%, transparent), transparent 28%),
-    linear-gradient(135deg,#071126,var(--tema-escuro) 62%,#060b19)!important;
-  border-bottom:1px solid color-mix(in srgb, var(--tema) 34%, transparent)!important;
-}
-body.modo-app.aparencia-noturna .app-shell .user-panel,
-body.modo-app.aparencia-noturna .app-shell #menu,
-body.modo-app.aparencia-noturna .app-shell .relatorio-card,
-body.modo-app.aparencia-noturna .app-shell .search-card,
-body.modo-app.aparencia-noturna .app-shell .form-card,
-body.modo-app.aparencia-noturna .app-shell .v10-card,
-body.modo-app.aparencia-noturna .app-shell .lista-vazia,
-body.modo-app.aparencia-noturna .paciente-card,
-body.modo-app.aparencia-noturna .config-card,
-body.modo-app.aparencia-noturna .tecnico-relatorio-box,
-body.modo-app.aparencia-noturna .menu-lateral,
-body.modo-app.aparencia-noturna .menu-bloco,
-body.modo-app.aparencia-noturna .modal-box{
-  background:rgba(12,21,45,.94)!important;
-  border-color:rgba(148,163,184,.20)!important;
-  color:#eaf1ff!important;
-  box-shadow:0 16px 40px rgba(0,0,0,.24)!important;
-}
-body.modo-app.aparencia-noturna .pagina-titulo,
-body.modo-app.aparencia-noturna .config-card h3,
-body.modo-app.aparencia-noturna .paciente-card strong,
-body.modo-app.aparencia-noturna .v10-nome,
-body.modo-app.aparencia-noturna .v10-meta-value,
-body.modo-app.aparencia-noturna .relatorio-card .rel-nome,
-body.modo-app.aparencia-noturna .user-panel b,
-body.modo-app.aparencia-noturna .modal-box h3{
-  color:#f8fbff!important;
-}
-body.modo-app.aparencia-noturna .pagina-sub,
-body.modo-app.aparencia-noturna .paciente-card span,
-body.modo-app.aparencia-noturna .v10-sub,
-body.modo-app.aparencia-noturna .v10-meta-label,
-body.modo-app.aparencia-noturna .relatorio-card .rel-responsavel,
-body.modo-app.aparencia-noturna .aviso{
-  color:#aebde0!important;
-}
-body.modo-app.aparencia-noturna .app-shell #menu button,
-body.modo-app.aparencia-noturna .search-box,
-body.modo-app.aparencia-noturna .v10-meta-item,
-body.modo-app.aparencia-noturna .form-card input,
-body.modo-app.aparencia-noturna .form-card select,
-body.modo-app.aparencia-noturna .search-box input,
-body.modo-app.aparencia-noturna .search-row button,
-body.modo-app.aparencia-noturna .config-card input,
-body.modo-app.aparencia-noturna .config-card select,
-body.modo-app.aparencia-noturna .tecnico-relatorio-box input,
-body.modo-app.aparencia-noturna .tecnico-relatorio-box select,
-body.modo-app.aparencia-noturna .modal-box input,
-body.modo-app.aparencia-noturna .modal-box select{
-  background:rgba(5,10,24,.72)!important;
-  border-color:rgba(148,163,184,.22)!important;
-  color:#eaf1ff!important;
-}
-body.modo-app.aparencia-noturna input::placeholder{
-  color:#94a3c7!important;
-}
-body.modo-app.aparencia-noturna .status-chip,
-body.modo-app.aparencia-noturna .relatorio-card .rel-icone,
-body.modo-app.aparencia-noturna .user-panel .avatar{
-  background:color-mix(in srgb, var(--tema) 18%, #081126)!important;
-  color:#ffffff!important;
-  border:1px solid color-mix(in srgb, var(--tema) 45%, transparent)!important;
-}
-body.modo-app.neon-ativo .app-shell .topbar,
-body.modo-app.neon-ativo .app-shell .nav.active,
-body.modo-app.neon-ativo .app-shell #menu button.ativo,
-body.modo-app.neon-ativo .search-row .active-filter,
-body.modo-app.neon-ativo .search-row .ativo,
-body.modo-app.neon-ativo .linha-pasta button,
-body.modo-app.neon-ativo #btnAdicionar,
-body.modo-app.neon-ativo .tecnico-relatorio-box button,
-body.modo-app.neon-ativo .config-card button,
-body.modo-app.neon-ativo .login-button{
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--tema) 42%, transparent),
-    0 0 22px color-mix(in srgb, var(--tema) 52%, transparent),
-    0 14px 36px color-mix(in srgb, var(--tema) 22%, transparent)!important;
-}
-body.modo-app.neon-ativo .app-shell .user-panel,
-body.modo-app.neon-ativo .app-shell .relatorio-card,
-body.modo-app.neon-ativo .app-shell .search-card,
-body.modo-app.neon-ativo .app-shell .form-card,
-body.modo-app.neon-ativo .app-shell .v10-card,
-body.modo-app.neon-ativo .config-card,
-body.modo-app.neon-ativo .paciente-card,
-body.modo-app.neon-ativo .tecnico-relatorio-box{
-  border-color:color-mix(in srgb, var(--tema) 42%, transparent)!important;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--tema) 13%, transparent),
-    0 0 28px color-mix(in srgb, var(--tema) 18%, transparent),
-    0 14px 32px rgba(0,0,0,.12)!important;
-}
-body.modo-app.neon-ativo .app-shell .v10-card{
-  border-left-color:var(--tema)!important;
-}
-body.modo-app.neon-ativo .app-shell .brand h1,
-body.modo-app.neon-ativo .pagina-titulo,
-body.modo-app.neon-ativo .v10-nome{
-  text-shadow:0 0 16px color-mix(in srgb, var(--tema) 45%, transparent)!important;
-}
-body.modo-app.neon-ativo .menu-icon,
-body.modo-app.neon-ativo .app-shell .nav.active{
-  border-color:color-mix(in srgb, var(--tema) 74%, #fff)!important;
-}
-body.modo-app.neon-ativo .config-aparencia-card input[type="checkbox"]{
-  accent-color:var(--tema);
-  filter:drop-shadow(0 0 8px color-mix(in srgb, var(--tema) 55%, transparent));
-}
-@supports not (color: color-mix(in srgb, red, blue)){
-  body.modo-app.neon-ativo .app-shell .user-panel,
-  body.modo-app.neon-ativo .app-shell .relatorio-card,
-  body.modo-app.neon-ativo .app-shell .search-card,
-  body.modo-app.neon-ativo .app-shell .form-card,
-  body.modo-app.neon-ativo .app-shell .v10-card,
-  body.modo-app.neon-ativo .config-card{
-    border-color:var(--tema)!important;
-    box-shadow:0 0 22px rgba(37,99,235,.22)!important;
-  }
-}
-</style>
 
-<style id="caicavv-ajuste-realizados-neon-forte">
-/* ===== AJUSTE FINAL: realizados corrigidos + neon mais forte ===== */
-body.modo-app.aparencia-noturna .card.realizado,
-body.modo-app.aparencia-noturna .card.atendimento-card.realizado,
-body.modo-app.aparencia-noturna .app-shell .v10-card.realizado{
-  filter:none!important;
-  opacity:1!important;
-  background:linear-gradient(145deg,rgba(13,22,47,.98),rgba(8,14,31,.98))!important;
-  border-color:rgba(148,163,184,.22)!important;
-  color:#eaf1ff!important;
-}
-body.modo-app.aparencia-noturna .app-shell .v10-card.realizado{
-  border-left:8px solid color-mix(in srgb, var(--tema) 70%, #ffffff 8%)!important;
-}
-body.modo-app.aparencia-noturna .v10-card.realizado .v10-nome,
-body.modo-app.aparencia-noturna .v10-card.realizado .v10-meta-value,
-body.modo-app.aparencia-noturna .v10-card.realizado .info-valor,
-body.modo-app.aparencia-noturna .v10-card.realizado .info-valor.destaque,
-body.modo-app.aparencia-noturna .v10-card.realizado .info-valor.pasta{
-  color:#f8fbff!important;
-  opacity:1!important;
-}
-body.modo-app.aparencia-noturna .v10-card.realizado .v10-sub,
-body.modo-app.aparencia-noturna .v10-card.realizado .v10-meta-label,
-body.modo-app.aparencia-noturna .v10-card.realizado .info-label{
-  color:#b9c7e8!important;
-  opacity:1!important;
-}
-body.modo-app.aparencia-noturna .v10-card.realizado .v10-meta-item,
-body.modo-app.aparencia-noturna .card.realizado .v10-meta-item,
-body.modo-app.aparencia-noturna .card.realizado .info-bloco{
-  background:rgba(15,25,52,.96)!important;
-  border:1px solid rgba(148,163,184,.18)!important;
-  color:#eaf1ff!important;
-  opacity:1!important;
-}
-body.modo-app.aparencia-noturna .selo-realizado,
-body.modo-app.aparencia-noturna .status-chip,
-body.modo-app.aparencia-noturna .v10-card.realizado .status-chip{
-  background:color-mix(in srgb, var(--tema) 28%, #101827)!important;
-  color:#fff!important;
-  border:1px solid color-mix(in srgb, var(--tema) 58%, transparent)!important;
-  box-shadow:0 0 14px color-mix(in srgb, var(--tema) 28%, transparent)!important;
-}
-body.modo-app.aparencia-noturna .btn-menu-atendimento{
-  background:rgba(15,25,52,.95)!important;
-  color:#f8fbff!important;
-  border-color:rgba(148,163,184,.24)!important;
-}
-body.modo-app.aparencia-noturna .menu-atendimento{
-  background:#0b1328!important;
-  border-color:rgba(148,163,184,.22)!important;
-  box-shadow:0 22px 55px rgba(0,0,0,.42)!important;
-}
-body.modo-app.aparencia-noturna .menu-atendimento button{
-  color:#eaf1ff!important;
-}
-body.modo-app.aparencia-noturna .menu-atendimento button:hover{
-  background:rgba(255,255,255,.06)!important;
-}
 
-/* Neon forte seguindo a cor escolhida pelo usuário */
-body.modo-app.neon-ativo{
-  --neon-a:color-mix(in srgb, var(--tema) 85%, #ffffff 8%);
-  --neon-b:color-mix(in srgb, var(--tema) 55%, transparent);
-  --neon-c:color-mix(in srgb, var(--tema) 28%, transparent);
-}
-body.modo-app.neon-ativo .app-shell .topbar{
-  box-shadow:
-    0 0 0 1px var(--neon-a),
-    0 0 30px var(--neon-b),
-    0 0 70px var(--neon-c),
-    0 16px 35px rgba(0,0,0,.28)!important;
-}
-body.modo-app.neon-ativo .app-shell .sidebar{
-  box-shadow:
-    10px 0 28px rgba(0,0,0,.30),
-    0 0 34px var(--neon-c),
-    inset -1px 0 0 var(--neon-a)!important;
-}
-body.modo-app.neon-ativo .app-shell .user-panel,
-body.modo-app.neon-ativo .app-shell .relatorio-card,
-body.modo-app.neon-ativo .app-shell .search-card,
-body.modo-app.neon-ativo .app-shell .form-card,
-body.modo-app.neon-ativo .app-shell #menu,
-body.modo-app.neon-ativo .app-shell .v10-card,
-body.modo-app.neon-ativo .config-card,
-body.modo-app.neon-ativo .paciente-card,
-body.modo-app.neon-ativo .tecnico-relatorio-box,
-body.modo-app.neon-ativo .menu-bloco{
-  border-color:var(--neon-a)!important;
-  box-shadow:
-    0 0 0 1px color-mix(in srgb, var(--tema) 34%, transparent),
-    0 0 24px var(--neon-b),
-    0 0 54px var(--neon-c),
-    0 16px 36px rgba(0,0,0,.18)!important;
-}
-body.modo-app.neon-ativo .app-shell .v10-card{
-  border-left-color:var(--neon-a)!important;
-}
-body.modo-app.neon-ativo .app-shell .v10-card::after,
-body.modo-app.neon-ativo .config-card::after,
-body.modo-app.neon-ativo .search-card::after,
-body.modo-app.neon-ativo .relatorio-card::after{
-  content:"";
-  position:absolute;
-  inset:-2px;
-  border-radius:inherit;
-  pointer-events:none;
-  box-shadow:inset 0 0 22px color-mix(in srgb, var(--tema) 22%, transparent);
-}
-body.modo-app.neon-ativo .app-shell .v10-card,
-body.modo-app.neon-ativo .config-card,
-body.modo-app.neon-ativo .search-card,
-body.modo-app.neon-ativo .relatorio-card{
-  position:relative!important;
-}
-body.modo-app.neon-ativo .app-shell .nav.active,
-body.modo-app.neon-ativo .app-shell #menu button.ativo,
-body.modo-app.neon-ativo .search-row .active-filter,
-body.modo-app.neon-ativo .search-row .ativo,
-body.modo-app.neon-ativo .linha-pasta button,
-body.modo-app.neon-ativo #btnAdicionar,
-body.modo-app.neon-ativo .tecnico-relatorio-box button,
-body.modo-app.neon-ativo .config-card button,
-body.modo-app.neon-ativo .login-button,
-body.modo-app.neon-ativo .btn-relatorio,
-body.modo-app.neon-ativo .btn-secundario{
-  background:linear-gradient(135deg,var(--tema),var(--tema-escuro))!important;
-  border:1px solid var(--neon-a)!important;
-  box-shadow:
-    0 0 12px var(--neon-a),
-    0 0 30px var(--neon-b),
-    0 0 58px var(--neon-c),
-    inset 0 1px 0 rgba(255,255,255,.25)!important;
-}
-body.modo-app.neon-ativo .v10-nome,
-body.modo-app.neon-ativo .pagina-titulo,
-body.modo-app.neon-ativo .app-shell .brand h1,
-body.modo-app.neon-ativo .relatorio-card .rel-nome{
-  text-shadow:
-    0 0 10px color-mix(in srgb, var(--tema) 55%, transparent),
-    0 0 24px color-mix(in srgb, var(--tema) 35%, transparent)!important;
-}
-body.modo-app.neon-ativo .status-chip,
-body.modo-app.neon-ativo .relatorio-card .rel-icone,
-body.modo-app.neon-ativo .user-panel .avatar,
-body.modo-app.neon-ativo .menu-icon,
-body.modo-app.neon-ativo .btn-menu-atendimento{
-  border-color:var(--neon-a)!important;
-  box-shadow:
-    0 0 10px var(--neon-a),
-    0 0 26px var(--neon-b)!important;
-}
-body.modo-app.neon-ativo .search-box,
-body.modo-app.neon-ativo .v10-meta-item,
-body.modo-app.neon-ativo input,
-body.modo-app.neon-ativo select{
-  border-color:color-mix(in srgb, var(--tema) 38%, transparent)!important;
-  box-shadow:0 0 16px color-mix(in srgb, var(--tema) 14%, transparent)!important;
-}
-body.modo-app.neon-ativo .app-shell .v10-card:hover,
-body.modo-app.neon-ativo .config-card:hover,
-body.modo-app.neon-ativo .paciente-card:hover{
-  transform:translateY(-2px)!important;
-  box-shadow:
-    0 0 0 1px var(--neon-a),
-    0 0 34px var(--neon-b),
-    0 0 75px var(--neon-c),
-    0 22px 44px rgba(0,0,0,.24)!important;
-}
 
-@supports not (color: color-mix(in srgb, red, blue)){
-  body.modo-app.neon-ativo .app-shell .user-panel,
-  body.modo-app.neon-ativo .app-shell .relatorio-card,
-  body.modo-app.neon-ativo .app-shell .search-card,
-  body.modo-app.neon-ativo .app-shell .form-card,
-  body.modo-app.neon-ativo .app-shell #menu,
-  body.modo-app.neon-ativo .app-shell .v10-card,
-  body.modo-app.neon-ativo .config-card,
-  body.modo-app.neon-ativo .paciente-card,
-  body.modo-app.neon-ativo .tecnico-relatorio-box{
-    border-color:var(--tema)!important;
-    box-shadow:0 0 34px rgba(37,99,235,.45),0 0 70px rgba(37,99,235,.22)!important;
-  }
-  body.modo-app.aparencia-noturna .card.realizado,
-  body.modo-app.aparencia-noturna .app-shell .v10-card.realizado{
-    background:#0b1328!important;
-    filter:none!important;
-    opacity:1!important;
-  }
-}
-</style>
 
 <!-- ===== CORREÇÃO: flor, usuário e agenda no modo noturno ===== -->
-<style id="caicavv-correcao-flor-usuario-agenda-noturno">
-/*
-  Correção dos 3 ícones que estavam virando "manchas" no modo noturno:
-  - flor: fica clara sem perder totalmente o contorno;
-  - usuário: o filtro não pega mais o círculo inteiro, só o PNG;
-  - agenda: fica bem mais discreta para não estourar atrás da busca.
-*/
 
-/* 1) Flor: deixa clara/branca, mas sem transformar tudo em uma bolha sólida */
-body.modo-app.aparencia-noturna .caicavv-flor-img{
-  filter:grayscale(1) brightness(2.15) contrast(1.08)
-         drop-shadow(0 0 8px rgba(255,255,255,.24))!important;
-  opacity:.96!important;
-}
-
-body.modo-app.aparencia-noturna.neon-ativo .caicavv-flor-img{
-  filter:grayscale(1) brightness(2.15) contrast(1.08)
-         drop-shadow(0 0 7px rgba(255,255,255,.30))
-         drop-shadow(0 0 14px color-mix(in srgb, var(--tema) 35%, transparent))!important;
-}
-
-/* 2) Usuário: remove o filtro do círculo e aplica somente no desenho do PNG */
-.icon-box.caicavv-usuario-login,
-.user-panel .avatar.caicavv-avatar-usuario{
-  position:relative!important;
-  overflow:hidden!important;
-  background-image:none!important;
-}
-
-.icon-box.caicavv-usuario-login::before,
-.user-panel .avatar.caicavv-avatar-usuario::before{
-  content:""!important;
-  position:absolute!important;
-  inset:14%!important;
-  background-image:var(--img-usuario-caicavv)!important;
-  background-size:contain!important;
-  background-repeat:no-repeat!important;
-  background-position:center!important;
-  pointer-events:none!important;
-  filter:none!important;
-}
-
-body.modo-app.aparencia-noturna .icon-box.caicavv-usuario-login,
-body.modo-app.aparencia-noturna .user-panel .avatar.caicavv-avatar-usuario{
-  filter:none!important;
-  background:rgba(255,255,255,.08)!important;
-  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14), 0 0 18px rgba(255,255,255,.10)!important;
-}
-
-body.modo-app.aparencia-noturna .icon-box.caicavv-usuario-login::before,
-body.modo-app.aparencia-noturna .user-panel .avatar.caicavv-avatar-usuario::before{
-  filter:brightness(0) invert(1) drop-shadow(0 0 6px rgba(255,255,255,.22))!important;
-}
-
-body.modo-app.aparencia-noturna.neon-ativo .icon-box.caicavv-usuario-login::before,
-body.modo-app.aparencia-noturna.neon-ativo .user-panel .avatar.caicavv-avatar-usuario::before{
-  filter:brightness(0) invert(1)
-         drop-shadow(0 0 6px rgba(255,255,255,.30))
-         drop-shadow(0 0 12px color-mix(in srgb, var(--tema) 36%, transparent))!important;
-}
-
-/* 3) Agenda decorativa: branca, mas com baixa opacidade para não virar bloco cinza/branco */
-body.modo-app.aparencia-noturna .caicavv-agenda-decorativa{
-  filter:brightness(0) invert(1) drop-shadow(0 0 10px rgba(255,255,255,.12))!important;
-  opacity:.085!important;
-}
-
-body.modo-app.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
-  filter:brightness(0) invert(1)
-         drop-shadow(0 0 12px color-mix(in srgb, var(--tema) 30%, transparent))!important;
-  opacity:.11!important;
-}
-
-/* Garante que os filtros antigos não voltem a afetar esses 3 de forma errada */
-body.modo-app.aparencia-noturna .icon-box.caicavv-usuario-login,
-body.modo-app.aparencia-noturna .user-panel .avatar.caicavv-avatar-usuario{
-  color:transparent!important;
-  font-size:0!important;
-}
-</style>
 
 
 <!-- ===== CORREÇÃO REAL FINAL: flor amarela + peão e agenda sem bug no modo noturno ===== -->
-<style id="caicavv-correcao-real-final-flor-peao-agenda">
-/* 
-  IMPORTANTE:
-  Este bloco fica no final do arquivo para sobrescrever os estilos anteriores.
-  A flor NÃO entra no modo branco. Ela permanece amarela sempre.
-*/
 
-/* FLOR: sempre amarela, no modo normal, noturno e neon */
-body .caicavv-flor-img,
-body.modo-app .caicavv-flor-img,
-body.modo-app.aparencia-noturna .caicavv-flor-img,
-body.modo-app.aparencia-noturna.neon-ativo .caicavv-flor-img,
-body.aparencia-noturna .caicavv-flor-img,
-body.aparencia-noturna.neon-ativo .caicavv-flor-img{
-  filter:drop-shadow(0 0 8px rgba(250,204,21,.28))!important;
-}
-
-/* Remove a regra antiga que deixava a flor branca */
-body.modo-app.aparencia-noturna .caicavv-flor-img{
-  opacity:1!important;
-}
-
-/* PEÃO DO RELATÓRIO: o filtro não pode cair no círculo inteiro */
-body.modo-app.aparencia-noturna .relatorio-card .rel-icone.caicavv-relatorio-peao,
-body.modo-app.aparencia-noturna.neon-ativo .relatorio-card .rel-icone.caicavv-relatorio-peao{
-  position:relative!important;
-  overflow:hidden!important;
-  background-image:none!important;
-  filter:none!important;
-  background-color:rgba(255,255,255,.10)!important;
-  box-shadow:0 0 14px rgba(255,255,255,.20)!important;
-}
-
-body.modo-app.aparencia-noturna .relatorio-card .rel-icone.caicavv-relatorio-peao::after,
-body.modo-app.aparencia-noturna.neon-ativo .relatorio-card .rel-icone.caicavv-relatorio-peao::after{
-  content:""!important;
-  position:absolute!important;
-  inset:0!important;
-  background-image:var(--img-peao-caicavv)!important;
-  background-repeat:no-repeat!important;
-  background-position:center!important;
-  background-size:68%!important;
-  filter:brightness(0) invert(1)!important;
-  opacity:.95!important;
-}
-
-body.modo-app.aparencia-noturna.neon-ativo .relatorio-card .rel-icone.caicavv-relatorio-peao::after{
-  filter:brightness(0) invert(1)
-    drop-shadow(0 0 6px rgba(255,255,255,.28))
-    drop-shadow(0 0 12px color-mix(in srgb, var(--tema) 35%, transparent))!important;
-}
-
-/* PEÃO DO MENU/TABS: branco sem estourar */
-body.modo-app.aparencia-noturna .menu button::before,
-body.modo-app.aparencia-noturna.neon-ativo .menu button::before,
-body.aparencia-noturna .menu button::before,
-body.aparencia-noturna.neon-ativo .menu button::before{
-  filter:brightness(0) invert(1)!important;
-  opacity:.92!important;
-}
-
-/* USUÁRIO: mantém o círculo, mas embranquece só o desenho */
-body.modo-app.aparencia-noturna .user-panel .avatar.caicavv-avatar-usuario,
-body.modo-app.aparencia-noturna.neon-ativo .user-panel .avatar.caicavv-avatar-usuario{
-  position:relative!important;
-  overflow:hidden!important;
-  background-image:none!important;
-  filter:none!important;
-  background-color:rgba(255,255,255,.10)!important;
-}
-
-body.modo-app.aparencia-noturna .user-panel .avatar.caicavv-avatar-usuario::after,
-body.modo-app.aparencia-noturna.neon-ativo .user-panel .avatar.caicavv-avatar-usuario::after{
-  content:""!important;
-  position:absolute!important;
-  inset:0!important;
-  background-image:var(--img-usuario-caicavv)!important;
-  background-repeat:no-repeat!important;
-  background-position:center!important;
-  background-size:72%!important;
-  filter:brightness(0) invert(1)!important;
-  opacity:.95!important;
-}
-
-/* AGENDA DECORATIVA: menor, discreta e usando a agenda normal */
-.caicavv-agenda-decorativa{
-  content:url("img/agenda-decorativa.png")!important;
-  right:138px!important;
-  top:-4px!important;
-  width:96px!important;
-  height:96px!important;
-  object-fit:contain!important;
-  transform:rotate(-5deg)!important;
-  opacity:.10!important;
-  filter:none!important;
-  pointer-events:none!important;
-}
-
-body.modo-app.aparencia-noturna .caicavv-agenda-decorativa,
-body.aparencia-noturna .caicavv-agenda-decorativa{
-  content:url("img/agenda-decorativa.png")!important;
-  filter:brightness(0) invert(1)!important;
-  opacity:.075!important;
-}
-
-body.modo-app.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa,
-body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
-  content:url("img/agenda-decorativa.png")!important;
-  filter:brightness(0) invert(1)
-    drop-shadow(0 0 7px rgba(255,255,255,.14))
-    drop-shadow(0 0 12px color-mix(in srgb, var(--tema) 28%, transparent))!important;
-  opacity:.095!important;
-}
-
-@media(max-width:760px){
-  .caicavv-agenda-decorativa{
-    right:12px!important;
-    top:2px!important;
-    width:68px!important;
-    height:68px!important;
-    opacity:.08!important;
-  }
-}
-</style>
 <!-- ===== FIM DA CORREÇÃO REAL FINAL ===== -->
 
 <!-- ===== CORREÇÃO FINAL: barra original + agenda decorativa ilustrativa ===== -->
-<style id="caicavv-barra-original-agenda-ilustrativa">
-  /*
-    A imagem antiga era inserida como <img> dentro da barra de busca.
-    Quando o CSS não pegava direito, ela empurrava a barra para baixo.
-    Então aqui ela fica escondida e a agenda decorativa aparece via ::before,
-    sem ocupar espaço nenhum. Sim, HTML resolveu dramatizar de novo.
-  */
 
-  #filtrosV6.search-card{
-    position:relative!important;
-    overflow:hidden!important;
-    height:auto!important;
-    min-height:0!important;
-    padding:16px 18px!important;
-    margin-bottom:14px!important;
-  }
-
-  #filtrosV6 .search-row{
-    grid-template-columns:1fr 170px 120px!important;
-    gap:10px!important;
-    align-items:center!important;
-  }
-
-  #filtrosV6 .search-box,
-  #filtrosV6 .search-row button,
-  #filtrosV6 .search-row input[type="date"]{
-    height:44px!important;
-    min-height:44px!important;
-  }
-
-  #filtrosV6 > *{
-    position:relative!important;
-    z-index:1!important;
-  }
-
-  /* Esconde o img antigo para ele nunca mais aumentar a barra. */
-  #filtrosV6 .caicavv-agenda-decorativa,
-  .search-card .caicavv-agenda-decorativa{
-    display:none!important;
-    width:0!important;
-    height:0!important;
-    max-width:0!important;
-    max-height:0!important;
-    margin:0!important;
-    padding:0!important;
-    opacity:0!important;
-    pointer-events:none!important;
-  }
-
-  /* Agenda decorativa ilustrativa, sem mexer no tamanho da barra. */
-  #filtrosV6.search-card::before{
-    content:""!important;
-    position:absolute!important;
-    right:128px!important;
-    top:4px!important;
-    width:132px!important;
-    height:132px!important;
-    background-image:url("img/agenda-decorativa.png")!important;
-    background-repeat:no-repeat!important;
-    background-position:center!important;
-    background-size:contain!important;
-    transform:rotate(-5deg)!important;
-    opacity:.18!important;
-    pointer-events:none!important;
-    z-index:0!important;
-  }
-
-  body.modo-app.aparencia-noturna #filtrosV6.search-card::before,
-  body.aparencia-noturna #filtrosV6.search-card::before{
-    filter:brightness(0) invert(1)!important;
-    opacity:.15!important;
-  }
-
-  body.modo-app.aparencia-noturna.neon-ativo #filtrosV6.search-card::before,
-  body.aparencia-noturna.neon-ativo #filtrosV6.search-card::before{
-    filter:brightness(0) invert(1)
-      drop-shadow(0 0 7px rgba(255,255,255,.18))
-      drop-shadow(0 0 14px color-mix(in srgb, var(--tema) 34%, transparent))!important;
-    opacity:.18!important;
-  }
-
-  @media(max-width:950px){
-    #filtrosV6 .search-row{
-      grid-template-columns:1fr!important;
-    }
-
-    #filtrosV6.search-card::before{
-      right:8px!important;
-      top:8px!important;
-      width:82px!important;
-      height:82px!important;
-      opacity:.10!important;
-    }
-  }
-</style>
 
 <script id="caicavv-trava-barra-original-agenda-ilustrativa">
 (function(){
@@ -6596,92 +6750,7 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
 <!-- ===== FIM DA CORREÇÃO FINAL ===== -->
 
 <!-- ===== AJUSTES SOLICITADOS: MENSAGENS BONITAS + ABA UPLOAD RECEPÇÃO + UPLOAD DE ENTRADAS ===== -->
-<style id="caicavv-mensagens-upload-recepcao-style">
-  .caicavv-msg-fundo{
-    position:fixed;inset:0;display:none;align-items:center;justify-content:center;
-    background:rgba(4,18,64,.56);backdrop-filter:blur(5px);z-index:999999;padding:18px;
-  }
-  .caicavv-msg-fundo.show{display:flex;animation:caicavvMsgFade .18s ease both;}
-  .caicavv-msg-card{
-    width:min(460px,100%);border-radius:24px;background:linear-gradient(180deg,#ffffff,#f7fbff);
-    border:1px solid #d8e4fa;box-shadow:0 26px 90px rgba(0,23,76,.36);padding:24px 24px 20px;
-    color:#071957;text-align:left;position:relative;overflow:hidden;animation:caicavvMsgPop .22s cubic-bezier(.2,1.15,.35,1) both;
-  }
-  .caicavv-msg-card::before{
-    content:"";position:absolute;right:-44px;top:-54px;width:145px;height:145px;border-radius:50%;
-    background:rgba(0,91,255,.10);box-shadow:0 0 0 24px rgba(0,91,255,.045);pointer-events:none;
-  }
-  .caicavv-msg-icone{
-    width:58px;height:58px;border-radius:18px;display:grid;place-items:center;font-size:30px;font-weight:900;
-    background:#edf3ff;color:var(--tema,#005bff);margin-bottom:14px;
-  }
-  .caicavv-msg-card.sucesso .caicavv-msg-icone{background:#ecfdf5;color:#15803d;}
-  .caicavv-msg-card.erro .caicavv-msg-icone{background:#fef2f2;color:#b91c1c;}
-  .caicavv-msg-card.aviso .caicavv-msg-icone{background:#fff7ed;color:#c2410c;}
-  .caicavv-msg-card h3{margin:0 0 8px;font-size:21px;color:#061852;line-height:1.2;position:relative;z-index:1;}
-  .caicavv-msg-card p{margin:0;color:#405783;font-size:15px;line-height:1.5;white-space:pre-wrap;position:relative;z-index:1;}
-  .caicavv-msg-acoes{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;position:relative;z-index:1;}
-  .caicavv-msg-acoes button{width:auto!important;min-width:112px!important;height:42px!important;border-radius:999px!important;margin:0!important;padding:0 18px!important;font-weight:900!important;}
-  .caicavv-msg-ok{background:var(--tema,#005bff)!important;color:#fff!important;}
-  .caicavv-msg-cancelar{background:#e2e8f0!important;color:#334155!important;}
-  .caicavv-msg-confirmar{background:#dc2626!important;color:#fff!important;}
-  @keyframes caicavvMsgFade{from{opacity:0}to{opacity:1}}
-  @keyframes caicavvMsgPop{from{opacity:0;transform:translateY(14px) scale(.94)}to{opacity:1;transform:translateY(0) scale(1)}}
 
-  .nav-upload.hidden{display:none!important;}
-  .upload-grid-caicavv{display:grid;grid-template-columns:1.1fr .9fr;gap:14px;align-items:start;margin-top:14px;}
-  .upload-card-caicavv{background:#fff;border:1px solid #d8e4fa;border-radius:14px;padding:16px;box-shadow:0 14px 32px rgba(23,70,150,.10);color:#071957;}
-  .upload-card-caicavv h3{margin:0 0 8px;font-size:18px;color:#061852;}
-  .upload-card-caicavv p{margin:0 0 12px;color:#52699d;font-size:13px;line-height:1.45;}
-  .upload-card-caicavv label{display:block;font-size:12px;font-weight:900;color:#52699d;text-transform:uppercase;letter-spacing:.04em;margin-top:10px;}
-  .upload-card-caicavv input,.upload-card-caicavv select{width:100%;height:42px;border:1px solid #ccd9f5;border-radius:10px;padding:0 12px;margin-top:6px;font-size:14px;color:#071957;background:#fff;box-sizing:border-box;}
-  .upload-card-caicavv input[type="file"]{height:auto;padding:10px;background:#f8fbff;}
-  .upload-card-caicavv button{height:42px;border:0;border-radius:10px;background:var(--tema,#005bff);color:#fff;font-weight:900;margin-top:12px;width:100%;cursor:pointer;}
-  .upload-card-caicavv button.secundario{background:#0f766e;}
-  .upload-card-caicavv button.perigo{background:#b91c1c;}
-  .upload-card-caicavv button:disabled{background:#94a3b8;cursor:not-allowed;}
-  .upload-resumo-caicavv{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px;}
-  .upload-kpi-caicavv{border:1px solid #e4ecfb;background:#f8fbff;border-radius:12px;padding:12px;}
-  .upload-kpi-caicavv span{display:block;color:#52699d;font-size:12px;font-weight:900;text-transform:uppercase;}
-  .upload-kpi-caicavv b{display:block;color:#061852;font-size:24px;margin-top:4px;}
-  .upload-tabela-wrap{max-height:430px;overflow:auto;border:1px solid #e4ecfb;border-radius:12px;margin-top:12px;background:#fff;}
-  .upload-tabela-caicavv{width:100%;border-collapse:collapse;font-size:13px;}
-  .upload-tabela-caicavv th{position:sticky;top:0;background:#f1f6ff;color:#061852;text-align:left;padding:10px;border-bottom:1px solid #d8e4fa;z-index:1;}
-  .upload-tabela-caicavv td{padding:9px 10px;border-bottom:1px solid #eef3fb;color:#071957;vertical-align:top;}
-  .upload-status-ok{color:#166534;font-weight:900;}
-  .upload-status-falta{color:#991b1b;font-weight:900;}
-  .upload-status-pendente{color:#1d4ed8;font-weight:900;}
-  .upload-aviso-caicavv{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412;border-radius:12px;padding:12px;margin-top:12px;font-size:13px;line-height:1.45;}
-  .upload-sucesso-caicavv{background:#ecfdf5;border:1px solid #bbf7d0;color:#166534;border-radius:12px;padding:12px;margin-top:12px;font-size:13px;line-height:1.45;}
-  .upload-pasta-caicavv{border:1px solid #d8e4fa;background:#fff;border-radius:14px;margin-top:12px;overflow:hidden;box-shadow:0 12px 28px rgba(23,70,150,.08);}
-  .upload-pasta-caicavv summary{cursor:pointer;list-style:none;padding:14px 16px;background:#f8fbff;display:flex;align-items:center;justify-content:space-between;gap:12px;color:#061852;font-weight:900;}
-  .upload-pasta-caicavv summary::-webkit-details-marker{display:none;}
-  .upload-pasta-caicavv summary span{display:block;font-size:15px;}
-  .upload-pasta-caicavv summary small{display:block;color:#52699d;font-size:12px;font-weight:800;margin-top:3px;}
-  .upload-pasta-conteudo{padding:14px 16px;background:#fff;}
-  .upload-resumo-final-caicavv{margin-top:12px;border:1px solid #bbf7d0;background:#ecfdf5;border-radius:12px;padding:12px;color:#14532d;}
-  .upload-acoes-pasta-caicavv{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 12px;}
-  .upload-acoes-pasta-caicavv button{width:auto!important;min-width:150px!important;height:38px!important;margin:0!important;border-radius:10px!important;padding:0 14px!important;font-size:13px!important;font-weight:900!important;}
-  .upload-acoes-pasta-caicavv .imprimir{background:#2563eb!important;}
-  .upload-acoes-pasta-caicavv .exportar{background:#0f766e!important;}
-  .upload-acoes-pasta-caicavv .excluir{background:#b91c1c!important;}
-  .upload-entradas-area{margin-top:14px;}
-  .upload-ano-caicavv{border:1px solid #c9d9f7;background:#f7faff;border-radius:16px;margin-top:14px;overflow:hidden;box-shadow:0 14px 32px rgba(23,70,150,.09);}
-  .upload-ano-caicavv>summary{cursor:pointer;list-style:none;padding:16px 18px;background:linear-gradient(135deg,#edf4ff,#f9fbff);display:flex;align-items:center;justify-content:space-between;gap:14px;color:#061852;font-weight:900;}
-  .upload-ano-caicavv>summary::-webkit-details-marker{display:none;}
-  .upload-ano-caicavv>summary span{display:block;font-size:19px;}
-  .upload-ano-caicavv>summary small{display:block;color:#52699d;font-size:12px;font-weight:800;margin-top:4px;}
-  .upload-ano-caicavv>summary b{min-width:52px;height:34px;border-radius:999px;background:#dce9ff;color:#1747a6;display:grid;place-items:center;padding:0 12px;font-size:13px;}
-  .upload-ano-conteudo-caicavv{padding:4px 14px 16px;}
-  .upload-carregando-caicavv{display:flex;align-items:center;gap:10px;padding:14px;border:1px dashed #b9cbed;border-radius:12px;background:#f8fbff;color:#52699d;font-weight:800;}
-  body.modo-app.aparencia-noturna .upload-ano-caicavv{background:rgba(9,20,54,.86)!important;border-color:rgba(148,163,184,.28)!important;}
-  body.modo-app.aparencia-noturna .upload-ano-caicavv>summary{background:linear-gradient(135deg,rgba(18,43,94,.95),rgba(9,25,62,.95))!important;color:#f8fbff!important;}
-  body.modo-app.aparencia-noturna .upload-ano-caicavv>summary small{color:#b9c9e8!important;}
-  body.modo-app.aparencia-noturna .upload-ano-caicavv>summary b{background:rgba(59,130,246,.22)!important;color:#dbeafe!important;}
-
-  @media(max-width:900px){.upload-grid-caicavv{grid-template-columns:1fr}.upload-resumo-caicavv{grid-template-columns:1fr 1fr;}}
-  @media(max-width:620px){.upload-resumo-caicavv{grid-template-columns:1fr}.upload-tabela-caicavv{font-size:12px}.upload-acoes-pasta-caicavv{display:grid;grid-template-columns:1fr}.upload-acoes-pasta-caicavv button{width:100%!important;}}
-</style>
 
 <script id="caicavv-mensagens-upload-recepcao-script">
 (function(){
@@ -7833,7 +7902,7 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
       if(typeof mostrarErro === "function") mostrarErro("O navegador bloqueou a impressão. Permita pop-ups para este site.");
       return;
     }
-    win.document.write('<html><head><title>'+escUpload(g.nome)+'</title><style>body{font-family:Arial;padding:22px;color:#071957}table{width:100%;border-collapse:collapse}th,td{border:1px solid #d8e4fa;padding:7px;font-size:12px;text-align:left}th{background:#f1f6ff}</style></head><body><h1>'+escUpload(g.nome)+'</h1><p>Ano: '+escUpload(g.ano)+' • '+escUpload(g.arquivo)+' • '+escUpload(g.aba)+' • '+escUpload(g.tecnico)+'</p><table><thead><tr><th>Data</th><th>Pasta</th><th>Nome</th><th>Status</th><th>Observação</th></tr></thead><tbody>'+linhas+'</tbody></table></body></html>');
+    win.document.write('<html><head><title>'+escUpload(g.nome)+'</title></head><body><h1>'+escUpload(g.nome)+'</h1><p>Ano: '+escUpload(g.ano)+' • '+escUpload(g.arquivo)+' • '+escUpload(g.aba)+' • '+escUpload(g.tecnico)+'</p><table><thead><tr><th>Data</th><th>Pasta</th><th>Nome</th><th>Status</th><th>Observação</th></tr></thead><tbody>'+linhas+'</tbody></table></body></html>');
     win.document.close(); win.focus(); win.print();
   };
 
@@ -8029,100 +8098,7 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
 
 
 <!-- ===== AJUSTE FINAL: ÍCONE DE UPLOAD + MENSAGENS ESSENCIAIS ===== -->
-<style id="caicavv-upload-icone-mensagens-essenciais-style">
-  :root{
-    --img-upload-caicavv:url("data:image/png;base64,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");
-  }
 
-  /* Ícone novo da aba Upload */
-  .app-shell .nav[data-tela="upload"] .nav-icon,
-  .app-shell #navUpload .nav-icon{
-    width:30px!important;
-    height:30px!important;
-    display:block!important;
-    background-image:var(--img-upload-caicavv)!important;
-    background-repeat:no-repeat!important;
-    background-position:center!important;
-    background-size:contain!important;
-    font-size:0!important;
-    color:transparent!important;
-    filter:none!important;
-  }
-  body.modo-app.aparencia-noturna .app-shell .nav[data-tela="upload"] .nav-icon,
-  body.modo-app.aparencia-noturna .app-shell #navUpload .nav-icon{
-    filter:brightness(0) invert(1) drop-shadow(0 0 8px rgba(255,255,255,.18))!important;
-  }
-  body.modo-app.aparencia-noturna.neon-ativo .app-shell .nav[data-tela="upload"] .nav-icon,
-  body.modo-app.aparencia-noturna.neon-ativo .app-shell #navUpload .nav-icon{
-    filter:brightness(0) invert(1)
-      drop-shadow(0 0 6px rgba(255,255,255,.24))
-      drop-shadow(0 0 14px color-mix(in srgb, var(--tema) 38%, transparent))!important;
-  }
-
-  /* Cabeçalho visual dentro da tela Upload */
-  .upload-hero-caicavv{
-    display:flex;align-items:center;gap:16px;
-    background:linear-gradient(135deg,#ffffff,#f3f8ff)!important;
-    border:1px solid #d8e4fa;border-radius:16px;
-    box-shadow:0 14px 32px rgba(23,70,150,.10);
-    padding:18px 20px;margin:0 0 14px;color:#071957;
-  }
-  .upload-hero-icon-caicavv{
-    width:58px;height:58px;border-radius:18px;flex:0 0 58px;
-    background:var(--tema-claro,#edf3ff);display:grid;place-items:center;
-    box-shadow:inset 0 0 0 1px rgba(0,91,255,.12);
-  }
-  .upload-hero-icon-caicavv::before{
-    content:"";width:32px;height:32px;display:block;
-    background-image:var(--img-upload-caicavv);
-    background-repeat:no-repeat;background-position:center;background-size:contain;
-  }
-  .upload-hero-caicavv h2{margin:0;color:#061852;font-size:22px;line-height:1.15;font-weight:900;}
-  .upload-hero-caicavv p{margin:6px 0 0;color:#52699d;font-size:14px;line-height:1.4;}
-  body.modo-app.aparencia-noturna .upload-hero-caicavv{
-    background:linear-gradient(135deg,rgba(9,20,54,.96),rgba(11,31,78,.94))!important;
-    border-color:rgba(148,163,184,.28)!important;color:#e5eefc!important;
-  }
-  body.modo-app.aparencia-noturna .upload-hero-caicavv h2{color:#f8fbff!important;}
-  body.modo-app.aparencia-noturna .upload-hero-caicavv p{color:#b9c7e6!important;}
-  body.modo-app.aparencia-noturna .upload-hero-icon-caicavv{background:rgba(255,255,255,.08)!important;}
-  body.modo-app.aparencia-noturna .upload-hero-icon-caicavv::before{
-    filter:brightness(0) invert(1) drop-shadow(0 0 8px rgba(255,255,255,.18))!important;
-  }
-  body.modo-app.aparencia-noturna.neon-ativo .upload-hero-icon-caicavv::before{
-    filter:brightness(0) invert(1)
-      drop-shadow(0 0 6px rgba(255,255,255,.24))
-      drop-shadow(0 0 14px color-mix(in srgb, var(--tema) 38%, transparent))!important;
-  }
-
-  /* Mensagens comuns viram aviso discreto. Confirmação fica só para ações críticas, tipo excluir. */
-  .caicavv-toast-bonito{
-    position:fixed;right:18px;top:18px;z-index:1000000;
-    width:min(380px,calc(100vw - 36px));
-    border-radius:18px;background:linear-gradient(180deg,#fff,#f8fbff);
-    border:1px solid #d8e4fa;box-shadow:0 20px 60px rgba(0,23,76,.28);
-    padding:14px 16px 14px 54px;color:#071957;
-    opacity:0;transform:translateY(-10px);pointer-events:none;
-    transition:.2s ease;
-  }
-  .caicavv-toast-bonito.show{opacity:1;transform:translateY(0);pointer-events:auto;}
-  .caicavv-toast-bonito::before{
-    content:"i";position:absolute;left:14px;top:14px;width:28px;height:28px;border-radius:10px;
-    display:grid;place-items:center;background:#edf3ff;color:var(--tema,#005bff);font-weight:900;
-  }
-  .caicavv-toast-bonito.sucesso::before{content:"✓";background:#ecfdf5;color:#15803d;}
-  .caicavv-toast-bonito.erro::before{content:"!";background:#fef2f2;color:#b91c1c;}
-  .caicavv-toast-bonito.aviso::before{content:"!";background:#fff7ed;color:#c2410c;}
-  .caicavv-toast-bonito b{display:block;color:#061852;font-size:14px;margin-bottom:3px;}
-  .caicavv-toast-bonito span{display:block;color:#405783;font-size:13px;line-height:1.35;}
-
-  .caicavv-msg-card.confirmacao-critica{border-color:#fecaca!important;}
-  .caicavv-msg-detalhes{
-    margin-top:12px;padding:11px 12px;border-radius:13px;
-    background:#f8fafc;border:1px solid #e2e8f0;color:#334155!important;
-    font-size:13px!important;line-height:1.45!important;
-  }
-</style>
 
 <script id="caicavv-upload-icone-mensagens-essenciais-script">
 (function(){
