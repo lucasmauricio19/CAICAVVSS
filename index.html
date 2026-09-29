@@ -28,6 +28,25 @@
         const DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos");
         // Cadastro de pacientes em documento próprio para não ser sobrescrito por gravações de atendimentos.
         const DOC_CADASTROS = db.collection("caicavv").doc("cadastros");
+        /* CAICAVV DATA REPOSITORY V8 */
+        const CAICAVV_REPO = Object.freeze({
+          atendimentos: Object.freeze({
+            get: () => DOC_ATENDIMENTOS.get(),
+            set: (data, options) => DOC_ATENDIMENTOS.set(data, options || { merge: true }),
+            update: (data) => DOC_ATENDIMENTOS.update(data),
+            delete: () => DOC_ATENDIMENTOS.delete()
+          }),
+          cadastros: Object.freeze({
+            get: () => DOC_CADASTROS.get(),
+            set: (data, options) => DOC_CADASTROS.set(data, options || { merge: true }),
+            update: (data) => DOC_CADASTROS.update(data),
+            delete: () => DOC_CADASTROS.delete(),
+            transaction: (callback) => db.runTransaction(callback)
+          }),
+          agoraISO: () => new Date().toISOString()
+        });
+        window.CAICAVV_REPO = CAICAVV_REPO;
+
     </script>
 
 <style>
@@ -4478,7 +4497,7 @@ async function salvarCadastrosFirebase(opcoes={}){
   try{
     // O documento dedicado é a fonte persistente dos pacientes.
     // A transação evita perder uma alteração já gravada no backend durante uma escrita concorrente.
-    await db.runTransaction(async transaction => {
+    await CAICAVV_REPO.cadastros.transaction(async transaction => {
       const ref = DOC_CADASTROS;
       const snap = await transaction.get(ref);
       const remoto = snap.exists ? clonarCadastrosCAICAVV((snap.data() || {}).cadastros) : {};
@@ -4587,7 +4606,7 @@ async function carregarAtendimentosFirebase(){
     let possuiDocCadastros = false;
 
     try{
-      const snapCadastros = await DOC_CADASTROS.get();
+      const snapCadastros = await CAICAVV_REPO.cadastros.get();
       possuiDocCadastros = snapCadastros.exists;
       if(snapCadastros.exists){
         const dc = snapCadastros.data() || {};
@@ -4608,7 +4627,7 @@ async function carregarAtendimentosFirebase(){
 
       // Um cadastro local mais novo pode existir caso a pessoa tenha salvo imediatamente
       // antes de perder/recarregar a conexão. Nesse caso, preservamos as inclusões novas.
-      const remotoDoc = await DOC_CADASTROS.get();
+      const remotoDoc = await CAICAVV_REPO.cadastros.get();
       const remotoData = String((remotoDoc.data() || {}).atualizadoEm || "");
       if(cacheLocal && cacheLocal.atualizadoEm && (!remotoData || cacheLocal.atualizadoEm > remotoData)){
         cadastros = mesclarCadastrosCAICAVV(cadastros, cacheLocal.cadastros);
@@ -8314,7 +8333,7 @@ ${conteudo.innerHTML}
   async function carregarObservacoesFaltasCAICAVV(){
     if(observacoesFaltasCarregadasCAICAVV) return observacoesFaltasCAICAVV;
     try{
-      const snap=await DOC_CADASTROS.get();
+      const snap=await CAICAVV_REPO.cadastros.get();
       const data=snap.exists ? (snap.data()||{}) : {};
       observacoesFaltasCAICAVV=(data.observacoesFaltas && typeof data.observacoesFaltas==="object") ? data.observacoesFaltas : {};
       try{ localStorage.setItem(CHAVE_OBS_FALTAS,JSON.stringify(observacoesFaltasCAICAVV)); }catch(e){}
@@ -8327,7 +8346,7 @@ ${conteudo.innerHTML}
 
   async function salvarObservacoesFaltasCAICAVV(){
     const atualizadoEm=new Date().toISOString();
-    await DOC_CADASTROS.set({observacoesFaltas:observacoesFaltasCAICAVV,observacoesFaltasAtualizadasEm:atualizadoEm},{merge:true});
+    await CAICAVV_REPO.cadastros.set({observacoesFaltas:observacoesFaltasCAICAVV,observacoesFaltasAtualizadasEm:atualizadoEm},{merge:true});
     try{ localStorage.setItem(CHAVE_OBS_FALTAS,JSON.stringify(observacoesFaltasCAICAVV)); }catch(e){}
   }
 

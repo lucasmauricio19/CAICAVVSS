@@ -1,2 +1,3 @@
-# CAICAVVSS
-SITE PARA TÉCNICOS DO CAICAVV
+# CAICAVV
+
+Versão otimizada V7. Consulte `OTIMIZACAO-V7.md` para o histórico técnico desta etapa.
