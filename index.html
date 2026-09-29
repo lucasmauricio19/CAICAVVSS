@@ -30,47 +30,52 @@
         const DOC_CADASTROS = db.collection("caicavv").doc("cadastros");
     </script>
 
-<style id="caicavv-alertas-faltas-v2">
-  .caicavv-alertas-faltas{margin:14px 0 0;background:#fff;border:1px solid #e8edf7;border-radius:12px;box-shadow:0 4px 12px rgba(15,23,42,.04);overflow:hidden}
-  .caicavv-alertas-faltas__cabecalho{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 20px;cursor:pointer;user-select:none}
-  .caicavv-alertas-faltas__titulo{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:900;color:#081946}
-  .caicavv-alertas-faltas__seta{font-size:22px;line-height:1;min-width:24px;text-align:center}
-  .caicavv-alertas-faltas__tranquilo{padding:0 20px 17px;color:#64748b;font-weight:700}
-  .caicavv-alertas-faltas__lista{display:none;border-top:1px solid #e8edf7;padding:12px 16px 16px}
+<style id="caicavv-alertas-faltas-v3">
+  .caicavv-alertas-faltas{margin:12px 0 16px;background:linear-gradient(180deg,#fff 0%,#fbfdff 100%);border:1px solid #dfe7f5;border-radius:16px;box-shadow:0 8px 24px rgba(15,23,42,.07);overflow:hidden}
+  .caicavv-alertas-faltas__cabecalho{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:15px 18px;cursor:pointer;user-select:none;transition:.18s ease}
+  .caicavv-alertas-faltas__cabecalho:hover{background:#f8fbff}
+  .caicavv-alertas-faltas__titulo{display:flex;align-items:center;gap:10px;font-size:16px;font-weight:900;color:#10245a}
+  .caicavv-alertas-faltas__titulo>span:first-child{display:inline-flex;align-items:center;gap:7px}
+  .caicavv-alertas-faltas__seta{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;background:#eef4ff;color:#2459d8;font-size:19px;line-height:1}
+  .caicavv-alertas-faltas__lista{display:none;border-top:1px solid #e7edf7;padding:8px 14px 14px;background:#fbfdff}
   .caicavv-alertas-faltas.aberto .caicavv-alertas-faltas__lista{display:block}
-  .caicavv-alerta-falta-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 10px;border-bottom:1px solid #edf1f7}
-  .caicavv-alerta-falta-item:last-child{border-bottom:0}
-  .caicavv-alerta-falta-item__nome{font-weight:900;color:#081946}
-  .caicavv-alerta-falta-item__pasta{font-size:13px;color:#64748b;margin-top:3px}
-  .caicavv-alertas-faltas__rodape{display:flex;justify-content:flex-end;padding-top:10px}
-  .caicavv-alertas-faltas__ir{border:0;border-radius:8px;background:#2563eb;color:#fff;font-weight:900;padding:10px 14px;cursor:pointer}
-  .caicavv-alerta-pacientes{margin:14px 0;padding:16px;background:#fff8ed;border:1px solid #f5d9a8;border-radius:12px}
-  .caicavv-alerta-pacientes__titulo{font-weight:900;color:#8a4b00;margin-bottom:10px}
-  .caicavv-alerta-paciente-linha{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid #f3e2c2}
-  .caicavv-alerta-paciente-linha:last-child{border-bottom:0}
-  .caicavv-alerta-paciente-linha button{border:0;border-radius:8px;background:#2563eb;color:#fff;padding:9px 14px;font-weight:900;cursor:pointer}
-  .caicavv-detalhe-paciente{background:#fff;border:1px solid #e8edf7;border-radius:12px;padding:20px;box-shadow:0 4px 12px rgba(15,23,42,.04)}
+  .caicavv-alerta-falta-item{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:16px;padding:13px 8px;border-bottom:1px solid #e9eef6}
+  .caicavv-alerta-falta-item:last-of-type{border-bottom:0}
+  .caicavv-alerta-falta-item__nome{font-weight:900;color:#10245a;line-height:1.25}
+  .caicavv-alerta-falta-item__pasta{font-size:12px;color:#71809e;margin-top:4px}
+  .caicavv-alerta-falta-item button,.caicavv-alertas-faltas__ir,.caicavv-alerta-paciente-linha button{border:0;border-radius:9px;background:#2864e8;color:#fff;padding:9px 18px;font-weight:900;cursor:pointer;box-shadow:0 3px 8px rgba(40,100,232,.18);width:auto!important;min-width:86px;transition:.15s ease}
+  .caicavv-alerta-falta-item button:hover,.caicavv-alertas-faltas__ir:hover,.caicavv-alerta-paciente-linha button:hover{transform:translateY(-1px);filter:brightness(.97)}
+  .caicavv-alertas-faltas__rodape{display:flex;justify-content:flex-end;padding:10px 8px 2px}
+  .caicavv-alertas-faltas__ir{background:#102e72;min-width:auto}
+  .caicavv-alerta-pacientes{margin:18px 0;padding:18px 20px;background:linear-gradient(180deg,#fffaf0 0%,#fff7e8 100%);border:1px solid #f0d29a;border-radius:16px;box-shadow:0 8px 22px rgba(146,91,0,.07)}
+  .caicavv-alerta-pacientes__titulo{display:flex;align-items:center;gap:8px;font-size:15px;font-weight:900;color:#8a4b00;margin-bottom:5px}
+  .caicavv-alerta-pacientes__titulo::after{content:"Casos que precisam de atenção";font-size:12px;font-weight:700;color:#a06a21;margin-left:2px}
+  .caicavv-alerta-paciente-linha{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:18px;padding:13px 0;border-top:1px solid #f0dfbd}
+  .caicavv-alerta-paciente-linha:first-of-type{border-top:0}
+  .caicavv-alerta-paciente-linha b{color:#12275d;line-height:1.3}
+  .caicavv-alerta-paciente-linha button{min-width:78px}
+  .caicavv-detalhe-paciente{background:#fff;border:1px solid #e2e9f5;border-radius:16px;padding:22px;box-shadow:0 8px 24px rgba(15,23,42,.06)}
   .caicavv-detalhe-paciente__topo{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;margin-bottom:18px}
   .caicavv-detalhe-paciente__nome{font-size:24px;font-weight:900;color:#081946}
   .caicavv-detalhe-paciente__pasta{color:#64748b;margin-top:4px}
-  .caicavv-faltas-destaque{text-align:center;padding:16px;margin:0 0 18px;border-radius:10px;background:#fff1f2;border:1px solid #fecdd3;color:#9f1239;font-weight:900}
-  .caicavv-faltas-destaque strong{display:block;font-size:18px}
-  .caicavv-faltas-destaque span{display:block;margin-top:6px}
-  .caicavv-dados-entrada{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-bottom:18px}
-  .caicavv-dado-entrada{padding:12px;background:#f8fafc;border:1px solid #e8edf7;border-radius:9px}
+  .caicavv-faltas-destaque{text-align:center;padding:18px 16px;margin:0 0 20px;border-radius:14px;background:linear-gradient(180deg,#fff3f4,#fff);border:1px solid #f2b8c0;color:#9f1239;font-weight:900;box-shadow:inset 0 0 0 1px rgba(255,255,255,.6)}
+  .caicavv-faltas-destaque strong{display:block;font-size:18px;letter-spacing:.02em}
+  .caicavv-faltas-destaque span{display:block;margin-top:7px;font-size:14px}
+  .caicavv-dados-entrada{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;margin-bottom:20px}
+  .caicavv-dado-entrada{padding:13px;background:#f8fafc;border:1px solid #e4eaf4;border-radius:11px}
   .caicavv-dado-entrada small{display:block;color:#64748b;font-weight:800;margin-bottom:4px}
   .caicavv-dado-entrada b{color:#081946}
-  .caicavv-observacoes{border-top:1px solid #e8edf7;padding-top:16px}
-  .caicavv-observacoes__cab{display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-weight:900;color:#081946}
+  .caicavv-observacoes{border-top:1px solid #e8edf7;padding-top:17px}
+  .caicavv-observacoes__cab{display:flex;align-items:center;justify-content:space-between;cursor:pointer;font-weight:900;color:#081946;padding:4px 0}
   .caicavv-observacoes__lista{display:none;margin-top:12px}
   .caicavv-observacoes.aberto .caicavv-observacoes__lista{display:block}
-  .caicavv-observacao{padding:12px;border:1px solid #e8edf7;border-radius:9px;margin-bottom:9px;background:#f8fafc}
+  .caicavv-observacao{padding:13px;border:1px solid #e2e8f2;border-radius:11px;margin-bottom:9px;background:#f8fafc}
   .caicavv-observacao__meta{font-size:12px;color:#64748b;font-weight:800;margin-bottom:6px}
-  .caicavv-observacao__texto{color:#081946;white-space:pre-wrap;line-height:1.45}
+  .caicavv-observacao__texto{color:#081946;white-space:pre-wrap;line-height:1.5}
   .caicavv-nova-observacao{margin-top:14px}
-  .caicavv-nova-observacao textarea{width:100%;min-height:120px;box-sizing:border-box;border:1px solid #d7dde8;border-radius:9px;padding:12px;font:inherit;resize:vertical}
-  .caicavv-nova-observacao button{margin-top:9px;border:0;border-radius:8px;background:#166534;color:#fff;padding:11px 16px;font-weight:900;cursor:pointer}
-  @media(max-width:760px){.caicavv-dados-entrada{grid-template-columns:1fr}.caicavv-alerta-falta-item{align-items:flex-start;flex-direction:column}.caicavv-alerta-falta-item button{width:100%}}
+  .caicavv-nova-observacao textarea{width:100%;min-height:120px;box-sizing:border-box;border:1px solid #ccd7e8;border-radius:11px;padding:12px;font:inherit;resize:vertical;background:#fff}
+  .caicavv-nova-observacao button{margin-top:9px;border:0;border-radius:9px;background:#166534;color:#fff;padding:11px 16px;font-weight:900;cursor:pointer}
+  @media(max-width:760px){.caicavv-dados-entrada{grid-template-columns:1fr}.caicavv-alerta-falta-item,.caicavv-alerta-paciente-linha{grid-template-columns:1fr;align-items:start}.caicavv-alerta-falta-item button,.caicavv-alerta-paciente-linha button{width:100%!important}}
 </style>
 
 
@@ -8352,6 +8357,12 @@ body.aparencia-noturna.neon-ativo .caicavv-agenda-decorativa{
 
   function renderAlertaFaltasAgendamentosCAICAVV(){
     let sec=document.getElementById("caicavvAlertasFaltas");
+    // Este bloco pertence exclusivamente à aba de Agendamentos.
+    // Ao trocar de aba, removemos o elemento para ele nunca aparecer em Pacientes.
+    if(typeof telaAtualCaicavv!=="undefined" && telaAtualCaicavv!=="agendamentos"){
+      if(sec) sec.remove();
+      return;
+    }
     const referencia=document.getElementById("lembretesReagendamento");
     if(!referencia || !referencia.parentNode) return;
     if(!sec){ sec=document.createElement("section"); sec.id="caicavvAlertasFaltas"; sec.className="caicavv-alertas-faltas"; referencia.parentNode.insertBefore(sec,referencia); }
