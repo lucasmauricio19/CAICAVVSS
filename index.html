@@ -2392,16 +2392,10 @@ window.__caicavvDiagnostico = window.__caicavvDiagnostico || { versao: "6.0", in
   window.diasAteAtendimentoCAICAVV = diasAteAtendimentoCAICAVV;
 
   function envolverRenderCAICAVV(){
-    if(window.__caicavvLembretesRenderWrapped) return;
-    if(typeof window.render !== "function") return;
-
-    const renderOriginal = window.render;
-    window.render = function(){
-      const retorno = renderOriginal.apply(this, arguments);
-      renderLembretesReagendamentoCAICAVV();
-      return retorno;
-    };
-    window.__caicavvLembretesRenderWrapped = true;
+    if(window.__caicavvLembretesRenderHookRegistered) return;
+    if(typeof window.caicavvRegistrarRenderHook !== "function") return;
+    window.caicavvRegistrarRenderHook(renderLembretesReagendamentoCAICAVV);
+    window.__caicavvLembretesRenderHookRegistered = true;
   }
 
   function iniciarMonitorCAICAVV(){
@@ -4063,8 +4057,26 @@ function toggleMenuAtendimento(event, id){
 document.addEventListener('click', (event)=>{
   if(!event.target.closest('.atendimento-menu-wrap')) fecharMenusAtendimento();
 });
+
+/* ===== COORDENADOR CENTRAL DE RENDERIZAÇÃO =====
+   Evita a cadeia de window.render = wrapper(wrapper(wrapper(...))).
+   Cada módulo registra apenas um pós-processamento. */
+window.__caicavvRenderHooks = window.__caicavvRenderHooks || [];
+window.caicavvRegistrarRenderHook = function(fn){
+  if(typeof fn !== 'function') return;
+  if(window.__caicavvRenderHooks.indexOf(fn) === -1){
+    window.__caicavvRenderHooks.push(fn);
+  }
+};
+window.caicavvExecutarRenderHooks = function(){
+  window.__caicavvRenderHooks.slice().forEach(function(fn){
+    try{ fn(); }catch(e){ console.error('Erro em pós-render CAICAVV:', e); }
+  });
+};
+
 function render(){
   if(!tecnicoLogado) return;
+  if(typeof telaAtualCaicavv !== "undefined" && telaAtualCaicavv !== "agendamentos") return;
 
   fecharMenusAtendimento();
   lista.innerHTML = "";
@@ -4101,6 +4113,7 @@ function render(){
 
   if(dados.length === 0){
     lista.innerHTML = `<div class="app-card lista-vazia"><span class="icone-vazio">▣</span><span>Nenhum atendimento encontrado.</span></div>`;
+    window.caicavvExecutarRenderHooks();
     return;
   }
 
@@ -4163,12 +4176,14 @@ function render(){
         </div>
       </div>
     `;  });
+
+  window.caicavvExecutarRenderHooks();
 }
 
 
 /* ===== AJUSTES FINAIS DE NAVEGAÇÃO, PACIENTES, TÉCNICOS E CONFIGURAÇÕES ===== */
 let telaAtualCaicavv = "agendamentos";
-let renderOriginalCaicavv = null;
+let renderOriginalCaicavv = render;
 function usuarioPreferencias(){
   return lerSessao() || (tecnicoLogado && tecnicoLogado.login) || (tecnicoLogado && tecnicoLogado.nome) || "sem_login";
 }
@@ -4226,7 +4241,7 @@ function setTelaAtiva(nome){
   document.querySelectorAll(".app-shell .nav").forEach(nav=>nav.classList.toggle("active",nav.dataset.tela===nome));
 }
 function mostrarBlocosAgendamento(mostrar){["boasVindas","lembretesReagendamento","menu","relatorio","filtrosV6","formAtendimento","abasPassadasContainer","btnCriarAbaPassada"].forEach(id=>{const el=document.getElementById(id);if(el)el.classList.toggle("hidden",!mostrar);});}
-function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();if(typeof renderLembretesReagendamentoCAICAVV === "function") renderLembretesReagendamentoCAICAVV();if(typeof renderizarAbasPassadas === "function") renderizarAbasPassadas();}
+function abrirTelaAgendamentos(){setTelaAtiva("agendamentos");mostrarBlocosAgendamento(true);aplicarPermissoesNaTela();if(renderOriginalCaicavv)renderOriginalCaicavv();}
 function abrirTelaTecnicos(){setTelaAtiva("tecnicos");mostrarBlocosAgendamento(false);const tecnicos=Object.values(usuarios).filter(u=>u.role==="tecnico").map(u=>u.nome);const mesAtual=new Date().toISOString().slice(0,7);lista.innerHTML=`<div class="pagina-titulo">Relatório por técnico</div><div class="pagina-sub">Escolha um técnico e um mês para gerar o relatório.</div><div class="tecnico-relatorio-box"><label><b>Técnico</b></label><select id="tecnicoRelatorioTela">${tecnicos.map(t=>`<option value="${escapeHTML(t)}">${escapeHTML(t)}</option>`).join("")}</select><label><b>Mês</b></label><input id="mesRelatorioTecnicoTela" type="month" value="${mesAtual}"><button type="button" onclick="gerarRelatorioTecnicoNaTela()">Gerar relatório</button></div><div id="resultadoTecnicoTela" style="margin-top:14px"></div>`;}
 function gerarRelatorioTecnicoNaTela(){const tecnico=document.getElementById("tecnicoRelatorioTela").value;const mes=document.getElementById("mesRelatorioTecnicoTela").value;const dados=atendimentos.filter(a=>a.tecnico===tecnico&&String(a.data||"").startsWith(mes));const total=dados.length;const ok=dados.filter(a=>a.status==="compareceu").length;const falta=dados.filter(a=>a.status==="faltou").length;const pendente=dados.filter(a=>!a.status||a.status==="agendado").length;const linhas=dados.sort((a,b)=>getDataHoraAtendimento(a).localeCompare(getDataHoraAtendimento(b))).map(a=>`<div class="paciente-card"><strong>📁 Pasta ${escapeHTML(a.pasta)} · ${escapeHTML(formatarDataBR(a.data))}</strong><span>${escapeHTML(a.status||"agendado")} · ${escapeHTML(a.descricao||"Sem descrição")}</span></div>`).join("");document.getElementById("resultadoTecnicoTela").innerHTML=`<div class="relatorio-card"><div class="rel-icone">👥</div><div><span class="rel-nome">${escapeHTML(tecnico)}</span><br><span class="rel-metrica">Total: <b>${total}</b></span><span class="rel-metrica ok">Compareceu: <b>${ok}</b></span><span class="rel-metrica erro">Faltou: <b>${falta}</b></span><span class="rel-metrica">Pendente: <b>${pendente}</b></span></div></div><div class="pacientes-grid" style="margin-top:12px">${linhas||'<div class="paciente-card"><strong>Nenhum atendimento encontrado.</strong></div>'}</div>`;}
 function abrirTelaConfiguracoes(){
@@ -5043,12 +5058,6 @@ window.addEventListener("error", (event) => {
 window.addEventListener("DOMContentLoaded",()=>{
   try{
     aplicarTemaSalvo();
-
-    renderOriginalCaicavv = typeof window.render === "function" ? window.render : null;
-    window.render = function(){
-      if(telaAtualCaicavv !== "agendamentos") return;
-      return renderOriginalCaicavv ? renderOriginalCaicavv() : undefined;
-    };
 
     const menuIcon = document.querySelector(".menu-icon");
     if(menuIcon) menuIcon.onclick = toggleMenuLateral;
@@ -6246,13 +6255,9 @@ ${conteudo.innerHTML}
     if(window.__caicavvAbasPassadasWrapped) return;
     window.__caicavvAbasPassadasWrapped = true;
 
-    const renderOriginal = window.render;
-    if(typeof renderOriginal === "function"){
-      window.render = function(){
-        const r = renderOriginal.apply(this, arguments);
-        setTimeout(init, 0);
-        return r;
-      };
+    if(typeof window.caicavvRegistrarRenderHook === "function" && !window.__caicavvAbasPassadasRenderHook){
+      window.caicavvRegistrarRenderHook(function(){ setTimeout(init, 0); });
+      window.__caicavvAbasPassadasRenderHook = true;
     }
 
     const carregarOriginal = window.carregarAtendimentosFirebase;
@@ -6684,14 +6689,9 @@ ${conteudo.innerHTML}
     };
   }
 
-  const renderOriginalVisibilidade = window.render;
-  if(typeof renderOriginalVisibilidade === "function" && !window.__caicavvRenderVisibilidadeWrapped){
-    window.__caicavvRenderVisibilidadeWrapped = true;
-    window.render = function(){
-      const retorno = renderOriginalVisibilidade.apply(this, arguments);
-      aplicarVisibilidadeAgendamentos();
-      return retorno;
-    };
+  if(typeof window.caicavvRegistrarRenderHook === "function" && !window.__caicavvRenderVisibilidadeHook){
+    window.caicavvRegistrarRenderHook(aplicarVisibilidadeAgendamentos);
+    window.__caicavvRenderVisibilidadeHook = true;
   }
 
   document.addEventListener("DOMContentLoaded", function(){
@@ -8445,8 +8445,12 @@ ${conteudo.innerHTML}
 
   const abrirTelaAgendamentosOriginal=window.abrirTelaAgendamentos;
   window.abrirTelaAgendamentos=function(){ if(typeof abrirTelaAgendamentosOriginal==="function") abrirTelaAgendamentosOriginal.apply(this,arguments); setTimeout(renderAlertaFaltasAgendamentosCAICAVV,0); };
-  const renderOriginalGlobal=window.render;
-  window.render=function(){ if(typeof renderOriginalGlobal==="function") renderOriginalGlobal.apply(this,arguments); if(telaAtualCaicavv==="agendamentos") setTimeout(renderAlertaFaltasAgendamentosCAICAVV,0); };
+  if(typeof window.caicavvRegistrarRenderHook === "function" && !window.__caicavvAlertaFaltasRenderHook){
+    window.caicavvRegistrarRenderHook(function(){
+      if(telaAtualCaicavv === "agendamentos") setTimeout(renderAlertaFaltasAgendamentosCAICAVV,0);
+    });
+    window.__caicavvAlertaFaltasRenderHook = true;
+  }
 
   // Garante que o bloco de faltas fique sempre acima do lembrete de reagendamento.
   document.addEventListener("DOMContentLoaded",()=>setTimeout(renderAlertaFaltasAgendamentosCAICAVV,250));
