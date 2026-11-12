@@ -6,10 +6,16 @@ services:
     buildCommand: npm install
     startCommand: npm start
     healthCheckPath: /health
+
     envVars:
-      - key: NODE_ENV
-        value: production
       - key: SUPABASE_URL
+        value: https://eueegnliqlmpstgqbshi.supabase.co
+
+      - key: SUPABASE_PUBLISHABLE_KEY
+        value: sb_publishable_mwEV1Qi3oJE4Hk3CPpb-fg_KuH7KrjN
+
+      - key: SUPABASE_SECRET_KEY
         sync: false
-      - key: SUPABASE_SERVICE_ROLE_KEY
-        sync: false
+
+      - key: SUPABASE_JWKS_URL
+        value: https://eueegnliqlmpstgqbshi.supabase.co/auth/v1/.well-known/jwks.json
