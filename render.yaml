@@ -17,5 +17,10 @@ services:
       - key: SUPABASE_SECRET_KEY
         sync: false
 
+      # Credencial do Firebase (conta de serviço) usada SOMENTE pelo servidor.
+      # Cole o conteúdo completo do arquivo .json baixado do Firebase.
+      - key: FIREBASE_SERVICE_ACCOUNT_JSON
+        sync: false
+
       - key: SUPABASE_JWKS_URL
         value: https://eueegnliqlmpstgqbshi.supabase.co/auth/v1/.well-known/jwks.json

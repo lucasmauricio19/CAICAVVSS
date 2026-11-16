@@ -7,25 +7,626 @@
     
     <!-- Caminho do Favicon -->
     <link rel="icon" type="image/png" href="./favicon.png">
-    <!-- Firebase SDKs -->
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <!-- Supabase Auth (login Google). O acesso aos dados agora passa pelo servidor. -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.57.4/dist/umd/supabase.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
-    <!-- Configuração do Firebase -->
-    <script>
-        const firebaseConfig = {
-            apiKey: "AIzaSyB5Rvz_snCwJCXwTp3gnpV8fa0K13FcrA",
-            authDomain: "caicavvagendamentos.firebaseapp.com",
-            projectId: "caicavvagendamentos",
-            storageBucket: "caicavvagendamentos.firebasestorage.app",
-            messagingSenderId: "402044173505",
-            appId: "1:402044173505:web:300c6bca3116adc108a840"
-        };
+    <!-- Autenticação (Google/Supabase) + ponte segura para os dados -->
+    <script id="caicavv-auth-script">
+(function(){
+  "use strict";
 
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        const DOC_ATENDIMENTOS = db.collection("caicavv").doc("atendimentos");
+  var Auth = window.CAICAVV_AUTH = { sb: null, perfil: null, email: "", nome: "" };
+  var avisouSessao = false;
+
+  function el(id){ return document.getElementById(id); }
+  function esc(s){
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function(c){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" }[c];
+    });
+  }
+  function toast(msg, tipo){
+    if(typeof mostrarToast === "function") mostrarToast(msg, tipo || "erro");
+  }
+  function erroApi(status, corpo){
+    var e = new Error((corpo && corpo.mensagem) || ("Erro " + status));
+    e.status = status;
+    e.code = (corpo && corpo.erro) || "";
+    return e;
+  }
+
+  /* ================= Comunicação com o servidor ================= */
+
+  Auth.token = async function(){
+    if(!Auth.sb) return null;
+    var r = await Auth.sb.auth.getSession();
+    return r && r.data && r.data.session ? r.data.session.access_token : null;
+  };
+
+  // Devolve a Response crua (usado pelo monitor de atualizações e pela verificação de acesso).
+  Auth.fetch = async function(path, opts){
+    opts = opts || {};
+    var t = await Auth.token();
+    if(!t){
+      var e0 = new Error("Sessão ausente.");
+      e0.status = 401; e0.code = "SEM_SESSAO";
+      throw e0;
+    }
+    var headers = Object.assign({ "Authorization": "Bearer " + t }, opts.headers || {});
+    var init = { method: opts.method || "GET", headers: headers, cache: "no-store" };
+    if(opts.body !== undefined){
+      headers["Content-Type"] = "application/json";
+      init.body = JSON.stringify(opts.body);
+    }
+    return fetch("/api" + path, init);
+  };
+
+  function tratarFalha(e){
+    if(avisouSessao) return;
+    if(e.status === 401 || /^ACESSO_/.test(e.code)){
+      avisouSessao = true;
+      toast(e.status === 401 ? "Sua sessão expirou. Entre novamente." : "Seu acesso foi alterado. Verificando…", "erro");
+      setTimeout(function(){ location.reload(); }, 1600);
+    }
+  }
+
+  Auth.api = async function(path, opts){
+    var resp = await Auth.fetch(path, opts);
+    var corpo = null;
+    try{ corpo = await resp.json(); }catch(e){}
+    if(!resp.ok){
+      var e = erroApi(resp.status, corpo);
+      tratarFalha(e);
+      throw e;
+    }
+    return corpo;
+  };
+
+  /* ====== Ponte com o servidor: substitui o acesso direto ao Firestore ======
+     O restante do sistema continua chamando DOC_ATENDIMENTOS.get/set/update/onSnapshot
+     e colecao.get/doc().set/update/delete exatamente como antes. */
+
+  function snapshot(existe, dados){
+    return { exists: !!existe, data: function(){ return dados || {}; } };
+  }
+  function novoId(){
+    var abc = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    var bytes = new Uint8Array(20);
+    crypto.getRandomValues(bytes);
+    var s = "";
+    for(var i = 0; i < bytes.length; i++) s += abc[bytes[i] % abc.length];
+    return s;
+  }
+
+  var colecaoRelatorios = {
+    get: async function(){
+      var r = await Auth.api("/data/relatorios");
+      var docs = (r.relatorios || []).map(function(x){
+        return { id: x.id, data: function(){ return x.dados || {}; } };
+      });
+      return { docs: docs, size: docs.length, empty: !docs.length, forEach: function(fn){ docs.forEach(fn); } };
+    },
+    doc: function(id){
+      id = id || novoId();
+      var base = "/data/relatorios/" + encodeURIComponent(id);
+      return {
+        id: id,
+        set: function(d){ return Auth.api(base, { method: "PUT", body: { dados: d, modo: "set" } }); },
+        update: function(d){ return Auth.api(base, { method: "PUT", body: { dados: d, modo: "update" } }); },
+        delete: function(){ return Auth.api(base, { method: "DELETE" }); }
+      };
+    }
+  };
+
+  window.DOC_ATENDIMENTOS = {
+    get: async function(){
+      var r = await Auth.api("/data/main");
+      return snapshot(r.existe, r.dados);
+    },
+    set: async function(d){ await Auth.api("/data/main", { method: "POST", body: { dados: d, modo: "set" } }); },
+    update: async function(d){ await Auth.api("/data/main", { method: "POST", body: { dados: d, modo: "update" } }); },
+    collection: function(nome){
+      if(nome !== "relatoriosImportados") throw new Error("Coleção não permitida.");
+      return colecaoRelatorios;
+    },
+    // O servidor mantém o documento em memória; aqui só perguntamos se mudou (resposta 304 é barata).
+    onSnapshot: function(cb, errCb){
+      var ativo = true, etag = null, timer = null;
+      async function ciclo(){
+        if(!ativo) return;
+        try{
+          var resp = await Auth.fetch("/data/main", { headers: etag ? { "If-None-Match": etag } : {} });
+          if(resp.status === 304){
+            /* sem mudanças */
+          }else if(resp.ok){
+            etag = resp.headers.get("ETag");
+            var c = await resp.json();
+            if(ativo) cb(snapshot(c.existe, c.dados));
+          }else{
+            var corpo = null;
+            try{ corpo = await resp.json(); }catch(e){}
+            var er = erroApi(resp.status, corpo);
+            tratarFalha(er);
+            if(errCb) errCb(er);
+          }
+        }catch(er2){
+          if(errCb) errCb(er2);
+        }
+        if(ativo) timer = setTimeout(ciclo, 6000);
+      }
+      ciclo();
+      return function(){ ativo = false; clearTimeout(timer); };
+    }
+  };
+
+  /* ================= Telas de login e de estado do acesso ================= */
+
+  var G_LOGO = '<svg width="20" height="20" viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>';
+
+  var MSG_NAO_AUTORIZADO = "Seu acesso ainda não foi autorizado. Sua solicitação poderá ser analisada pela administração do CAICAVV.";
+
+  function aviso(msg, tipo){
+    return msg ? '<div class="cx-aviso ' + (tipo || "erro") + '" role="alert">' + esc(msg) + '</div>' : "";
+  }
+  function conta(){
+    return Auth.email ? '<div class="cx-conta">Conta Google: <b>' + esc(Auth.email) + '</b></div>' : "";
+  }
+
+  function telaLogin(extra){
+    return {
+      titulo: "Entrar no sistema",
+      desc: "Use sua conta Google para acessar o CAICAVV.",
+      html: aviso(extra && extra.aviso) +
+        '<button type="button" class="cx-btn-google" data-cx="entrar">' + G_LOGO + '<span>Entrar com Google</span></button>',
+      rodape: "🛡️ Acesso restrito a pessoas autorizadas pela administração"
+    };
+  }
+
+  var TELAS = {
+    carregando: function(){
+      return { titulo: "Verificando acesso…", desc: "Aguarde um instante.", html: '<div class="cx-spinner" aria-hidden="true"></div>', rodape: "" };
+    },
+    login: telaLogin,
+    sem_cadastro: function(){
+      return {
+        titulo: "Acesso não autorizado",
+        desc: MSG_NAO_AUTORIZADO,
+        html: conta() +
+          '<button type="button" class="cx-btn-principal" data-cx="solicitar">Solicitar acesso</button>' +
+          '<button type="button" class="cx-btn-sec" data-cx="sair">Entrar com outra conta</button>',
+        rodape: ""
+      };
+    },
+    pendente: function(){
+      return {
+        titulo: "Acesso pendente",
+        desc: "Sua solicitação foi registrada e aguarda análise da administração do CAICAVV.",
+        html: conta() +
+          '<p class="cx-nota">' + esc(MSG_NAO_AUTORIZADO) + '</p>' +
+          '<button type="button" class="cx-btn-principal" data-cx="verificar">Verificar novamente</button>' +
+          '<button type="button" class="cx-btn-sec" data-cx="sair">Sair</button>',
+        rodape: ""
+      };
+    },
+    recusado: function(){
+      return {
+        titulo: "Acesso recusado",
+        desc: "Sua solicitação de acesso não foi aprovada pela administração do CAICAVV. Em caso de dúvida, fale com a coordenação.",
+        html: conta() + '<button type="button" class="cx-btn-sec" data-cx="sair">Sair</button>',
+        rodape: ""
+      };
+    },
+    revogado: function(){
+      return {
+        titulo: "Acesso revogado",
+        desc: "Sua autorização para usar o CAICAVV foi revogada. Em caso de dúvida, fale com a coordenação.",
+        html: conta() + '<button type="button" class="cx-btn-sec" data-cx="sair">Sair</button>',
+        rodape: ""
+      };
+    },
+    erro: function(extra){
+      return {
+        titulo: "Não foi possível continuar",
+        desc: (extra && extra.msg) || "Não conseguimos verificar o seu acesso agora. Tente novamente em instantes.",
+        html: '<button type="button" class="cx-btn-principal" data-cx="verificar">Tentar novamente</button>' +
+          '<button type="button" class="cx-btn-sec" data-cx="sair">Sair</button>',
+        rodape: ""
+      };
+    }
+  };
+
+  function mostrar(estado, extra){
+    var t = (TELAS[estado] || TELAS.erro)(extra);
+    var a = el("authTitulo"), b = el("authDescricao"), c = el("authConteudo"), d = el("authRodape");
+    if(a) a.textContent = t.titulo;
+    if(b) b.textContent = t.desc;
+    if(c) c.innerHTML = t.html;
+    if(d){ d.textContent = t.rodape || ""; d.style.display = t.rodape ? "" : "none"; }
+    if(typeof loginDiv !== "undefined" && loginDiv) loginDiv.style.display = "block";
+  }
+
+  function avisoDaUrl(){
+    try{
+      var p = new URLSearchParams(location.search);
+      var h = new URLSearchParams((location.hash || "").replace(/^#/, ""));
+      var msg = p.get("error_description") || h.get("error_description");
+      if(p.get("error") || h.get("error")){
+        history.replaceState({}, document.title, location.pathname);
+        return "Não foi possível concluir o login com o Google. Tente novamente." + (msg ? "" : "");
+      }
+    }catch(e){}
+    return "";
+  }
+
+  Auth.iniciarCliente = async function(){
+    var r = await fetch("/api/config", { cache: "no-store" });
+    if(!r.ok) throw new Error("config");
+    var c = await r.json();
+    if(!window.supabase || !window.supabase.createClient) throw new Error("sdk");
+    Auth.sb = window.supabase.createClient(c.supabaseUrl, c.supabasePublishableKey, {
+      auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true, flowType: "pkce" }
+    });
+  };
+
+  Auth.entrarComGoogle = async function(){
+    try{
+      var r = await Auth.sb.auth.signInWithOAuth({
+        provider: "google",
+        options: { redirectTo: location.origin + "/", queryParams: { prompt: "select_account" } }
+      });
+      if(r.error) throw r.error;
+    }catch(e){
+      mostrar("login", { aviso: "Não foi possível iniciar o login com o Google. Tente novamente." });
+    }
+  };
+
+  Auth.sair = async function(){
+    try{ if(Auth.sb) await Auth.sb.auth.signOut(); }catch(e){}
+    try{ if(typeof limparSessao === "function") limparSessao(); }catch(e){}
+    location.replace(location.pathname);
+  };
+
+  Auth.solicitar = async function(){
+    mostrar("carregando");
+    try{
+      var r = await Auth.api("/access/request", { method: "POST" });
+      mostrar(r.status === "aprovado" ? "carregando" : r.status);
+      if(r.status === "aprovado") Auth.verificar();
+    }catch(e){
+      mostrar("erro", { msg: e.message });
+    }
+  };
+
+  Auth.verificar = async function(){
+    mostrar("carregando");
+    var resp, corpo = null;
+    try{
+      resp = await Auth.fetch("/me");
+      try{ corpo = await resp.json(); }catch(e){}
+    }catch(e){
+      if(e.status === 401){ mostrar("login"); return; }
+      mostrar("erro"); return;
+    }
+    if(resp.status === 401){
+      try{ await Auth.sb.auth.signOut(); }catch(e){}
+      mostrar("login", { aviso: "Sua sessão expirou. Entre novamente." });
+      return;
+    }
+    if(!resp.ok){ mostrar("erro", { msg: corpo && corpo.mensagem }); return; }
+
+    Auth.email = corpo.email || "";
+    Auth.nome = corpo.nome || "";
+    if(corpo.status === "aprovado" && corpo.perfil){
+      await entrarAutorizado(corpo);
+      return;
+    }
+    mostrar(corpo.status);
+  };
+
+  async function entrarAutorizado(corpo){
+    var p = corpo.perfil;
+    Auth.perfil = p;
+    var chave = p.loginKey;
+    // Técnicos usam o cadastro já existente (mesmo nome, mesma agenda e preferências).
+    // Os demais perfis ganham uma identidade própria, com o nome definido pela administração.
+    if(p.role !== "tecnico") usuarios[chave] = { nome: p.nome, role: p.role };
+    if(!usuarios[chave] || !permissoes[usuarios[chave].role]){
+      mostrar("erro", { msg: "O perfil desta conta não está configurado corretamente. Procure a administração." });
+      return;
+    }
+    await entrarComo(chave);
+  }
+
+  Auth.boot = async function(){
+    mostrar("carregando");
+    try{
+      await Auth.iniciarCliente();
+    }catch(e){
+      mostrar("erro", { msg: "O login está indisponível no momento. Tente novamente em instantes." });
+      return;
+    }
+    var avisoUrl = avisoDaUrl();
+    Auth.sb.auth.onAuthStateChange(function(evento){
+      if(evento === "SIGNED_OUT" && Auth.perfil){ location.replace(location.pathname); }
+    });
+    var s = null;
+    try{ s = (await Auth.sb.auth.getSession()).data.session; }catch(e){}
+    if(!s){ mostrar("login", { aviso: avisoUrl }); return; }
+    if(/[?&]code=/.test(location.search)) history.replaceState({}, document.title, location.pathname);
+    await Auth.verificar();
+  };
+
+  document.addEventListener("click", function(ev){
+    var b = ev.target.closest ? ev.target.closest("[data-cx]") : null;
+    if(!b || !el("authConteudo") || !el("authConteudo").contains(b)) return;
+    var a = b.getAttribute("data-cx");
+    if(a === "entrar") Auth.entrarComGoogle();
+    else if(a === "solicitar") Auth.solicitar();
+    else if(a === "verificar") Auth.verificar();
+    else if(a === "sair") Auth.sair();
+  });
+
+  /* ================= Configurações: minha conta e gerenciamento de acessos ================= */
+
+  var ROTULOS = { adm: "Administrador", coordenacao: "Coordenação", recepcao: "Recepção", tecnico: "Técnico" };
+  var ESTADO = { acessos: [], eu: "", tecnicos: [], aba: "pendentes", carregando: false, erro: "" };
+
+  function dataBR(iso){
+    if(!iso) return "";
+    var d = new Date(iso);
+    return isNaN(d.getTime()) ? "" : d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+  }
+
+  function htmlConta(){
+    var p = Auth.perfil || {};
+    return '<h3>Minha conta</h3>' +
+      '<p class="pagina-sub">Você entrou com a conta Google abaixo.</p>' +
+      '<div class="cx-dados">' +
+        '<div><span>Nome</span><b>' + esc(p.nome) + '</b></div>' +
+        '<div><span>E-mail</span><b>' + esc(p.email) + '</b></div>' +
+        '<div><span>Perfil</span><b>' + esc(p.roleLabel || ROTULOS[p.role] || "") + '</b></div>' +
+        (p.tecnicoNome ? '<div><span>Técnico vinculado</span><b>' + esc(p.tecnicoNome) + '</b></div>' : '') +
+      '</div>' +
+      '<button type="button" data-cxcfg="sair" class="cx-btn-cfg">Sair da conta</button>';
+  }
+
+  Auth.montarConfiguracoes = function(){
+    var c = el("caicavvContaCard");
+    if(c) c.innerHTML = htmlConta();
+    var a = el("caicavvAcessosCard");
+    if(!a) return;
+    if(Auth.perfil && Auth.perfil.podeGerenciarAcessos){
+      a.style.display = "";
+      a.innerHTML = '<h3>Gerenciamento de acessos</h3><p class="pagina-sub">Carregando…</p>';
+      carregarAcessos();
+    }else{
+      a.innerHTML = "";
+      a.style.display = "none";
+    }
+  };
+
+  async function carregarAcessos(){
+    ESTADO.carregando = true; ESTADO.erro = "";
+    try{
+      var r = await Auth.api("/admin/acessos");
+      ESTADO.acessos = r.acessos || [];
+      ESTADO.eu = r.eu || "";
+      ESTADO.tecnicos = r.tecnicos || [];
+    }catch(e){
+      ESTADO.erro = e.message || "Não foi possível carregar os acessos.";
+    }
+    ESTADO.carregando = false;
+    desenharAcessos();
+  }
+
+  function selectTecnicos(valor){
+    return '<select data-cxcampo="tecnicoNome">' +
+      '<option value="">Escolha o técnico…</option>' +
+      ESTADO.tecnicos.map(function(t){
+        return '<option value="' + esc(t) + '"' + (t === valor ? " selected" : "") + '>' + esc(t) + '</option>';
+      }).join("") + '</select>';
+  }
+
+  function camposPerfil(o){
+    o = o || {};
+    var role = o.role || "";
+    return (o.comEmail ? '<label>E-mail Google<input type="email" data-cxcampo="email" maxlength="254" placeholder="pessoa@gmail.com" autocomplete="off"></label>' : '') +
+      (o.comNome ? '<label>Nome' + (o.nomeOpcional ? ' <small>(opcional)</small>' : '') + '<input type="text" data-cxcampo="nome" maxlength="120" value="' + esc(o.nome || "") + '" autocomplete="off"></label>' : '') +
+      '<label>Perfil de acesso<select data-cxcampo="role">' +
+        '<option value="">Escolha o perfil…</option>' +
+        Object.keys(ROTULOS).map(function(k){
+          return '<option value="' + k + '"' + (k === role ? " selected" : "") + '>' + ROTULOS[k] + '</option>';
+        }).join("") + '</select></label>' +
+      '<label data-cxcampo-wrap="tecnicoNome" style="display:' + (role === "tecnico" ? "block" : "none") + '">Vincular ao técnico' + selectTecnicos(o.tecnicoNome) + '</label>';
+  }
+
+  function desenharAcessos(){
+    var a = el("caicavvAcessosCard");
+    if(!a || !(Auth.perfil && Auth.perfil.podeGerenciarAcessos)) return;
+    if(ESTADO.erro){
+      a.innerHTML = '<h3>Gerenciamento de acessos</h3>' + aviso(ESTADO.erro) +
+        '<button type="button" class="cx-btn-cfg" data-cxcfg="recarregar">Tentar novamente</button>';
+      return;
+    }
+    var lista = ESTADO.acessos;
+    var pend = lista.filter(function(x){ return x.status === "pendente"; });
+    var apr = lista.filter(function(x){ return x.status === "aprovado"; });
+    var out = lista.filter(function(x){ return x.status === "recusado" || x.status === "revogado"; });
+    var abas = [
+      ["pendentes", "Pendentes", pend.length, pend],
+      ["aprovados", "Aprovados", apr.length, apr],
+      ["encerrados", "Recusados e revogados", out.length, out]
+    ];
+    var atual = abas.filter(function(x){ return x[0] === ESTADO.aba; })[0] || abas[0];
+
+    a.innerHTML =
+      '<div class="cx-cab"><div><h3>Gerenciamento de acessos</h3>' +
+      '<p class="pagina-sub">Quem pode entrar no CAICAVV e com qual perfil. Isto não altera pacientes nem atendimentos.</p></div>' +
+      '<button type="button" class="cx-btn-cfg" data-cxcfg="adicionar">+ Adicionar usuário</button></div>' +
+      '<div class="cx-abas" role="tablist">' + abas.map(function(x){
+        return '<button type="button" role="tab" class="' + (x[0] === atual[0] ? "ativa" : "") + '" data-cxcfg="aba" data-aba="' + x[0] + '">' +
+          esc(x[1]) + ' <span>' + x[2] + '</span></button>';
+      }).join("") + '</div>' +
+      '<div class="cx-lista">' + (atual[3].length ? atual[3].map(linhaAcesso).join("") :
+        '<p class="cx-vazio">Nenhum registro nesta lista.</p>') + '</div>';
+  }
+
+  function linhaAcesso(x){
+    var eu = x.id === ESTADO.eu;
+    var info = [];
+    if(x.role) info.push("Perfil: " + (ROTULOS[x.role] || x.role) + (x.tecnico_nome ? " (" + x.tecnico_nome + ")" : ""));
+    info.push("Solicitado em " + dataBR(x.solicitado_em));
+    if(x.analisado_em && x.analisado_por_email) info.push("Analisado por " + x.analisado_por_email + " em " + dataBR(x.analisado_em));
+    var b = "";
+    if(!eu){
+      if(x.status === "pendente") b += btn("aprovar", x.id, "Aprovar", "ok") + btn("recusar", x.id, "Recusar", "neutro");
+      if(x.status === "aprovado") b += btn("editar", x.id, "Editar perfil", "neutro") + btn("revogar", x.id, "Revogar", "perigo");
+      if(x.status === "recusado") b += btn("aprovar", x.id, "Aprovar", "ok");
+      if(x.status === "revogado") b += btn("reativar", x.id, "Reativar", "ok");
+      b += btn("excluir", x.id, "Excluir", "perigo");
+    }
+    return '<div class="cx-linha"><div class="cx-info"><b>' + esc(x.nome || "(sem nome)") + (eu ? ' <em>(você)</em>' : '') + '</b>' +
+      '<span>' + esc(x.email) + '</span><small>' + esc(info.join(" · ")) + '</small></div>' +
+      '<div class="cx-acoes">' + b + '</div></div>';
+  }
+  function btn(acao, id, texto, tom){
+    return '<button type="button" class="cx-mini ' + tom + '" data-cxcfg="acao" data-acao="' + acao + '" data-id="' + esc(id) + '">' + texto + '</button>';
+  }
+
+  /* ----- Janela de confirmação ----- */
+  function abrirModal(o){
+    return new Promise(function(resolve){
+      var fundo = document.createElement("div");
+      fundo.className = "cx-modal-fundo";
+      fundo.innerHTML = '<div class="cx-modal" role="dialog" aria-modal="true" aria-labelledby="cxModalTitulo">' +
+        '<h3 id="cxModalTitulo">' + esc(o.titulo) + '</h3>' +
+        (o.texto ? '<p>' + esc(o.texto) + '</p>' : '') +
+        '<div class="cx-modal-campos">' + (o.camposHTML || "") + '</div>' +
+        '<div class="cx-modal-erro" role="alert"></div>' +
+        '<div class="cx-modal-botoes"><button type="button" class="cx-mini neutro" data-cxm="cancelar">Cancelar</button>' +
+        '<button type="button" class="cx-mini ' + (o.perigo ? "perigo" : "ok") + '" data-cxm="confirmar">' + esc(o.confirmar) + '</button></div></div>';
+      document.body.appendChild(fundo);
+
+      function fechar(v){ document.removeEventListener("keydown", tecla); fundo.remove(); resolve(v); }
+      function tecla(e){ if(e.key === "Escape") fechar(null); }
+      document.addEventListener("keydown", tecla);
+
+      var roleSel = fundo.querySelector('[data-cxcampo="role"]');
+      if(roleSel) roleSel.addEventListener("change", function(){
+        var w = fundo.querySelector('[data-cxcampo-wrap="tecnicoNome"]');
+        if(w) w.style.display = roleSel.value === "tecnico" ? "block" : "none";
+      });
+
+      fundo.addEventListener("click", async function(e){
+        var m = e.target.getAttribute && e.target.getAttribute("data-cxm");
+        if(e.target === fundo || m === "cancelar") return fechar(null);
+        if(m !== "confirmar") return;
+        var valores = {};
+        fundo.querySelectorAll("[data-cxcampo]").forEach(function(c){ valores[c.getAttribute("data-cxcampo")] = c.value.trim(); });
+        var erroEl = fundo.querySelector(".cx-modal-erro");
+        var bt = e.target;
+        bt.disabled = true; erroEl.textContent = "";
+        try{
+          await o.executar(valores);
+          fechar(true);
+        }catch(err){
+          erroEl.textContent = err.message || "Não foi possível concluir.";
+          bt.disabled = false;
+        }
+      });
+      var primeiro = fundo.querySelector("input,select");
+      if(primeiro) primeiro.focus();
+    });
+  }
+
+  async function chamar(metodo, caminho, corpo){
+    return Auth.api(caminho, { method: metodo, body: corpo });
+  }
+  function exigirPerfil(v){
+    if(!v.role) throw new Error("Escolha o perfil de acesso.");
+    if(v.role === "tecnico" && !v.tecnicoNome) throw new Error("Escolha o técnico ao qual esta conta será vinculada.");
+  }
+
+  async function executarAcao(acao, id){
+    var x = ESTADO.acessos.filter(function(i){ return i.id === id; })[0];
+    if(!x) return;
+    var quem = (x.nome || x.email) + " (" + x.email + ")";
+    var ok = null;
+
+    if(acao === "aprovar" || acao === "reativar"){
+      ok = await abrirModal({
+        titulo: acao === "aprovar" ? "Aprovar acesso" : "Reativar acesso",
+        texto: "Defina o perfil de " + quem + ". Esta pessoa poderá entrar no sistema imediatamente.",
+        camposHTML: camposPerfil({ role: x.role || "", tecnicoNome: x.tecnico_nome || "" }),
+        confirmar: acao === "aprovar" ? "Aprovar" : "Reativar",
+        executar: async function(v){
+          exigirPerfil(v);
+          await chamar("PATCH", "/admin/acessos/" + encodeURIComponent(id), { acao: acao, role: v.role, tecnicoNome: v.tecnicoNome });
+        }
+      });
+    }else if(acao === "recusar"){
+      ok = await abrirModal({
+        titulo: "Recusar solicitação",
+        texto: "Recusar o acesso de " + quem + "?",
+        confirmar: "Recusar", perigo: true,
+        executar: function(){ return chamar("PATCH", "/admin/acessos/" + encodeURIComponent(id), { acao: "recusar" }); }
+      });
+    }else if(acao === "revogar"){
+      ok = await abrirModal({
+        titulo: "Revogar autorização",
+        texto: quem + " perderá o acesso ao CAICAVV imediatamente. Os dados de pacientes e atendimentos não serão alterados.",
+        confirmar: "Revogar acesso", perigo: true,
+        executar: function(){ return chamar("PATCH", "/admin/acessos/" + encodeURIComponent(id), { acao: "revogar" }); }
+      });
+    }else if(acao === "excluir"){
+      ok = await abrirModal({
+        titulo: "Excluir cadastro de acesso",
+        texto: "Excluir definitivamente o cadastro de acesso de " + quem + "? Se a pessoa entrar novamente, precisará solicitar acesso de novo.",
+        confirmar: "Excluir", perigo: true,
+        executar: function(){ return chamar("DELETE", "/admin/acessos/" + encodeURIComponent(id)); }
+      });
+    }else if(acao === "editar"){
+      ok = await abrirModal({
+        titulo: "Editar perfil",
+        texto: "Alterar nome e perfil de " + x.email + ".",
+        camposHTML: camposPerfil({ comNome: true, nome: x.nome, role: x.role, tecnicoNome: x.tecnico_nome }),
+        confirmar: "Salvar",
+        executar: async function(v){
+          exigirPerfil(v);
+          await chamar("PATCH", "/admin/acessos/" + encodeURIComponent(id), { acao: "atualizar", role: v.role, tecnicoNome: v.tecnicoNome, nome: v.nome || x.nome || x.email });
+        }
+      });
+    }
+    if(ok){ toast("Alteração salva.", "sucesso"); carregarAcessos(); }
+  }
+
+  async function adicionarUsuario(){
+    var ok = await abrirModal({
+      titulo: "Adicionar usuário",
+      texto: "A pessoa poderá entrar com a conta Google deste e-mail, já com o perfil escolhido.",
+      camposHTML: camposPerfil({ comEmail: true, comNome: true, nomeOpcional: true }),
+      confirmar: "Adicionar",
+      executar: async function(v){
+        if(!v.email) throw new Error("Informe o e-mail Google.");
+        exigirPerfil(v);
+        await chamar("POST", "/admin/acessos", { email: v.email, nome: v.nome || undefined, role: v.role, tecnicoNome: v.tecnicoNome });
+      }
+    });
+    if(ok){ toast("Usuário adicionado.", "sucesso"); ESTADO.aba = "aprovados"; carregarAcessos(); }
+  }
+
+  document.addEventListener("click", function(ev){
+    var b = ev.target.closest ? ev.target.closest("[data-cxcfg]") : null;
+    if(!b) return;
+    var a = b.getAttribute("data-cxcfg");
+    if(a === "sair") Auth.sair();
+    else if(a === "recarregar") carregarAcessos();
+    else if(a === "adicionar") adicionarUsuario();
+    else if(a === "aba"){ ESTADO.aba = b.getAttribute("data-aba"); desenharAcessos(); }
+    else if(a === "acao") executarAcao(b.getAttribute("data-acao"), b.getAttribute("data-id"));
+  });
+})();
+
     </script>
 </head>
 <body>
@@ -1329,6 +1930,66 @@ body.modo-app{
 @media(min-width:520px){.caicavv-identificacao-opcoes{grid-template-columns:1fr 1fr}.caicavv-identificacao-opcao:first-child:last-child{grid-column:1/-1}}
 </style>
 
+<style id="caicavv-auth-style">
+/* ===== Login Google, estados de acesso e gerenciamento de acessos ===== */
+.cx-btn-google,.cx-btn-principal,.cx-btn-sec{width:100%;min-height:52px;padding:13px 16px;border-radius:13px;font-weight:900;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:12px;margin-top:12px;font-family:inherit;transition:transform .15s,box-shadow .15s,background .15s}
+.cx-btn-google{background:#fff;color:#1f2937;border:1px solid #dbe4f3;box-shadow:0 8px 20px rgba(0,0,0,.18)}
+.cx-btn-google:hover{transform:translateY(-1px);box-shadow:0 12px 26px rgba(0,0,0,.24)}
+.cx-btn-principal{background:linear-gradient(180deg,#fff 0%,#eaf2ff 100%);color:#1d4ed8;border:1px solid rgba(255,255,255,.7);box-shadow:0 8px 20px rgba(0,0,0,.16)}
+.cx-btn-principal:hover{transform:translateY(-1px)}
+.cx-btn-sec{background:transparent;color:#dbeafe;border:1px solid rgba(219,234,254,.45)}
+.cx-btn-sec:hover{background:rgba(255,255,255,.1)}
+.cx-aviso{margin:6px 0 4px;padding:11px 14px;border-radius:12px;font-size:14px;line-height:1.4;text-align:left}
+.cx-aviso.erro{background:rgba(254,226,226,.96);color:#991b1b;border:1px solid #fecaca}
+.cx-conta{margin:4px 0 6px;font-size:14px;color:#dbeafe;word-break:break-all}
+.cx-nota{margin:10px 0 4px;font-size:14px;color:#dbeafe;opacity:.9;line-height:1.45}
+.cx-spinner{width:38px;height:38px;margin:10px auto 6px;border-radius:50%;border:4px solid rgba(255,255,255,.28);border-top-color:#fff;animation:cxgira .8s linear infinite}
+@keyframes cxgira{to{transform:rotate(360deg)}}
+@media(max-width:520px){.cx-btn-google,.cx-btn-principal,.cx-btn-sec{font-size:15px}}
+
+/* Configurações: minha conta + gerenciamento de acessos */
+.config-grid .cx-cartao-largo{grid-column:1/-1}
+.cx-dados{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:12px 0}
+.cx-dados div{padding:10px 12px;border-radius:12px;background:rgba(127,127,127,.08);border:1px solid rgba(127,127,127,.22)}
+.cx-dados span{display:block;font-size:12px;opacity:.7;margin-bottom:2px}
+.cx-dados b{word-break:break-word}
+.cx-btn-cfg{padding:10px 16px;border-radius:11px;border:1px solid var(--tema,#2563eb);background:var(--tema,#2563eb);color:#fff;font-weight:800;cursor:pointer;font-family:inherit}
+.cx-cab{display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.cx-cab h3{margin-bottom:4px}
+.cx-abas{display:flex;gap:6px;flex-wrap:wrap;margin:12px 0 8px}
+.cx-abas button{padding:8px 13px;border-radius:999px;border:1px solid rgba(127,127,127,.35);background:transparent;color:inherit;font-weight:700;cursor:pointer;font-family:inherit;font-size:14px}
+.cx-abas button span{display:inline-block;min-width:20px;padding:0 6px;margin-left:4px;border-radius:999px;background:rgba(127,127,127,.2);font-size:12px;text-align:center}
+.cx-abas button.ativa{background:var(--tema,#2563eb);border-color:var(--tema,#2563eb);color:#fff}
+.cx-abas button.ativa span{background:rgba(255,255,255,.28)}
+.cx-lista{display:flex;flex-direction:column;gap:8px}
+.cx-linha{display:flex;gap:12px;justify-content:space-between;align-items:center;flex-wrap:wrap;padding:12px 14px;border-radius:13px;border:1px solid rgba(127,127,127,.25);background:rgba(127,127,127,.06)}
+.cx-info{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1 1 240px}
+.cx-info span{font-size:14px;opacity:.85;word-break:break-all}
+.cx-info small{font-size:12px;opacity:.65;line-height:1.35}
+.cx-info em{font-style:normal;font-size:12px;opacity:.7}
+.cx-acoes{display:flex;gap:6px;flex-wrap:wrap}
+.cx-vazio{margin:10px 0;opacity:.7;font-size:14px}
+.cx-mini{padding:8px 13px;border-radius:10px;border:1px solid transparent;font-weight:800;cursor:pointer;font-family:inherit;font-size:13px}
+.cx-mini.ok{background:#16a34a;color:#fff}
+.cx-mini.perigo{background:#dc2626;color:#fff}
+.cx-mini.neutro{background:transparent;color:inherit;border-color:rgba(127,127,127,.45)}
+.cx-mini:disabled{opacity:.6;cursor:wait}
+.cx-modal-fundo{position:fixed;inset:0;z-index:99999;background:rgba(15,23,42,.62);display:flex;align-items:center;justify-content:center;padding:16px}
+.cx-modal{width:min(94vw,460px);max-height:92vh;overflow:auto;background:#fff;color:#0f1f44;border-radius:18px;padding:22px;box-shadow:0 30px 70px rgba(0,0,0,.4)}
+.cx-modal h3{margin:0 0 8px;font-size:20px}
+.cx-modal p{margin:0 0 12px;font-size:14px;line-height:1.45;color:#334155}
+.cx-modal label{display:block;margin:10px 0 0;font-weight:700;font-size:14px}
+.cx-modal label small{font-weight:400;opacity:.7}
+.cx-modal input,.cx-modal select{display:block;width:100%;box-sizing:border-box;margin-top:5px;padding:10px 12px;border-radius:10px;border:1px solid #cbd5e1;font-size:15px;font-family:inherit;background:#fff;color:#0f1f44}
+.cx-modal-erro{min-height:18px;margin-top:10px;color:#b91c1c;font-size:13px;font-weight:700}
+.cx-modal-botoes{display:flex;gap:8px;justify-content:flex-end;margin-top:12px;flex-wrap:wrap}
+.cx-modal .cx-mini.neutro{color:#334155;border-color:#cbd5e1}
+body.aparencia-noturna .cx-modal{background:#15213b;color:#e5edff}
+body.aparencia-noturna .cx-modal p{color:#b6c4e4}
+body.aparencia-noturna .cx-modal input,body.aparencia-noturna .cx-modal select{background:#0e1830;color:#e5edff;border-color:#2a3b63}
+body.aparencia-noturna .cx-modal .cx-mini.neutro{color:#e5edff;border-color:#3a4d7d}
+</style>
+
 <div id="loginDiv" class="login-screen">
   <div class="background">
     <div class="big-flower-bg"></div>
@@ -1353,15 +2014,12 @@ body.modo-app{
       <h1>CAICAVV</h1>
       <div class="system-row"><span></span><p>SISTEMA INTERNO</p><span></span></div>
 
-      <h2 id="identificacaoTitulo">Como você deseja entrar?</h2>
-      <p id="identificacaoDescricao" class="description">Selecione uma opção para continuar.</p>
+      <h2 id="authTitulo">Entrar no sistema</h2>
+      <p id="authDescricao" class="description">Use sua conta Google para acessar o CAICAVV.</p>
 
-      <div id="identificacaoOpcoes" class="caicavv-identificacao-opcoes"></div>
+      <div id="authConteudo" class="caicavv-auth-conteudo"></div>
 
-      <button type="button" id="btnVoltarIdentificacao" class="caicavv-identificacao-voltar hidden"
-              onclick="voltarIdentificacao()">← Voltar</button>
-
-      <p class="secure">🛡️ Selecione seu perfil para entrar no sistema</p>
+      <p id="authRodape" class="secure">🛡️ Acesso restrito a pessoas autorizadas pela administração</p>
 
       <div class="footer">
         <p>CAICAVV • Sistema Interno</p>
@@ -1468,7 +2126,8 @@ body.modo-app{
 
 
 <script>
-const cadastros = {"1": ["EMELLY GABRIELLY DA ANUNCIAÇÃO"], "2": ["LAURA RODRIGUES DE FREITAS"], "3": ["GABRIEL HENRIQUE DE SOUZA CHAGAS"], "4": ["GIULIA VALENTINE CARVALHO MALAQUIAS"], "5": ["YURY DE SOUZA DOS SANTOS LIMA"], "6": ["ISADORA VITORIA OLIVEIRA VEIGA"], "7": ["KARIELLY DOS ANJOS CANDIDO"], "8": ["OLIVER DA SILVA FRANCA"], "9": ["KAUANNY MIRANDA DOS SANTOS", "KAWE VINICIUS MIRANDA DOS SANTOS"], "10": ["YASMIM DE OLIVEIRA FRANÇA"], "11": ["HELLOYSA MACIELLY REIS COSTA"], "12": ["CAMILA SIMONI ANTOSKA"], "13": ["RAISSA DE OLIVEIRA PEREIRA", "GABRIEL DE OLIVEIRA PEREIRA DA SILVA", "VINICIUS DE OLIVEIRA PEREIRA"], "14": ["ANNA VALENTHYNA CRUZ SVIDNITZKI", "ARTHUR CRUZ SVIDNITZKI", "NYCOLLAS DANIEL CRUZ SVIDNITZKI", "NICOLLY CRUZ SVIDNITZKI"], "15": ["NICOLAS KAUÃ DE MORAIS MACHADO"], "16": ["VITÓRIA RODRIGUES VIDAL CAVALHEIRO DE ARAÚJO"], "17": ["ANDRÉ TRAMUJAS", "HUGO NASCIMENTO TRAMUJAS"], "18": ["PETERSON ALBERTO GONÇALVES JUNIOR"], "19": ["LARIANE RHILLARY DE OLIVEIRA ROSA"], "20": ["EMANUELLE ROSÁRIO DE AGUIAR"], "21": ["ADRIANO ARTHUR MACHADO WIRTH"], "22": ["VALENTINA DE OLIVEIRA SOUZA"], "23": ["ARIANE DE ARAÚJO DE PAULA", "ANA GABRIELA DE ARAUJO CARNEIRO", "EDISON FELIPE DE ARAUJO CARNEIRO", "GAEL HENRIQUE DE ARAUJO CARNEIRO", "KALYANE DE ARAUJO CARNEIRO"], "24": ["FREDERICO MACEDO ARAÚJO GONÇALVES"], "25": ["DANIELA SIMÃO FERREIRA MELO"], "26": ["MARIA REGINA DOMIT GOMES"], "27": ["KAUAN ARASHIRO DA SILVA"], "28": ["YUKI GIOVANNA AIDIA DOS SANTOS CHEDID"], "29": ["GABRIEL DE SOUZA LOPES"], "30": ["ÁGATA PISSININI LOPES"], "31": ["AGHATA CRISTINA DE OLIVEIRA ABRANTES"], "32": ["FLÁVIA PEREIRA MACHADO"], "33": ["ARTHUR FERNANDES ALVES DA SILVA"], "34": ["PAULA DANIELA SANTOS RAMOS"], "35": ["RILLARY FERREIRA E FERREIRA"], "36": ["SARAH CRISTINE RODRIGUES DE PAULA"], "37": ["THAYSSA JAISLAINE DIAS DE ARAÚJO"], "38": ["FERNANDO DE OLIVEIRA DOS REIS"], "39": ["VICTOR HENRIQUE NASCIMENTO COCKER"], "40": ["ISIS DE OLIVEIRA"], "41": ["JAMILE DA SILVA SOUZA", "ESTER DA SILVA COUTO DE LIMA"], "42": ["PABLO HENRIQUE SIQUEIRA RODRIGUES DA COSTA"], "43": ["KAUANE GABRIELE RIBEIRO ALVES"], "44": ["ANA HELOYSA GONÇALVES PIVATTO"], "45": ["EVELYN CRISTINE COSTA DE MOURA"], "46": ["OTÁVIO MIGUEL OLIVEIRA GONÇALVES"], "47": ["MARCELLY DAS ALMAS DOS SANTOS"], "48": ["RAPHAELLA VITÓRIA MENDES SCISLOVSKI DO CARMO", "VICTOR RAFAEL MENDES SCISLOVSKI DO CARMO"], "49": ["EMANUELLY RABELLO PAULON MONTEIRO"], "50": ["KAMILLY VICTÓRIA FERREIRA ARAÚJO"], "51": ["KYARA MARIA MARTINS FERREIRA PRESTES"], "52": ["SAMUEL RODRIGUES LIMA"], "53": ["ANA CLARA AMORIM DOS SANTOS", "ARIOSVALDO AGOSTINHO CORDEIRO JUNIOR", "BENJAMIM AMORIM FERREIRA"], "54": ["LEAN TIAGO MENEZES ALEXANDRE"], "55": ["ANA CLARA CAMARGO GARCEZ DINA", "GEOVANA CAMARGO GARCEZ DINA", "KAMILLY VICTÓRIA CAMARGO CORREA DINA", "RHYAN GABRIEL CAMARGO GARCEZ DINA"], "56": ["SABRYNA VITÓRIA SILVA CAETANO"], "57": ["NICKOLY NATEL CAVALCANTI"], "58": ["GABRIEL ELIAS RIBEIRO"], "59": ["RAEL MIGUEL DE CASTRO SILVA"], "60": ["NICOLY CRISTINY GONÇALVES RAMOS", "RAYSSA GONÇALVES RAMOS", "RHADASSA DE OLIVEIRA GONÇALVES", "YORHANA DE OLIVEIRA CORREIA"], "61": ["RAYSSA BOZI NICOMEDES"], "62": ["ANELIZE GABRIELY SANTOS DOS REIS"], "63": ["SOPHIA EVANGELISTA MARQUES MOREIRA"], "64": ["HILLARY SOUZA ROCHA", "YAGO SOUZA ROCHA"], "65": ["EMANUELLE TUANY CORDEIRO DA SILVA"], "66": ["REBECA VITÓRIA GUIMARÃES PAES LEME", "ANNA VICTORYA GUIMARÃES PAES LEME"], "67": ["YASMIN RIBEIRO ANDRADE", "LOUISE RIBEIRO ANDRADE"], "68": ["AMANDA RODRIGUES MIRANDA"], "69": ["MARINA ALICE VEIGA DA SILVA", "GUSTAVO VEIGA DA SILVA"], "70": ["HERICK TEIXEIRA COELHO"], "71": ["KHÉROLLYN CEZARINO DA SILVA", "LEONARDO CEZARINO DA SILVA"], "72": ["CAROLINA ONÓRIO DE OLIVEIRA"], "73": ["NIKOLY FRANCO RICARDO", "EMANUEL PARADORI RICARDO"], "74": ["LAURIELLE GONÇALVES DA COSTA"], "75": ["ANA CLARA RODRIGUES DE CASTRO"], "76": ["ANDRESSA SANTOS DA SILVA", "DAYANA DOS SANTOS DA SILVA", "KALLEL SANTOS DA SILVA", "PAOLA DOS SANTOS DA SILVA", "PRISCILA DOS SANTOS DA SILVA", "RAYSSA DOS SANTOS SILVA"], "77": ["YURI MATHEUS JOAQUIM COSTA"], "78": ["AMANDA VITÓRIA CORDEIRO DE OLIVEIRA"], "79": ["JOÃO VICTOR CONGENCA AGOSTINHO"], "80": ["VITÓRIA CAROLINE DE MOURA IANCHESKI"], "81": ["DAVI RAFAEL FLORIDO RICARDO", "EDUARDO FLORIDO RICARDO"], "82": ["PEDRO RIBEIRO SANTOS", "JULIA RIBEIRO SANTOS", "RENATA RIBEIRO SANTOS"], "83": ["NATHAN GABRIEL MOREIRA DOS SANTOS"], "84": ["BEATRIZ BEMBEM", "ALEXANDRE BEMBEM"], "85": ["ADRIANO FELIPE MUZA FOGAÇA"], "86": ["ALICE NOGUEIRA ALVES BATISTA", "ISABELA CRISTINA NOGUEIRA ALVES BATISTA", "KELLY CAROLINE NOGUEIRA ALVES BATISTA", "MARCOS VINICIUS NOGUEIRA ALVES BATISTA", "BIATRIZ NOGUEIRA FERNANDES"], "87": ["MARIA ESTELA CORDEIRO MAURÍCIO"], "88": ["ERICK GABRIEL MENDES SILVA"], "89": ["JULIA RODRIGUES DE FREITAS"], "90": ["LORENA LEITE LARSEN"], "91": ["ELIZA CRISTINE BREDA"], "92": ["EDUARDA CONSTANTINO DOS ANJOS"], "93": ["MARINA VAZ NASCIMENTO", "MARIANA VAZ NASCIMENTO"], "94": ["SOPHYA GABRIELE DE LIMA HACKBARTH"], "95": ["YASMIM VITORIA DOS SANTOS FERNANDES"], "96": ["ANTONELLA DE MATOS MINGOTT"], "97": ["IZABEL MARA LABRES DA SILVA", "MIGUEL ALEXANDRE DA SILVA"], "98": ["ANA LÍVIA SOUZA ROCHA"], "99": ["DUARDA FERREIRA DE SOUZA"], "100": ["CLARICE BIANKY DE OLIVEIRA XAVIER"], "101": ["NEANDER DA ROCHA VIDAL"], "102": ["GUILHERME NASCIMENTO DE ALMEIDA"], "103": ["DARLAN ALIFE MUNIZ MARIANO", "VITÓRIA CRISTINA MARIANO"], "104": ["CARLOS SAMUEL ARAÚJO DA SILVA"], "105": ["REBECA ALEXANDRE DE ARAÚJO"], "106": ["ENZO GABRIEL S. DA SILVA", "HENRY MIGUEL SANTANA PEREIRA"], "107": ["FERNANDO HENRIQUE SALVADOR PEREIRA"], "108": ["MYLLENA VICTÓRIA ARAÚJO ALVES"], "109": ["VITOR DA SILVA DUTRA", "KAUAN DA SILVA DUTRA"], "110": ["MARLON YURI REIS"], "111": ["MIRELLA KELLY DIAS DE PAULO"], "112": ["SOPHIE ANANDA PINHEIRO CLOSS"], "113": ["ESTER NUNES RODRIGUES"], "114": ["ALINNE FERNANDA ZACARIAS ZADRA"], "115": ["ELOAH CECILIA PRANDO STUBBS"], "116": ["GUILHERME HENRIQUE DIAS PEREIRA CAMPOS"], "117": ["ITALO FRANCO ALVES"], "118": ["NICOLLAS ENZO RODRIGUES DAS DORES"], "119": ["PEDRO HENRIQUE DE LIMA BRANCO"], "120": ["HYCARO MIGUEL BAHIA JAQUES"], "121": ["MATHEUS ALBAN MARQUES"], "122": ["MARIA LAURA ALVES DE SOUZA FERREIRA"], "123": ["GABRIELA RIBEIRO ARANTES"], "124": ["ISABELLY VITÓRIA ROSÁRIO DA SILVA"], "125": ["ISAAC DOS SANTOS BERLIM"], "126": ["ALANA MARCELINO DO ROSÁRIO"], "127": ["IZABELLE FORTUNATO DO COUTO"], "128": ["LAUANE VITÓRIA DE FREITAS HENRIQUE"], "129": ["MARIA HELOISA SANTOS DA SILVA"], "130": ["GRAZIELE SANTOS DA SILVA"], "131": ["SOPHIA SCHULTZ PRESTES"], "132": ["JÚLIA RAFAELA DIAS CORREA"], "133": ["VICTOR TAVARES DA SILVA"], "134": ["EMELY GEOVANA MARTINS CORDEIRO"], "135": ["SOFIA VITÓRIA PEREIRA VASSÃO"], "136": ["EMANUELLY MENIKA MACHADO ALVES"], "137": ["ALLANA TAMARA FERREIRA DOS SANTOS", "ALEXIA FERREIRA DOS SANTOS"], "138": ["BRUNA MARCELLI DOS SANTOS PEREIRA CARVALHO"], "139": ["MYRYAN EMANUELY ALVES SATURNINO"], "140": ["GAEL DA SILVA"], "141": ["LAVIGNE CARDOSO SILVA"], "142": ["ANA KAROLINA SOARES DOS SANTOS"], "143": ["SARAH HADASSA DO CARMO RIBEIRO"], "144": ["NATHÁLIA DOS SANTOS PONTES"], "145": ["KEVIN OLIVEIRA PIRES"], "146": ["HELLOA VICTÓRIA DE CASTRO", "ISADORA VALLENTINA DE CASTRO CORREA", "KEMELLY CRISTINE DE CASTRO VEIGA", "LUANE EDUARDA DE CASTRO DOS REIS", "PYETRA LUIZA DE CASTRO LEARDINE"], "147": ["JOSÉ LUCAS DOS SANTOS", "EVELYN SANTANA S. DA SILVA"], "148": ["LUANYFER DE SOUZA AMORIM"], "149": ["MARIA GABRIELLA XAVIER MASSAMBINI"], "150": ["ISABELE VITÓRIA RIBEIRO MARQUES"], "151": ["KEVELLYN MONTEIRO DOS SANTOS"], "152": ["THAYSA KLETEMBERG SILVA"], "153": ["JAMILE ALVES LEITE"], "154": ["EMELLY VICTÓRIA BARBOSA NEVES"], "155": ["AURORA MARYA PIGATTO DOS SANTOS", "MARCO ANTONYO PIGATTO DOS SANTOS"], "156": ["ISMAEL RODRIGUES RIBEIRO"], "157": ["ALEXIA DA SILVA DINO"], "158": ["NATHAN LIMA DA SILVA PEREIRA"], "159": ["MARIA VICTÓRIA JAKYBALIS SANTOS WIER"], "160": ["RAFAEL ENZO SCALABRIN", "THIAGO EMANUEL SCALABRIN"], "161": ["LIA AMABILE BREGEIRON"], "162": ["LUIZ FELIPE SANTOS DA CUNHA"], "163": ["VALENTINA DUTRA ASSUNÇÃO"], "164": ["JOAQUIM GUILHERME BOINOSKI SALVADOR"], "165": ["VICTOR HUGO SILVA BATISTEL"], "166": ["KETHELLYN DOS SANTOS SALDANHA"], "167": ["LAURA FERREIRA BASTOS"], "168": ["LUCAS TEIXEIRA MACHADO"], "169": ["DEBORA KAUANY DE FREITAS", "SAMUEL DE FREITAS SONSIN", "MATHEUS DE FREITAS SONSIN"], "170": ["DIANA PIRES ARISTOTELES MEDEIROS"], "171": ["EVELYN PEREIRA RODRIGUES", "EMELY PEREIRA RODRIGUES"], "172": ["MIKAELE FERREIRA BORBA"], "173": ["BENJAMIN EBRES FREITAS"], "174": ["SAMUEL PATRICK ALVES DE SOUZA"], "175": ["ANA LUIZA MONTEIRO BORBA"], "176": ["ISABELA BALSALOBRE ISAÍAS"], "177": ["MARCELA APARECIDA DE OLIVEIRA SILVA"], "178": ["KAUANE DA SILVA LUIZ"], "179": ["JOÃO MIGUEL COSTA MARTINS", "PEDRO HENRIQUE COSTA FERREIRA"], "180": ["MIGUEL HONÓRIO DE ARAÚJO"], "181": ["GABRIEL FERRARI VALÉRIO"], "182": ["KAUAN RIBEIRO ALVES SILVA"], "183": ["RAFAEL WOSNIAK"], "184": ["LUIZ MIGUEL OLIVEIRA DO PRADO"], "185": ["NIKOLLAS BARBOSA DE SOUZA SILVA"], "186": ["KAROLAYNE CRISTINA SANTOS DE FRANÇA", "HANYEL SANTOS DE FRANÇA"], "187": ["ANNY ELLEN PEREIRA FILADELFO"], "188": ["PEDRO LUCAS SANTOS BEZERRA"], "189": ["RAFAELA ROCHA HILDEBRANDO DOS SANTOS"], "190": ["GABRIELY ROST PORPETA"], "191": ["ALYSSON FELLIP VIEIRA"], "192": ["MARIA LUIZA TAVARES HIRT"], "193": ["SUELLEN ALVES LEITE"], "194": ["GIOVANA DOS SANTOS COSTA"], "195": ["MICKAELLY MURARO RIBEIRO TRIAQUIM"], "196": ["MIRIAM DA SILVA COSTA"], "197": ["EMANUELA PADOVANY NUNES DA SILVA"], "198": ["HEMANUELE ARMEDE GODOY"], "199": ["KLARA MARIÁH SILVA TEIXEIRA", "HENRY DAVI CANDIDO DA SILVA", "ANA JULIA CÂNDIDO SCHWENDTNER", "LUCCA SANTIAGO CANDIDO DOS REIS", "BARBARA CANDIDO DOS REIS"], "200": ["GIULIA PEREIRA DA CRUZ", "PIETRO PEREIRA DA CRUZ"], "201": ["LARA CRISTINA GONÇALVES CORREIA DE PAULA", "MYLENA BEATRIZ GONÇALVES CORREIA DE PAULA"], "202": ["THAMYRES KAROLAYNE DA SILVA"], "203": ["JHENIFER K. MACHADO GOMES COSTA"], "204": ["LÍVIA BATISTA SIMONATO"], "205": ["VINICIUS GONÇALVES MENDES"], "206": ["LARYSSA MARTINS GOMES DA SILVA", "MARIA VITÓRIA MARTINS CORRÊA DA SILVA"], "207": ["ANNE HEMILY KAMINSKI"], "208": ["MARIA LUYZA DA SILVA NASCIMENTO"], "209": ["SALISSA AISA M. DA SILVA"], "210": ["SUZIELLY MACZUSEKI HOLFFMANN DA SILVA"], "211": ["NATAN RAFAEL PAES LEME DA SILVA", "ICARO HENRIQUE PAES LEME"], "212": ["MEL SCHMIDT JACINTO"], "213": ["HIVILLEY FENANDA CORDEIRO DOS SANTOS"], "214": ["NIKOLLY DE PAULA DE CASTRO", "BRYAN RIAN DE PAULA DE CASTRO", "a"], "215": ["ISABELLA ALVES DE SOUZA", "MARCOS VINICIUS ALVES DE SOUZA"], "216": ["EMANUELLYN VICTÓRIA ROMÃO DAS DORES"], "217": ["LAÍS LOPES PEREIRA MENDES"], "218": ["LAURA VITÓRIA ARAÚJO DUARTE", "ANA LÍVIA ARAUJO DUARTE"], "219": ["JOSÉ HENRIQUE JULIO DE OLIVEIRA"], "220": ["PEDRO HENRIQUE PEREIRA LIMA", "EMILY VITÓRIA PEREIRA"], "221": ["FABRÍCIO DOS SANTOS KAMINSKI", "DAPHINY DOS SANTOS KAMINSKI"], "222": ["LARYSSA DA SILVA GONÇALVES DELCIDIO"], "223": ["GUSTAVO HENRIQUE DA SILVA BAHIA", "NATALLY SOPHIA DA SILVA BAHIA"], "224": ["STHEFANY JULIA MACIEL DE CASTRO"], "225": ["WAGNER FRANCISCO DA COSTA", "HELOÍSA FRANCISCO CORREIA", "Miqueyas Henrique Francisco da Costa"], "226": ["KAIO MURILO PEREIRA", "MARIANE POLIANA PEREIRA", "Rebeka Rayane Pereira"], "227": ["a"], "228": ["KAROLYN GABRIELLY VIEIRA AGUIAR"], "229": ["LAYANE MARQUES REINEHR"], "230": ["GUSTAVO HENRIQUE MENEZES"], "231": ["NAIANI NASCIMENTO DE SOUZA"], "232": ["PEDRO LUCAS CARDOSO NEVES"], "233": ["EMANUELE DA SILVA LEOPOLDINO"], "234": ["MELLANY VICTÓRIA CAMARINHO DE OLIVEIRA"], "235": ["MANUELLY VITÓRIA VATRIN DA SILVA"], "236": ["FABIANE ALESSANDRA DA SILVA PEREIRA"], "237": ["VALENTINA DA SILVA BASTOS"], "238": ["ISIS SOUZA RIBEIRO PAEZ"], "239": ["THAMYRES CRISTINA FRANÇA DOS SANTOS"], "240": ["KAYO ALVES CORDEIRO CHRISANTO"], "241": ["NATHALY BERTHIS CUSTÓDIO"], "242": ["MURILLO DE OLIVEIRA MENDES"], "243": ["ALISSON ROSSI SIQUEIRA"], "244": ["KEVYN ANTONIO DE PAULA VIEIRA DA ROSA"], "245": ["ABNER LUIZ DO CARMO MORAIS"], "246": ["DAVI RAFAEL COSTA DA SILVA"], "247": ["JAINE CANDIDO"], "248": ["AMANDA GABRIELLY LISCOSQUI DA SILVA"], "249": ["ANA CAROLINA RODRIGUES PALMAS"], "250": ["NICOLLE LEITE MARTINS"], "251": ["ALICE COSTA DE FREITAS"], "252": ["a"], "253": ["RHÚBIA CARVALHO DA SILVA"], "254": ["OLÍVIA MANUELLA GONÇALVES LIMA"], "255": ["BEATRIZ GONÇALVES CAMPOS"], "256": ["KALVYN MATHEUS DA SILVA BARCA", "KETHELLYN VITÓRIA DA SILVA BARCA", "KRISTOFFER AUGUSTO DA SILVA BARCA"], "257": ["YSABELLA DA ROCHA ROSA"], "258": ["KIMBERLLY APARECIDA SILVA BORGES", "REBECA LUANA SILVA MARTINS", "SOPHIA VITÓRIA SILVA MARTINS"], "259": ["DAVI MADONA DE ASSIS"], "260": ["LUCAS PEREIRA SOARES"], "261": ["MARJORIE MAITÊ NOVAES PADILHA"], "262": ["ISIS OLIVEIRA JULIÃO"], "263": ["MEYRILIS VITÓRIA DA SILVA FERNANDES"], "264": ["ADRIANA GALDINO DO AMARAL", "LORRANY GALDINO"], "265": ["JOÃO MIGUEL PADORIM FIATDOSKI", "JOÃO GUILHERME PADOIM FIATKOSKI"], "266": ["MARIA LAURA MESKITA DA SILVA"], "267": ["MYLLENA EDUARDA MENDES NOVAIS GALDINO"], "268": ["ADALTO ASSUNÇÃO CARDOSO DE MATOS", "ARTHUR DA COSTA MATOS", "ISIS DA COSTA MATOS", "PAMELA DA COSTA MATOS", "ÍCARO DA COSTA MATOS"], "269": ["MATHEUS GABRIEL SOARES DOS SANTOS"], "270": ["VIVIAN GABRIELA MARTINS PAIANO BATISTA", "PRISCILA LORRAINE MARTINS PAIANO BATISTA"], "271": ["WELLINGTON DOS SANTOS BOZI JUNIOR"], "272": ["MURILO GAMA DOS SANTOS"], "273": ["RYAN LUCAS CARDOSO SALLES"], "274": ["KAUANE GABRIELLE CARMEN SANTOS DA SILVA ALVES"], "275": ["NICOLAS BRYAN SANTOS FERREIRA"], "276": ["ALICE GARCIA DE LIMA", "DAVI LIMA FERMINO", "RAFAEL LIMA MIRANDA"], "277": ["EMANUELLE SILVA DE OIVEIRA"], "278": ["a"], "279": ["WESLLEY JUACIR DO CARMO"], "280": ["PALOMA APARECIDA GONÇALVES"], "281": ["ANA JÚLIA ROCHA CANTIE ARGUELLO"], "282": ["GISELLY RODRIGUES CORDEIRO"], "283": ["ELOAH COSTA E SILVA"], "284": ["MARIANA MHONDESSA SANTOS", "LAURA CAMILLY SANTOS FERREIRA BUENO", "ENZO GABRIEL FERREIRA BUENO SANTOS", "JOSE MIGUEL SANTOS", "JOAQUIM MANUEL SANTOS"], "285": ["VIVIAN GABRIELA MARTINS PAIANO BATISTA"], "286": ["IZABELLA VITÓRIA OLIVEIRA DE SOUZA"], "287": ["NICOLLY ROCHA CORREA"], "288": ["HELLEN VITÓRIA PEREIRA MENDES", "LAÍS LOPES PEREIRA MENDES"], "289": ["MONIQUE RODRIGUES SANTOS"], "290": ["NICOLLE RIBEIRO FERNANDES"], "291": ["TALITA SOUZA RODRIGUES"], "292": ["ISABELA SALVADOR NUNES"], "293": ["DAYROUM GALDINO ASSUNÇÃO PARISOTTO"], "294": ["a"], "295": ["LARISSA DA SILVA LOPES"], "296": ["LAVINIA VICTÓRIA ANTOSKO"], "297": ["ANNA CRISTHINY DE SOUZA BATISTA"], "298": ["ESTHER VICTÓRIA DOS SANTOS NASCIMENTO"], "299": ["JOSÉ AUGUSTO DA SILVA MOMOLI"], "300": ["MARIA EDUARDA DA SILVA CORDEIRO"], "301": ["LAURA BEATRIZ COLAÇO DE OLIVEIRA", "MIGUEL FERNANDO DE OLIVEIRA"], "302": ["MELANIE ANTONELLY MENDONÇA DOS SANTOS"], "303": ["ALICE NATSUMI UYETAKI MARINS"], "304": ["MICHEL MARQUES ALVES"], "305": ["RAVI MENDONÇA GUNSCH", "ANTHONY GUNSCH"], "306": ["DYLLAN OLIVEIRA LARA"], "307": ["EMANUELLA SANTOS MODESTO"], "308": ["MARIA EDUARDA SANTANA CELESTINO"], "309": ["PEDRO RODRIGUES MOREIRA"], "310": ["RAYANY VITÓRIA SOUZA"], "311": ["ANTHONY ALVES ANDRÉ", "EDUARDA KAROLLINY MURARO HONORATO", "MIRELLA ALVES ANDRÉ MORATO"], "312": ["KALLYNE DOS SANTOS MACHADO"], "313": ["MELISSA FERNANDA DOS SANTOS BARBOZA"], "314": ["MARIA LUIZA DA SILVA NUNES"], "315": ["RAYSSE NICOLLY MACHADO DOS SANTOS"], "316": ["HAGATA SILVA DA CONCEIÇÃO", "MARIA CLARA DE OLIVEIRA PEREIRA"], "317": ["MAYARAH MACHADO CHARAVA"], "318": ["MAITÊ ARAÚJO GONÇALVES", "JOSÉ LUIZ ARAÚJO VALOMIN"], "319": ["ANA CLARA ALVES BALDUINA"], "320": ["GABRIEL DEMETRIO MARQUES"], "321": ["KAUÃ EDUARDO SOARES DE LIMA"], "322": ["VALENTINA RAFAELLA PONTES DE SOUZA"], "323": ["EVILLYN CRISTINA FERNANDES DA SILVA"], "324": ["BEATRIZ DOS ANJOS GOUVEA"], "325": ["MURILO MENDES MARTINS", "YASMIN MENDES MARTINS"], "326": ["MARIA EDUARDA MIGUEL DA SILVA"], "327": ["MARIANA LUIZA MARTINS DOS SANTOS", "ANA VITÓRIA MARTINS PINTO"], "328": ["RYAN OLIVEIRA DAS NEVES"], "329": ["MELLANY CRISTINE LARA MACEDO"], "330": ["LUCAS PETZOLD DE SOUZA"], "331": ["EVERTON NUNES GONÇALVES DE OLIVEIRA"], "332": ["EMELY RIBEIRO DE LIMA"], "333": ["THIFANY NICOLY RODRIGUES DA SILVA"], "334": ["MYLLENA VICTÓRIA DE PAULA CARVALHO"], "335": ["AGATHA RIHANA PEREIRA DOS SANTOS"], "336": ["FELIPE DOS SANTOS OLIVERIO"], "337": ["IZAQUE VELOMI DE ASSIS HONORATO"], "338": ["SAMUEL HENRIQUE BRITES PEREIRA"], "339": ["RAFAELA KIRCHOF"], "340": ["MELLANY YASMIN RESE CORDEIRO DA SILVA"], "341": ["ALICE EMANUELE SANTOS CEZINANDO", "AURORA CATARINA SANTOS", "HELENA FLOR SANTOS TOZZO", "a"], "342": ["SARAH ELIZABETH DA SILVA"], "343": ["RAFAEL DO NASCIMENTO RIBEIRO FERREIRA", "THAIS CRISTINA DO NASCIMENTO RIBEIRO", "YASMIN JULIA RIBEIRO SANTOS"], "344": ["KATTELYN FREITAS DE SOUZA GONÇALVES"], "345": ["JOELCIA RODRIGUES GOLTZ"], "346": ["YHASMIN VITÓRIA RODRIGUES XAVIER", "LAURA VALENTINA RODRIGUES DA SILVA", "Alexia Roberta Rodrigues Xavier"], "347": ["ANNA KAROLINE BORBA RODRIGUES"], "348": ["MATEUS VINÍCIUS GOMES SANTANA"], "349": ["MARIA EDUARDA FERREIRA DUARTE"], "350": ["INGRID CAUANE CRUZ DE LIMA"], "351": ["NYCOLAS CONRADO MARTINS DE CASTRO"], "352": ["LIVIA VELOSO DE SOUZA MENDES"], "353": ["IZADORA LAUFER DA COSTA", "CARLOS EDUARDO LAUFER DA COSTA"], "354": ["MARIELLE HELOISA NADIR CLAUDINO", "MARCIELE NADIR SOUZA"], "355": ["LUIZA EMANOELLY MACIEL DE LIMA DA SILVA"], "356": ["GLÓRIA MONIQUE MARIANO CORDEIRO BERNARDO", "WALLESKA RODRIGUES SANTANA", "POLLYANA VITORIA RODRIGUES FERNANDES"], "357": ["NATHALIA KAUANY COSTA RIOS"], "358": ["YAN CATINE YLHERLM DOS SANTOS", "YASMIN CATINE YLHERLM DOS SANTOS"], "359": ["YOHANA MYCKAELLA SAMPAIO DOS SANTOS"], "360": ["ANA KÉSIA ANTUNE DE LEÃO"], "361": ["ANDRÉ FELIPE RIBEIRO COLLAÇO", "JAIRO FELIPE RIBEIRO COLLAÇO"], "362": ["ROBERT LUIZ ARAÚJO DOS SANTOS", "ALYSSON AUGUSTO FRANÇA DE ARAÚJO", "ALICE VITÓRIA FRANÇA DE ARAÚJO"], "363": ["ENDREW NATANAEL GAVIOLI DA VEIGA"], "364": ["ELIZABETH FRANCISCA MACEDO DA SILVA"], "365": ["ANA VITÓRIA MARTINS PINTO"], "366": ["PALOMA RAÍSSA RIBEIRO DA COSTA"], "367": ["ARTHUR CHAVES PEREIRA"], "368": ["LUCIANA LOPES BORBA"], "369": ["MICAEL MEIRA PEREIRA MIRANDA"], "370": ["STHEFANY NAOMI POLETI NUNES"], "371": ["ANGELINE DOS SANTOS GONZAGA SILVA"], "372": ["EDUARDA LINS FREITAS"], "373": ["ANA LUIZA DOS SANTOS CORREA"], "374": ["SANDRA MARA SOARES"], "375": ["ISABELLA CORDEIRO DE CASTRO"], "376": ["BRUNA FELICIANO DOS SANTOS"], "377": ["ROSANA CAMPOS MANOEL"], "378": ["BERNARDO BOEGRSHAUSEN ALVES"], "379": ["NYCOLAS VEIGA EUZÉBIO DE FREITAS"], "380": ["MARIANA CANDIDO DA SILVA"], "381": ["ANA CAROLINA VIEIRA DOS SANTOS"], "382": ["TAYNARA SILVA DE OLIVEIRA"], "383": ["MILCKA VITÓRIA FREITAS DA SILVA"], "384": ["KESSILYN CRISTINA FERREIRA SANTOS"], "385": ["NIKOLAS VIDAL BARBOSA"], "386": ["ANA PAULA PEREIRA MARTINS HONORATO", "ESTHER CRISTINA PEREIRA HONORATO"], "387": ["GIOVANNA COUTINHO DE FELIX"], "388": ["MARINA BERLIM PINTO ARAÚJO"], "389": ["LÍVIA SARA FRANÇA AMORIM"], "390": ["GABRIEL MODESTO DO NASCIMENTO BARCELOS", "NICOLE MODESTO BARCELOS DO NASCIMENTO"], "391": ["SHOFIA GOMES PEREIRA"], "392": ["GABRIELA PINHEIRO DE LIMA"], "393": ["ANTONY HENRIQUE INÁCIO ALVES DOS SANTOS", "BIANCA FLOR INÁCIO DOS SANTOS"], "394": ["JULIA JACYNTHO MENDES"], "395": ["PATRÍCIA CORREIA FREITAS PEREIRA"], "396": ["CRISTINY VITÓRIA DOS SANTOS"], "397": ["ANA FLÁVIA MATOSO BORBA"], "398": ["ISAAC PEREIRA DE OLIVEIRA VALLES"], "399": ["ANTHONI NARCISO FAGUNDES", "ARTHUR NARCISO FAGUNDES"], "400": ["RHILARY NICOLY VIEIRA"], "401": ["DIEGO RICARDO BARCELOS DOS SANTOS"], "402": ["EMANUELLY MODESTO DA LUZ"], "403": ["OLÍVIA GALDINO NUNES"], "404": ["FÁBIO EDUARDO DE OLIVEIRA"], "405": ["LIVIA LOHAINE DA COSTA PINHEIRO"], "406": ["JHONATAN NUNES LOURENÇO JUNIOR"], "407": ["HELOA CRISTAL OLIVEIRA CORREIA", "RHYANNA DE OLIVEIRA CORREIA", "SARA DE OLIVEIRA CORREIA SERAFIM"], "408": ["LOHAN CORDEIRO DOS SANTOS MACHADO"], "409": ["GABRIELY CAROLINE GONÇALVES NUNES"], "410": ["ANA CAROLINA VIEIRA DOS SANTOS"], "411": ["ISADORA VITÓRIA OLIVEIRA VEIGA"], "412": ["KAUAN VIDA DO NASCIMENTO"], "413": ["VITÓRIA ALVES MARTINS3"], "414": ["PAOLA MARCONDES KIENTEKA"], "415": ["ALEXIA VEGENER COLAÇO CARNEIRO"], "416": ["KAUANE MEDUNA BATASAR"], "417": ["DEIVIELY MATOZO ALVES"], "418": ["VITÓRIA NEVES PEREIRA"], "419": ["EDUARDA THALIA CARDENAZ KUBA"], "420": ["a"], "421": ["DOUGLAS GONÇALVES LIMA", "VICTOR GUSTAVO GONÇALVES DOS REIS"], "422": ["LUIZ HENRIQUE DA SILVA GHENO", "IGOR FELIPE DA SILVA GHENO"], "423": ["ANA LIVIA GALDINO ASSUNÇÃO PARISOTTO"], "424": ["GLAUCO CILDO NIERI MAGALHÃES FILHO", "GABRIELLA MIRANDA OLIVEIRA"], "425": ["MICHAEL RICHARD COLAÇO CARNEIRO", "YORHAN YURY COLAÇO CARNEIRO"], "426": ["LEIDIANY GABRIELE BEIRA ALEXANDRE"], "427": ["HELENA REINBOLD"], "428": ["MARIA EDUARDA FERNANDES"], "429": ["MARIA VITÓRIA MARTINS CORREIA DA SILVA"], "430": ["GEOVANA MIRANDA FARIAS"], "431": ["NATHALLY FERNANDES MENDES"], "432": ["ALIA WANZER CARVALHO FORHENATO RAMOS DA SILVA"], "433": ["SELMA LUIZA NUNES CALDAS"], "434": ["a", "SOPHIA MEDEIROS FIGUEIREDO DUTRA"], "435": ["VICTOR HENRIQUE SANTOS DO CARMO"], "436": ["LAURA BANQUES DOS SANTOS MENDES"], "437": ["KIMBERLlY PIRES SCHARMANN GODOI"], "438": ["KIMBERLY LORENA RODRIGUES"], "439": ["BRUNA GABRIELLY RODRIGUES MARTINS"], "440": ["LUAN FELIPE FERNANDES ALEXANDRE ALVES"], "441": ["JAMILLI DUARTE SANTOS", "VITÓRIA DUARTE SANTOS"], "442": ["LARA MENDES"], "443": ["RAYANA AGOSTINHO CORDEIRO"], "444": ["GUILHERME PINHEIRO SALGADO"], "445": ["YASMIN VIEIRA DOS SANTOS"], "446": ["ANDRESSA ALVES LOURENÇO BORBA"], "447": ["ALANNA VITÓRIA DE CASTRO CRUZ"], "448": ["MAYKE DOUGLAS ROSENDO ROSA"], "449": ["THALYTA VERNES CARVALHO"], "450": ["ALINE REBECA PAULI"], "451": ["VINICIUS AGUIAR RAMOS"], "452": ["MIGUEL RAMBO DAPPER DOS SANTOS"], "453": ["LAURA CAROLINA LEME MENDES"], "454": ["JHENIFFER CORDEIRO OSÓRIO", "BEATRIZ CORDEIRO OSÓRIO", "ASAFE CORDEIRO OSÓRIO"], "455": ["LAURA VITÓRIA PIOLI GIVALDELLO"], "456": ["MARYANE CAMPOS DOS SANTOS"], "457": ["YASMIN CARVALHO DIAS"], "458": ["JULIA SALVADOR MELLO"], "459": ["MARIA CLEMENTINA DOS SANTOS LEITE"], "460": ["VITÓRIA CRISTINA BERNARDO BUENO"], "461": ["POLLYANA FERREIRA CORDEIRO"], "462": ["NICOLE AMORIM GEREMIAS"], "463": ["RHAYSSA VITÓRIA CABRAL COSTA FEITOSA"], "464": ["LUANA CRISTINA RAMOS"], "465": ["SHAYANE SABRINE MACHADO CORDEIRO"], "466": ["MARIA CLARA ALVES DA SILVA"], "467": ["CECÍLIA SILVA SOLAREVICZ"], "468": ["REBECA VITÓRIA PEREIRA FERNANDES", "SAMUEL VICTOR PEREIRA FERNANDES"], "469": ["VITÓRIA DE LIMAS ROSINA"], "470": ["VITÓRIA EDUARDA ALVES RAMOS DE OLIVEIRA"], "471": ["HALLYNE DOS SANTOS ASSUNÇÃO"], "472": ["RYAN GABRIEL GONÇALVES PEREIRA ALVES"], "473": ["THAINA CARDOSO DO NASCIMENTO"], "474": ["EMANUELLY VITÓRIA DAS ALMAS MARTINS"], "475": ["KARINA CAROLINE BOAKES VIEIRA"], "476": ["ISABELLA VITÓRIA SOUZA VIEIRA"], "477": ["NICOLE STRAUBE DA SILVA", "NAYARA STRAUBE DA SILVA"], "478": ["GABRIELLA BARRETO NUNES DA SILVA"], "479": ["ACSA VITÓRIA RODRIGUES"], "480": ["RAFAEL AGOSTINHO ANTONIO"], "481": ["JACKSON DANIEL KOSOWS"], "482": ["SOPHYA LOPES DA SILVA", "SORYAN LOPES DA SILVA"], "483": ["TAILINE GONÇALVES ROSA", "ADRIAN MORAIS BRAGA DA SILVA", "THAILAINNY MARCELLA GONÇALVES RODRIGUES", "MARCELO DE LIMA RODRIGUES FILHO", "SAMUEL GONÇALVES DA CRUZ"], "484": ["KATERINY BIANCA CORDEIRO BARBOSA"], "485": ["ISABELA DA ROCHA BUENO"], "486": ["ANINKA LEAL FERNANDES"], "487": ["ALICIA RAFAELA MACHADO"], "488": ["a"], "489": ["KARINE CORREIA BATISTA"], "490": ["PASTA DUPLICADA ISABELA DA ROCHA BUENO"], "491": ["KAROLINY DA SILVA PATROCINIO"], "492": ["RHAYANE GABRIELLE RODRIGUES DOS SANTOS"], "493": ["MATHEUS ROBERT CAMARGO CAMIZÃO"], "494": ["VITÓRIA GABRIELLY SOARES"], "495": ["ISABELLA DA SILVA DE AVELAR"], "496": ["MARIA EVA ALVES NEVES"], "497": ["ISAAC PIRES DOS SANTOS"], "498": ["LILIDY SAYRUMI BRITO DOS SANTOS CARDOZO"], "499": ["HELENA GABRYELLE DE LIMA CARNEIRO PASZKO"], "500": ["LUCAS CORDEIRO RIBEIRO"], "501": ["GLÓRIA ISIS MELO HENRIQUE"], "502": ["KAMILE VITÓRIA FIGUEIRA DO NASCIMENTO"], "503": ["MARIANA RAFAELE RAMOS DA ROSA"], "504": ["DAVI PEREIRA RODRIGUES"], "505": ["FLÁVIA MAIER CARREIRO"], "506": ["NICOLY PINHEIRO DOS SANTOS"], "507": ["AYLA MENDES CHANG"], "508": ["ARTHUR RODRIGUES CAMPOS"], "509": ["NAYLA DA SILVA LEDRES"], "510": ["KEMILLY VITORIA DA SILVA FERREIRA", "KETELLYN VITÓRIA DA SILVA FERREIRA", "KAIO CARLOS DA SILVA FERREIRA", "KAUANE REBECA ASSUNÇÃO DA SILVA"], "511": ["MATHEUS LUIZ SOUZA DE JESUS", "FÁBIO DE OLIVEIRA VASCONCELOS JÚNIOR", "LAYSA VICTÓRIA DE OLIVEIRA VASCONCELOS"], "512": ["SABRYNA GONÇALVES RIBEIRO"], "513": ["BENJAMIM DOS SANTOS BOZI DEON"], "514": ["ROBERTY ALEXANDRE MACENO DE PAULA"], "515": ["KAUAN EDUARDO DO ROSÁRIO PRATES"], "516": ["GABRIEL RAMOS PEREIRA DA SILVA"], "517": ["VICTÓRIA LOANNE WASHIMA DUTRA"], "518": ["ARTHUR MAHALO CELESTINO DE SOUZA"], "519": ["ALYNE CORDEIRO ROSA"], "520": ["RAFAELLY CRISTINA AQUINO BISPO"], "521": ["SOPHIA TIBIRIÇA MERISIO DOS SANTOS"], "522": ["LAURA MIRANDA ROSSI"], "523": ["EMILY VITORIA BATISTA RAMOS"], "524": ["BERNARDO ALVES DE GOUVEA BORGES"], "525": ["MIRELLE CORDEIRO NOGUEIRA DA SILVA"], "526": ["AUREA MARIA CORDEIRO DO CARMO"], "527": ["ISABELLY THUANE BIALUZ SIQUEIRA"], "528": ["DAVI ANDREY MACHADO SAMPAIO"], "529": ["GEISA KLICHEVITS DOS SANTOS CONCEIÇÃO"], "530": ["MATHEUS FERNANDES LOPES"], "531": ["LUAN DOS SANTOS PRESTES"], "532": ["HELOIZE ROSA DA SILVA"], "533": ["MATHEUS MENDES CARRARO"], "534": ["THIAGO GABRIEL MARTINS LOPES LOURENÇO"], "535": ["LETÍCIA CAMARGO VITORIA SANTOS ROSA"], "536": ["VALENTINA GOMES OLIVEIRA"], "537": ["ARTHUR DANIEL VELAZQUEZ DOS SANTOS"], "538": ["RAYANE MAIA LACERDA FERREIRA"], "539": ["ITALO GABRIEL MENDES ROCHA"], "540": ["RAMONA ISADORA PIRES RAMOS DE MOURA BEZERRA", "ANA SOPHIA PIRES RAMOS SANGUINA AGUILERA"], "541": ["NICOLLY EMANUELLY VIEIRA", "MIKAELLE VITÓRIA VIEIRA", "CARLOS HENRIQUE"], "542": ["ISABELE VITÓRIA RIBEIRO PACHECO"], "543": ["MELISSA BRITTES THEODORO"], "544": ["ANNA CLARA CHARAVA"], "545": ["JUAN PABLO CARDOSO VEIGA"], "546": ["NICOLLY RAIANE RIBEIRO CAMBANELIS"], "547": ["GEOVANNA SOFIA STEINERT DE FRANÇA", "JOÃO LUCAS STEINERT DE FRANÇA"], "548": ["ESTHEFANY PONTES GALDINO DOS ANJOS"], "549": ["ANA LUIZA NUNES DA SILVA PINHEIRO"], "550": ["YASMIN CERQUEIRA CASTRO"], "551": ["a", "JOÃO FRANCISCO KACZUROUSKI HONORIO"], "552": ["JOAQUIM MENDES DA SILVA"], "553": ["ISABELLA NUNES DE SANTANA"], "554": ["MARIANA FANINI GERVASI"], "555": ["MAITE MIRANDA DAMASCENO"], "556": ["NICOLLY MIRELLA DA SILVA AYROSO"], "557": ["ISAQUE FRANCO PEREIRA"], "558": ["MILLENA YASMIN BORBA RIBEIRO"], "559": ["MARCELA FARIAS OLIVEIRA", "GABRIELA FARIAS OLIVEIRA", "DANIELA FARIAS OLIVEIRA", "RAFAELA FARIAS OLIVEIRA"], "560": ["VITÓRIA DO CARMO CORÁ"], "561": ["ANTONELLA RAFAELY FERNANDES FOSSILE", "BRUNO HENRIQUE FERNANDES ALVES", "SOFIA EMANUELLY FERNANDES ALVES", "ANTONIO GABRIEL FERNANDES SILVA DE PAULA"], "562": ["LAURA ESTEFANY PRADO ALVES"], "563": ["LAVÍNIA OLIVEIRA SERAFIM", "ELOÁH OLIVEIRA SERAFIM", "DANIEL OLIVEIRA SERAFIM"], "564": ["SABRINA GALDINO DE ANDRADE", "WALLACE MIGUEL GALDINO DE ANDRADE CUSTODIO"], "565": ["MATEUS ALVES DA COSTA"], "566": ["THALYA DA SILVA DE LIMA"], "567": ["MARIA PAULA DE ALMEIDA CARLOS"], "568": ["ANNA CLARA GONÇALVES"], "569": ["PIETRA ROSA POTGURSKI MARTINS"], "570": ["GIANE BENATTO COLODEL"], "571": ["ELISA LAGOS DO CARMO"], "572": ["LAISA VERÔNNICA GONÇALVES BATISTA"], "573": ["MAURICIO HIAGO VIEIRA RAMOS"], "574": ["SOPHIA GABRIELLA DOS SANTOS HONORATO"], "575": ["ISIS VALENTINA MATIAS DO NASCIMENTO", "JOÃO MATIAS DELFINO", "MELLANY VITORIA MATIAS DA COSTA", "JOSÉ MIGUEL MATIAS PEREIRA", "KAUÃ HENRIQUE MATIAS SANTOS"], "576": ["HEITOR NUNES TEODORO", "MIGUEL NUNES TEODORO"], "577": ["ANA ELIZE BARBOZA MARQUES"], "578": ["MAURÍCIO MARISTANY JUNIOR", "KAUAN MARISTANY", "KAYK MARISTANY"], "579": ["FELIPE REGO PEREIRA", "MIGUEL REGO PEREIRA", "GABRIEL REGO PEREIRA"], "580": ["GABRYELLE ERZINGER DE BONA SANTOS"], "581": ["MARIA EDUARDA WOSNIAK"], "582": ["KAUANNY GABRIELLY CARDOSO JACQUES"], "583": ["NICOLAS LORENZO MARTINS SANTANA"], "584": ["JOÃO VITOR DA SILVA MENDES"], "585": ["KAUANY NAYARA ALVES DA COSTA"], "586": ["KALLYANE RODRIGUES DO AMARAL"], "587": ["MARIA EDUARDA A. CORDEIRO"], "588": ["MILENE VICTÓRIA COSTA MENDONÇA"], "589": ["LUIZA FERNANDA NASCIMENTO BARBOSA"], "590": ["EMILY BEATRIZ NASCIMENTO FERREIRA", "LINDSEY SOFFY NASCIMENTO FREITAS", "OLIVIA MAHARA NASCIMENTO CABRAL"], "591": ["MILENA PEREIRA GROSZKO"], "592": ["ENZO FUKAMI PIGATTO"], "593": ["EMANUELI VITÓRIA MUNIZ", "SARINE CRISTINA MUNIZ"], "594": ["BERNARDO ECCEL MEDUNA"], "595": ["NATHALIA ALVES DOS SANTOS"], "596": ["KETLLYN MONIQUE PECCIN DA SILVA"], "597": ["POLLYANA FERREIRA FREITAS DA SILVA"], "598": ["ALLANA CRISTINA RIZENTAL", "ARTHUR RIZENTAL", "ANTÔNIO RIZENTAL", "AUGUSTO RIZENTAL", "ALICE RIZENTAL"], "599": ["MANUELLA HADASSA DE SOUZA RIBEIRO"], "600": ["ALINE KAROLAYNE NUNES DE SOUZA"], "601": ["GUILHERME FERREIRA DA SILVA"], "602": ["THAYLAINE LEMES DE JESUS"], "603": ["EMANUELLA SANTIM CATAPENA"], "604": ["RIAHN FELLIPE NUNES FERREIRA"], "605": ["GABRIEL DOS SANTOS ALBINO"], "606": ["BERNARDO SILVA SOUZA"], "607": ["DAVI LUCAS CUNHA CORREA", "LAURA CUNHA CORREA"], "608": ["a"], "609": ["KAYLAINE DE ARAUJO ROSA"], "610": ["THALIA GABRIELLA SANTOS NASCIMENTO MARTINS"], "611": ["NICOLLAS YAGO DO CARMO HENRIQUE"], "612": ["SAMUEL EDUARDO GONÇALVES", "ANGÊLA EDUARDA GONÇALVES DOS SANTOS"], "613": ["HADASSA SANTOS"], "614": ["LORRAYNE KAROLINE LEOPOLDINO RAMOS"], "615": ["ROBERTA ZELLA FERRARI"], "616": ["ELISABETE PRISCILA ALVE BEZERRA"], "617": ["LAURA ISABELE MARQUES MARTINS"], "618": ["NICOLAS ZACARIAS DE ASSIS MARQUES"], "619": ["MARIA IZABEL TULLIO FELIX DE CASTRO"], "620": ["AMANDA KAROLINE DE PAULA DOS SANTOS"], "621": ["VICTÓRIA MARIA MARTINS DE OLIVEIRA"], "622": ["LETICIA OLIVEIRA LOPES"], "623": ["ÁGATHA VITÓRIA DO CARMO LIMA"], "624": ["MARIA EDUARDA MENDES LEARDINE"], "625": ["DJENIFFER MONIQUE FREITAS ELIAS"], "626": ["MARIA ELOIZA BARBOSA DE OLIVEIRA"], "627": ["SUELLEN ARAÚJO LIMA"], "628": ["MARCELO AMARAL POLETI"], "629": ["ADRIAN HENRI DE ALMEIDA", "CECÍLIA ALMEIDA PORTO"], "630": ["KELVYN ROGERIO CORDEIRO"], "631": ["MARIA EDUARDA DE OLIVEIRA QUELHANTE"], "632": ["LAURA JENIFER SILVA DE ALMEIDA"], "633": ["KAMILY VICTÓRIA SIQUEIRA DE OLIVEIRA SOUZA"], "634": ["THIAGO FERNANDES DA SILVA"], "635": ["KAUAN PEREIRA"], "636": ["ÂNGELA PEDRINA NAGEL DA SILVA"], "637": ["NICOLLY DO SANTOS MARTINS", "NICOLAS DOS SANTOS MARTINS"], "638": ["VITÓRIA RODRIGUES DA SILVA"], "639": ["NICOLY MARTINS BRUM ALVES"], "640": ["AMANDA SIQUEIRA MATOS"], "641": ["ANNA CLARA CRISTINA CARDOSO CORDEIRO"], "642": ["ELOÁ GONSALVES FELTZ", "EMANOELE GONSALVES FELTZ", "NATALI GONSALVES FELTZ", "KRISTOPHER DA SILVA FELTZ", "HAZAEL LUCAS CORREIA MACHADO DE SOUZA", "REUEL LUCAS CORREIA MACHADO DE SOUZA"], "643": ["KAUÃ GUSTAVO DA SILVA VEIGA"], "644": ["MAIÂRA SCHAARSCHIMIDT DA SILVA", "LÊIA ANNELIE TESSER DA SILVA"], "645": ["MIGUEL VEIGA TORRES"], "646": ["GABRIELE RODRIGUES DE OLIVEIRA GONÇALVES"], "647": ["LIVIA GABRIELA DOS SANTOS CORDEIRO"], "648": ["KYARA EMANUELY ESTECHE FERREIRA"], "649": ["ANA LUIZA ALVES XAVIER DE SOUZA"], "650": ["FLÁVIA VICTÓRIA OLIVEIRA DA SILVA"], "651": ["MARIA EDUARDA GALDINO TRESSINO"], "652": ["MARIA EDUARDA IZIDORO ATHANASIO BUENO NASTARI"], "653": ["ANY MARIELE DE OLIVEIRA ROQUE DOIN", "MARIA EDUARDA DE OLIVEIRA PINTO"], "654": ["SOFIA DE PAULA ROCHA"], "655": ["MATEUS HENRIQUE MARTINS"], "656": ["a"], "657": ["a"], "658": ["SARAH DE PAULA ALVES"], "659": ["CAMILA VITÓRIA DAS NEVES OLIVEIRA"], "660": ["ANA CLARA CARNEIRO DA SILVA"], "661": ["JHONNY LEENDER GONÇALVES ALVES"], "662": ["NATHALIA FARIA DE JESUS"], "663": ["PEDRO HENRIQUE CAETANO BAYER DOS ANJOS", "DAVI CAETANO BAYER DOS ANJOS"], "664": ["ANTHONY FERNANDES DE MELO"], "665": ["ISABELA DE SOUZA CUNHA"], "666": ["KEROLLYN VICTÓRIA DOS SANTOS"], "667": ["LUIZA POLETI ALVES CORDEIRO"], "668": ["EDSON RABELO"], "669": ["ZILDA DE LIMA MARQUES"], "670": ["KEROLLYN ETUANY MENDES DO AMARAL LEOPOLDINO FRANÇA"], "671": ["SIBELLY CRISTINA GONÇALVES COSTA", "JAMILLY GABRIELLA GONÇALVES COSTA"], "672": ["YONÁ BEATRIZ PRESTES GOMES DE MORAIS"], "673": ["ELOAH CAETANO LOPES"], "674": ["a"], "675": ["ALICE FERREIRA GOMES"], "676": ["NICOLLI CASTILHA MOREIRA"], "677": ["KAIO HENRIQUE CASTRO CORDEIRO"], "678": ["RYANA MARTINS"], "679": ["LUIZ CARDOSO SALON"], "680": ["MIRELA DA CRUZ"], "681": ["HELENA TORTORA DE OLIVEIRA"], "682": ["MARIA EDUARDA VALJÃO DE PAULA"], "683": ["CELINA MARIA CHRISTAKIS PEREIRA"], "684": ["GIOVANA MARTINS ALVES"], "685": ["ALICE MARIANA GARCIA DE OLIVEIRA"], "686": ["LUARA MARIA DA COSTA ALPONT"], "687": ["JULIANA DA CRUZ BARBOZA", "ANDRESSA DA CRUZ BARBOZA", "JÚLIA DA CRUZ BARBOZA"], "688": ["JANAINA MENDES"], "689": ["AGATHA LETÍCIA MOURA DO ROSÁRIO"], "690": ["TALITA HENRIQUE DOS SANTOS"], "691": ["0", "KAUE MIKAEL SOUZA DA SILVA"], "692": ["ANTHONY MIGUEL DOS SANTOS MACHADO", "ALICIA YUMI DOS SANTOS VEIGA", "ENZO GABRIEL DOS SANTOS"], "693": ["SUELLEN MARIANO DE SOUZA"], "694": ["NATTALIA CORDEIRO FERNANDES"], "695": ["ANNA CLARA CARDOSO MACHADO"], "696": ["KEITI EDUARDA MUNIZ CARVALHO"], "697": ["NICOLY FERNANDA NASCIMENTO RODRIGUES RAUSIS"], "698": ["BRUNA LUÍSA DAVID CORDEIRO"], "699": ["ANA CLARA CUBAS ALVES", "LUIS BRAYAN ALVES DE OLIVEIRA"], "700": ["DAVI MARTINS FARIAS"], "701": ["ANNA CLARA CARDOSO VIDAL"], "702": ["MARCELA BARBOSA GONÇALVES DO ROSÁRIO"], "703": ["ANA LUIZA MENDES ROSA"], "704": ["EMILLY SOPHIA BERNARDO FERREIRA"], "705": ["RAYELLY OLIVEIRA DO NASCIMENTO"], "706": ["MAYARA PERES ONORATO"], "707": ["SARAH LORENA RODRIGUES"], "708": ["MYRELLA MARTINS RODRIGUES"], "709": ["MYRELLA DA ROCHA PREGÍDIO"], "710": ["EDUARDA LOPES HONORATO"], "711": ["KESSYLIN EDUARDA LOPES MACHADO", "YASMIN LOPES MACHADO", "ISABELLY LOPES MACHADO", "LARYSSA MANUELLA LOPES MACHADO", "a", "LEONAY VITÓRIA LOPES MACHADO"], "712": ["YASMIM EDUARDA CARDOSO DA SILVA"], "713": ["VITOR LEONIDAS PAOLINI RIBEIRO"], "714": ["GRAZIELY DA CRUZ CORREIA"], "715": ["DAVI PEREIRA DO ROSÁRIO"], "716": ["LUIZA FERNANDA FERREIRA"], "717": ["DAYANE GASPAR AMADOR"], "718": ["LAURA CRISTINA DOS PASSOS CANDIDO"], "719": ["KAYANNE MAYARA CARDOSO COSTA"], "720": ["KAUÊ FELIPE DA SILVA MATTOSO"], "721": ["LIVIA FERREIRA DE ALENCAR"], "722": ["LARA VICTÓRIA BATISTA DE SOUZA"], "723": ["MARIA ISABEL GASPAR FRANÇA CUNHA"], "724": ["KAUANE VITÓRIA ROSA DA SILVA"], "725": ["ANNY GABRIELLI DE PAULA FARIAS LOPES"], "726": ["MAYSA STHEFANY NUNES DOS ANJOS", "ANDERSON KAUÊ PONTES NUNES"], "727": ["ELLOA DE FREITAS MOREIRA"], "728": ["REBECCA VITÓRIA DA SILVA MENDES"], "729": ["a"], "730": ["ALICE DA ROSA CORDEIRO"], "731": ["ROGER FELIPE GONÇALVES PERSCHIM"], "732": ["THAIARA BELINDA GARCIA RAMALHO"], "733": ["LIVIA ALVES DE OLIVEIRA"], "734": ["NICOLY DOS SANTOS SALES"], "735": ["EVERTON ALMEIDA DE OLIVEIRA"], "736": ["EMANUEL DOS SANTOS GALDINO"], "737": ["SOFIA DA COSTA PIRES TEIXEIRA", "VALENTINA DA COSTA OLIVEIRA CORDEIRO"], "738": ["SARA MELISSA GOMES DE ANDRADE"], "739": ["LAURA IVANDINA PAULO", "ANA CLARA PAULO"], "740": ["EDUARDO MACENO DA SILVA"], "741": ["MURILO MENDES RODRIGUES"], "742": ["LUCAS TAVARES DOS ANJOS"], "743": ["a", "ANA LAURA DA CRUZ DIAS GALDINO", "JOÃO MARCOS DA CRUZ DIAS GALDINO"], "744": ["MARIA LUISA COSTA DE ASSIS SANTOS"], "745": ["WELLINGTON MIGUEL PEREIRA DE BRITO"], "746": ["LAVINIA EMANUELLE CACHILÉ GONÇALVES"], "747": ["HEVELYN CRISTINA PAZINATO DAMASCENO"], "748": ["CLARISSA FARIAS NASCIMENTO"], "749": ["RAFANY SOFIA CALADO GONÇALVES"], "750": ["GABRIELLE DO ROSÁRIO AVELAR"], "751": ["YASMIM MATOZO DA SILVA SANTOS VEIGA"], "752": ["ALANNISE DEL VALLE GUACARAM GOLINDANO"], "753": ["NATIELLY TAVARES"], "754": ["GABRIELLA DE DEUS RODRIGUES"], "755": ["RHUAN GABRIEL DE PAULO"], "756": ["LIRALCIO DOS SANTOS DE ARAÚJO FERREIRA", "VICKTÓRIA NADYLLE DE ARAÚJO"], "757": ["EVERLI MORAIS"], "758": ["MARIA FERNANDA DO CARMO NEVES"], "759": ["GABRYELL CHAGAS FRANCISCO DE LIMA", "LUCAS CHAGAS FRANCISCO DE LIMA", "LUDMYLLA CHAGAS FRANCISCO DE LIMA"], "760": ["LUCAS MISAEL PIRES ALVES"], "761": ["ALEXSANDRA GABRIELLA GOMES MIRANDA"], "762": ["MARIA CLARA GONÇALVES"], "763": ["KAIO HENRIQUE VANDOSKI BARBOSA"], "764": ["CECÍLIA BRITO AUWARTER"], "765": ["RAFAELA SILVEIRA DE JESUS"], "766": ["ESTER VITÓRIA GONÇALVES CARDOSO", "ESTHEFANI GABRIELA GONÇALVES CARDOSO DA SILVA"], "767": ["RAYANE DA SILVA COSTA"], "768": ["MICAELA LEANDRO DOS SANTOS"], "769": ["MARIA EDUARDA FREITAS DE AMORIM"], "770": ["HELOYSE MARIA MARTINS ALVES"], "771": ["LUANI DI SANTI OLIVEIRA"], "772": ["QUEZIA DIAS ROCHA"], "773": ["NATALY MARIA DE PAULA ALMEIDA"], "774": ["GABRIELA VITÓRIA CARVALHO DOS SANTOS"], "775": ["THAIS SALLYS MARTINS DOS SANTOS"], "776": ["VITOR ISAEL NUNES ABREU"], "777": ["DANIELLA GUSSO DA SILVA"], "778": ["RHAICHA RODRIGUES FERREIRA"], "779": ["HETIELLY NUNES DE ALMEIDA PEREIRA"], "780": ["MARIANE VIANA FERREIRA"], "781": ["LORRAYNE MENDES VIDAL"], "782": ["EDUARDO DAVYD DOS SANTOS"], "783": ["THAIS PEDRO PONTES"], "784": ["NICOLAS MIGUEL MANDIRA CARDOSO VELOZO"], "785": ["KAROLINE VITÓRIA ANTUNES TAUCHERT"], "786": ["LOHAN CUNHA CARDOSO"], "787": ["ALICE MACIEL FIGUEIRA", "ANA SABRYNA BARBOZA MENDES SOBRAL"], "788": ["BENJAMIN PEREIRA NUNES"], "789": ["GABRIEL NEVES DE FREITAS"], "790": ["MARJORIE VITORIA SALES DA SILVA"], "791": ["THAYNA EMANUELY LIMA DA SILVA"], "792": ["MURILO ARAUJO DE MELO"], "793": ["a"], "794": ["GUILHERME BERNARDI CHARLAU OKU"], "795": ["SARA MENEZES SANTOS", "SALÉM MENEZES SANTOS", "MILEIDE LUCIANE MENEZES SANTOS", "SILAS ALBERT MENEZES SANTOS"], "796": ["ALEXIA GONÇALVES CEZARINO"], "797": ["VITOR EDUARDO SORIANI FILHO"], "798": ["ALICE REBECA DA SILVA RODRIGUES FERREIRA"], "799": ["LUIZA DOS SANTOS SILVA"], "800": ["AMORA MARIA WOLF DE ARAUJO"], "801": ["LARA ALINNE TEODORO MAURICIO"], "802": ["BRYAN VITOR SYPERRECK SIMÔES"], "803": ["ANA BEATRIZ DE FREITAS ALVES"], "804": ["ISAQUE ALVES DEMBISKI"], "805": ["DAPHINY KARAM WEBER"], "806": ["RAYANE DOMINGUES FAGUNDES"], "807": ["ELOYZA LIMA DE SOUZA"], "808": ["ADRIAN HENRIQUE ZELLA DA SILVA"], "809": ["SAFIRA HELOISA DE SOUZA CORRÊA CARDOSO"], "810": ["ANTONIA RIBEIRO GUEDES GOMES"], "811": ["SANDRYELLE REGINA MONTEIRO"], "812": ["JHULYA VICTÓRIA PEREIRA"], "813": ["THOMAS DANIEL DO CARMO FRANCHACC", "EMILLY SOPHIE COSTA FRANCHACC"], "814": ["THAYNARA SOPHIA COSTA AMORIM", "AGATHA CRISTINA COSTA RODRIGUES", "RAFAEL COSTA ALVES"], "815": ["HENRY ASSUNÇÃO DA SILVA", "VITOR GUSTAVO ASSUNÇÃO DA SILVA"], "816": ["GIOVANNA PINHEIRO DE RAMOS"], "817": ["JOÃO ASAPH FANINI COSTA PEREIRA"], "818": ["LARISSA ARIELLE RIBEIRO MARTINS", "LETÍCIA ADRIELLE RIBEIRO MARTINS"], "819": ["LAURA BEATRIZ DE AZEVEDO ESTEVAM", "CECÍLIA LUÍZA DE AZEVEDO MAZIERO"], "820": ["ANA JULIA DOS SANTOS SERAPHIN", "ISABELLY MANUELLA DOS SANTOS SERAPHIN"], "821": ["YASMIN VITORIA VIANA LUVIZZOTTO MARTIN"], "822": ["LUANA PEREIRA COSTA"], "823": ["ISADÓRA CUSTÓDIO PAIXÃO"], "824": ["ALICE KAMILE ALMEIDA FRAGOSO PEREIRA"], "825": ["GIULIA SOFIA DE SOUZA OLIVEIRA"], "826": ["KAMILLY VICTORIA ADRIANO RIBEIRO"], "827": ["OLIVIA MARIA ADRIANO RIBEIRO"], "828": ["YASMIN NEVES ALVES"], "829": ["LETÍCIA MENDES VIDAL"], "830": ["ALINE RAMOS DA ROCHA"], "831": ["ESTEFANE MARTINS HRESCAK"], "832": ["MARJORY CASSILHA RODRIGUES"], "833": ["ELLOISE ALEXANDRE DE MORAIS"], "834": ["ISABELLA DA COSTA SOUZA"], "835": ["RAFAEL MARTINS SCHOFFEM"], "836": ["ANA ALICE CASSILHA DA SILVA"], "837": ["MELYSSA VITÓRIA MAIA NUNES"], "838": ["SOFIA RAFAELI JOAQUIM"], "839": ["NATACHA DE BARROS GONÇALVES"], "840": ["ALICE CAMARGO DA SILVA GRIGORIO"], "841": ["BIANCA GABRIELLY SILVA COSTA"], "842": ["MARIA GABRIELLY DE OLIVEIRA CORDEIRO"], "843": ["EMYLY PEREIRA RODRIGUES"], "844": ["SOPHIA DOS SANTOS DE MELO GAMA"], "845": ["PATRÍCIA CARDOSO JACQUES"], "846": ["HELLYN IARROCHESKI AMARAL VAZ DA SILVA"], "847": ["CAROLINE OLIVEIRA DEBACCO"], "848": ["VICTOR HUGO SAMPAIO"], "849": ["KEROLAINNE VITÓRIA BERNARDO RIBEIRO"], "850": ["BRYAN DOS REIS FERREIRA"], "851": ["HARIEL RODRIGUES DA SILVA"], "852": ["LUCIANA ROSA JUNGLE TAVARES", "GEORGE JUNGLES GARCIA"], "853": ["ANGELO GABRIEL TELES DE OLIVEIRA"], "854": ["SAMUEL HENRIQUE MIQUILINE GONÇALVES"], "855": ["JOAQUIM ADRIANO ASSUNÇÃO", "ANTHONY ADRIANO ASSUNÇÃO"], "856": ["ANNA LIVIA DA SILVA RANGEL"], "857": ["HELENA SOUZA"], "858": ["BRENDA MARQUES DE ALMEIDA TAVARES"], "859": ["GILMAR RAMOS DE LARA", "JOAQUIM RAMOS", "MISAEL RAMOS DE LARA"], "860": ["DENILSON NUNES ROSA"], "861": ["MIGUEL LUIZ CRISTO"], "862": ["JOÃO EMMANUEL RODRIGUES DO ROSÁRIO", "IZABELLE HENRIQUE RODRIGUES", "GABRIEL RODRIGUES DE FREITAS"], "863": ["JÉSSICA ALVES FERREIRA"], "864": ["JOÃO LUCAS DA SILVA FARIA"], "865": ["VITÓRIA COROL VASCONCELOS"], "866": ["JOÃO LUCAS MIRANDA DA CUNHA"], "867": ["JOÃO GUILHERME PONTES DO PRADO DOS SANTOS"], "868": ["EMANUEL DE PAULA WESENDONCK"], "869": ["GABRIELA MARIA MACHADO DE OLIVEIRA"], "870": ["EMANUELLY LIMA DOS SANTOS"], "871": ["JOÃO ARTHUR ABALEM SAIF"], "872": ["JULIA PONTES REINALDO"], "873": ["MARIA VITORIA RODRIGUES GONÇALVES"], "874": ["ALLANA VITÓRIA DOS SANTOS AZEVEDO PEREIRA"], "875": ["MARCIO GABRIEL FERNANDES DE LIMA"], "876": ["LAÍS ISABELLA SANTOS DA SILVA"], "877": ["CRISTIANO CÉSAR SERPA", "GLEICY KELLY SERPA"], "878": ["ANGELO GANS"], "879": ["DAVI LUIZ ANDRADE MARTINS BATISTA"], "880": ["CAUÃ ALEXANDER CORDEIRO DA SILVA"], "881": ["HELOISA FERREIRA MARTINS", "ANA BEATRIZ FERREIRA MARTINS"], "882": ["CAIO ALEXANDRE CONCEIÇÃO DE LIMA"], "883": ["JHENYFER FRANCO DE MELO"], "884": ["AMANDA VITÓRIA GONÇALVES"], "885": ["MARCEL RITA GALDINO JUNIOR"], "886": ["ARTHUR KRUGER DE CRISTO"], "887": ["ENZO GABRIEL FERREIRA LARDINE"], "888": ["YASMIN VITÓRIA CALIXTO OLIVEIRA MODESTO"], "889": ["ISABELA SAMPAIO TIZONI", "RAEL SAMPAIO TIZONI"], "890": ["VITOR PIERRE BARBOSA DE SOUZA", "MATEUS CAUÂ BARBOSA DE SOUZA", "VALENTIN ANTHONY BARBOSA DE SOUZA"], "891": ["MATHEUS LIMA DE OLIVEIRA"], "892": ["BEATRIZ DOS SANTOS MOREIRA GRUBE"], "893": ["LUIZA ALEXANDRE MEDEIROS DE OLIVEIRA"], "894": ["CLAUDIO SEBASTIÃO IZAIAS GARCIA NETO", "JOÃO CARLOS MIRANDA NUNES"], "895": ["YASMIN TOMAZ ROSA DOS SANTOS"], "896": ["ISAQUE FREITAS WAGNER DE SOUZA"], "897": ["ANA KAROLINA FRANCISCO PEREIRA"], "898": ["CARMELA ROSA VIANA"], "899": ["RAVI ARAUJO HULTHMAN"], "900": ["TIAGO PAES DA SILVA FILHO"], "901": ["SARAH DA SILVA MENDES"], "902": ["MARIANA TAVARES TIGRE"], "903": ["BENJAMIM OLIVEIRA SIMÔES"], "904": ["MIGUEL AMARAL MEDEIROS DE MARINS", "MURILO AMARAL MEDEIROS DE MARINS"], "905": ["ISABELA NICOLY GRITTEN DA SILVA", "MIRELLA VALENTINA GRITTEN DA SILVA"], "906": ["EDUARDA VALENTINA FERREIRA FAVARIN", "GABRIELLY FERREIRA FONTANA"], "907": ["FELIPE MARTINSKI"], "908": ["LAURA RAPHAELA CELESTINO DOS SANTOS DA SILVA", "LUIZ MIGUEL CELESTINO DOS SANTOS DA SILVA"], "909": ["NOAH CORDEIRO DA SILVA FERNANDES MARQUES"], "910": ["RICHARD NICOLAS DE CASTRO CARDOSO", "MARCIA NICOLLY CASTRO CARDOSO"], "911": ["MELISSA RODRIGUES MARTINS"], "912": ["HADASSA ESTER DOS SANTOS MARCELO"], "913": ["EMANUELA MAIA ROCHA"], "914": ["HALLANA BEATRIZ CORDEIRO DE SOUZA"], "915": ["VANESSA EMANOELA CALDELAS GONÇALVES"], "916": ["VINICIUS MATOSO CORDEIRO"], "917": ["ADRYAN DOS SANTOS CORDEIRO", "ALESSANDRO DOS SANTOS CORDEIRO"], "918": ["IGOR GUILHERME DE CASTRO DOS SANTOS", "MARIA TEREZA RODRIGUES DE CASTRO DOS SANTOS", "ENZO GABRIEL RODRIGUES DE CASTRO"], "919": ["BENJAMIN COELHO DA SILVA", "DAVI COELHO DA SILVA"], "920": ["RYAN MIRANDA LUIZ", "JEAN GUSTAVO MIRANDA LUIZ"], "921": ["NOAH LOBO KELEMENTI SANTOS"], "922": ["LORENZO CARVALHO DA CRUZ"], "923": ["KAROLYNE RIBEIRO CONSTANTINO"], "924": ["THEO OSVALDO ARAUJO OYERA VIDAL"], "925": ["ANA LETÍCIA LOPES DA SILVA"], "926": ["ENZO MIGUEL MARQUES DOS SANTOS"], "927": ["ANA BEATRIZ GONÇALVES CABRAL"], "928": ["RAYSSA DOS SANTOS CORREA CARDOSO"], "929": ["VALENTINA TOMADON SCHMIDT"], "930": ["MATEUS HENRIQUE CABRAL DIAS"], "931": ["JHON GABRIEL REIS PEREIRA"], "932": ["MARIANA DIAS DE OLIVEIRA"], "933": ["SOPHIA GABRIELLE ADÃO AMORIM", "ARTHUR GABRIEL ADÃO AMORIM"], "934": ["ALICE CRISTINA DO CARMO TEODOSIO"], "935": ["MARIANA ALVES JACQUES"], "936": ["PAOLA CRISTYNA AMARAL GARZARO"], "937": ["PATRÍCIA CORDEIRO DOS SANTOS"], "938": ["KAUAN HENRIQUE ALEXANDRE RODRIGUES"], "939": ["LUCAS LEONARDO RODRIGUES BEZERRA DA SILVA", "VITOR GABRIEL BEZERRA DA SILVA", "LUIZ MIGUEL RODRIGUES BEZERRA DA SILVA"], "940": ["LARA SOPHIA DOS SANTOS NASCIMENTO"], "941": ["JULIA RYLANDER DORIA"], "942": ["NATALY DANIELA ALVES VIEIRA"], "943": ["LUISA VALLENTINA BATISTA DOS SANTOS"], "944": ["MARIA ALICE COSTA DE OLIVEIRA"], "945": ["LIVIA DAS NEVES SILVA"], "946": ["MIGUEL GARCIA MARUJO"], "947": ["PAULO CESAR NASCIMENTO GARCIA"], "948": ["RHUAN CONSTANTINO DIAS"], "949": ["ISAAC AUGUSTO BELIZÁRIO DOS SANTOS"], "950": ["HEILLY GABRIELE DA VEIGA MAXIMO"], "951": ["RAYLA VITÓRIA MARTINS CATANIO"], "952": ["JHORDAN HENRIQUE DE OLIVEIRA LEAL SOARES"], "953": ["CARLA FERNANDA PEREIRA DE JESUS"]};
+// A base de cadastros agora é carregada do servidor somente após o login autorizado.
+const cadastros = {};
 </script>
 
 <script>
@@ -1524,19 +2183,6 @@ const usuarios = {
   "mayara.caicavv": { nome: "Mayara", role: "coordenacao" }
 };
 
-const senhasPadrao = {
-  "josiane.caicavv": "caicavv26@",
-  "claudia.caicavv": "caicavv26@",
-  "cintya.caicavv": "caicavv26@",
-  "angelica.caicavv": "caicavv26@",
-  "recepcao.caicavv": "caicavv26@",
-  "adm.caicavv": "1202",
-  "mayara.caicavv": "caicavv26@"
-};
-
-let senhas = { ...senhasPadrao };
-let senhasCarregadasFirebase = false;
-
 const permissoes = {
   tecnico:  { ver: false, add: true,  del: true,  marcar: true },
   recepcao: { ver: true,  add: false, del: false, marcar: true },
@@ -1544,117 +2190,13 @@ const permissoes = {
   coordenacao: { ver: true,  add: true,  del: true,  marcar: true }
 };
 
-async function carregarSenhasFirebase(){
-  if(senhasCarregadasFirebase) return;
-
-  try{
-    const snap = await DOC_ATENDIMENTOS.get();
-
-    if(snap.exists){
-      const dados = snap.data() || {};
-      const senhasSalvas = dados.senhas && typeof dados.senhas === "object" ? dados.senhas : null;
-
-      senhas = { ...senhasPadrao };
-
-      if(senhasSalvas){
-        Object.keys(usuarios).forEach(login => {
-          if(typeof senhasSalvas[login] === "string" && senhasSalvas[login].length > 0){
-            senhas[login] = senhasSalvas[login];
-          }
-        });
-      } else {
-        await salvarSenhasFirebase(false);
-      }
-    } else {
-      senhas = { ...senhasPadrao };
-      await DOC_ATENDIMENTOS.set({ senhas: senhas, criadoEm: new Date().toISOString() }, { merge: true });
-    }
-
-    senhasCarregadasFirebase = true;
-  }catch(e){
-    console.error(e);
-    senhas = { ...senhasPadrao, ...senhas };
-    mostrarErro("Não foi possível carregar as senhas salvas. Usando senhas padrão temporariamente.");
-  }
-}
-
-async function salvarSenhasFirebase(mostrarMensagem=true){
-  try{
-    await DOC_ATENDIMENTOS.set({
-      senhas: senhas,
-      senhasAtualizadasEm: new Date().toISOString(),
-      atualizadoEm: new Date().toISOString()
-    }, { merge: true });
-
-    senhasCarregadasFirebase = true;
-    if(mostrarMensagem) mostrarSucesso("Senha alterada e salva com sucesso.");
-  }catch(e){
-    console.error(e);
-    mostrarErro("Não foi possível salvar a nova senha no Firebase.");
-    throw e;
-  }
-}
-
 function loginAtual(){
   return lerSessao() || Object.keys(usuarios).find(chave => usuarios[chave] === tecnicoLogado) || "";
 }
 
-function podeGerenciarSenhas(){
+function podeGerenciarAcessos(){
+  // Apenas interface: a autorização real é conferida no servidor.
   return !!tecnicoLogado && (tecnicoLogado.role === "adm" || tecnicoLogado.role === "coordenacao");
-}
-
-function montarOptionsUsuariosSenha(){
-  const atual = loginAtual();
-  const logins = podeGerenciarSenhas() ? Object.keys(usuarios) : [atual];
-
-  return logins.map(login => {
-    const usuario = usuarios[login] || {};
-    const rotulo = `${usuario.nome || login} - ${login}`;
-    return `<option value="${escapeHTML(login)}">${escapeHTML(rotulo)}</option>`;
-  }).join("");
-}
-
-async function alterarSenhaConfiguracoes(){
-  await carregarSenhasFirebase();
-
-  const selectUsuario = document.getElementById("configSenhaUsuario");
-  const senhaAtualCampo = document.getElementById("configSenhaAtual");
-  const novaSenhaCampo = document.getElementById("configNovaSenha");
-  const confirmaSenhaCampo = document.getElementById("configConfirmaSenha");
-
-  const usuarioAlvo = selectUsuario ? String(selectUsuario.value || "").trim().toLowerCase() : loginAtual();
-  const senhaAtual = senhaAtualCampo ? String(senhaAtualCampo.value || "") : "";
-  const novaSenha = novaSenhaCampo ? String(novaSenhaCampo.value || "") : "";
-  const confirmaSenha = confirmaSenhaCampo ? String(confirmaSenhaCampo.value || "") : "";
-  const usuarioAutenticado = loginAtual();
-  const adminAlterandoOutro = podeGerenciarSenhas() && usuarioAlvo !== usuarioAutenticado;
-
-  if(!usuarios[usuarioAlvo]){
-    mostrarErro("Selecione um usuário válido.");
-    return;
-  }
-
-  if(!adminAlterandoOutro && senhas[usuarioAutenticado] !== senhaAtual){
-    mostrarErro("A senha atual está incorreta.");
-    return;
-  }
-
-  if(novaSenha.length < 4){
-    mostrarErro("A nova senha precisa ter pelo menos 4 caracteres.");
-    return;
-  }
-
-  if(novaSenha !== confirmaSenha){
-    mostrarErro("A confirmação da senha não confere.");
-    return;
-  }
-
-  senhas[usuarioAlvo] = novaSenha;
-  await salvarSenhasFirebase(true);
-
-  if(senhaAtualCampo) senhaAtualCampo.value = "";
-  if(novaSenhaCampo) novaSenhaCampo.value = "";
-  if(confirmaSenhaCampo) confirmaSenhaCampo.value = "";
 }
 
 function podeAcessarRelatorios(){
@@ -1962,17 +2504,11 @@ async function entrarComo(login){
   await carregar();
 }
 
-(async function restaurarSessao(){
-  const loginSalvo = lerSessao();
-
-  if(loginSalvo && usuarios[loginSalvo]){
-    await entrarComo(loginSalvo);
-  }else{
-    limparSessao();
-    loginDiv.style.display = "block";
-    app.style.display = "none";
-    document.body.classList.remove("modo-app");
-    prepararTelaIdentificacao();
+// A identidade agora vem do login Google (Supabase) + aprovação no servidor.
+// A sessão persiste ao atualizar a página e o acesso é revalidado a cada abertura.
+(function iniciarAutenticacao(){
+  if(window.CAICAVV_AUTH && typeof window.CAICAVV_AUTH.boot === "function"){
+    window.CAICAVV_AUTH.boot();
   }
 })();
 
@@ -1984,7 +2520,8 @@ function logout(){
   limparSessao();
   tecnicoLogado = null;
   filtroAtual = "";
-  location.reload();
+  if(window.CAICAVV_AUTH && typeof window.CAICAVV_AUTH.sair === "function") window.CAICAVV_AUTH.sair();
+  else location.reload();
 }
 
 function montarMenu(){
@@ -3019,11 +3556,10 @@ function abrirTelaConfiguracoes(){
   const modoNoturno = modoNoturnoAtivo();
   const neonLigado = neonAtivo();
   const nomeTema = nomesTemasCaicavv[temaAtual] || "Azul";
-  const adminSenhas = podeGerenciarSenhas();
 
   lista.innerHTML = `
     <div class="pagina-titulo">Configurações</div>
-    <div class="pagina-sub">Defina a cor padrão, o lembrete de horário e altere senhas de acesso.</div>
+    <div class="pagina-sub">Defina a cor padrão e o lembrete de horário, veja sua conta e (para a administração) gerencie os acessos.</div>
 
     <div class="config-grid">
       <div class="config-card">
@@ -3065,26 +3601,13 @@ function abrirTelaConfiguracoes(){
         <input type="checkbox" id="checkLembrete" ${lembrete?"checked":""} onchange="definirLembrete(this.checked)">
       </div>
 
-      <div class="config-card config-senha-card">
-        <h3>Alterar senha de acesso</h3>
-        <p class="pagina-sub">${adminSenhas ? "Coordenação e administração podem alterar a senha de qualquer login." : "Altere a senha do seu próprio login."}</p>
+      <div class="config-card cx-cartao-largo" id="caicavvContaCard"></div>
 
-        <label><b>Usuário</b></label>
-        <select id="configSenhaUsuario" ${adminSenhas ? "" : "disabled"}>${montarOptionsUsuariosSenha()}</select>
-
-        <label><b>Senha atual</b></label>
-        <input id="configSenhaAtual" type="password" placeholder="Digite a senha atual" ${adminSenhas ? "placeholder='Obrigatória só para alterar sua própria senha'" : ""}>
-
-        <label><b>Nova senha</b></label>
-        <input id="configNovaSenha" type="password" placeholder="Digite a nova senha" minlength="4">
-
-        <label><b>Confirmar nova senha</b></label>
-        <input id="configConfirmaSenha" type="password" placeholder="Repita a nova senha" minlength="4" onkeydown="if(event.key==='Enter'){event.preventDefault();alterarSenhaConfiguracoes();}">
-
-        <button type="button" onclick="alterarSenhaConfiguracoes()">Salvar nova senha</button>
-        <p class="pagina-sub" style="margin-top:10px">Depois de salvar, a nova senha já passa a valer no próximo login.</p>
-      </div>
+      <div class="config-card cx-cartao-largo" id="caicavvAcessosCard" style="display:none"></div>
     </div>`;
+  if(window.CAICAVV_AUTH && typeof window.CAICAVV_AUTH.montarConfiguracoes === "function"){
+    window.CAICAVV_AUTH.montarConfiguracoes();
+  }
 }
 function definirTema(tema){
   localStorage.setItem(chavePreferencia("tema"), tema);
@@ -3141,7 +3664,6 @@ function salvarAtendimentosFirebase(){
     itens: atendimentos,
     logs: logsAlteracoes,
     cadastros: cadastros,
-    senhas: senhas,
     atualizadoEm: new Date().toISOString()
   }, { merge: true }).catch(e => {
     console.error(e);
@@ -3195,18 +3717,6 @@ async function carregarAtendimentosFirebase(){
       atendimentos = Array.isArray(dados.itens) ? dados.itens : [];
       logsAlteracoes = Array.isArray(dados.logs) ? dados.logs : [];
 
-      if(dados.senhas && typeof dados.senhas === "object"){
-        senhas = { ...senhasPadrao };
-        Object.keys(usuarios).forEach(login => {
-          if(typeof dados.senhas[login] === "string" && dados.senhas[login].length > 0){
-            senhas[login] = dados.senhas[login];
-          }
-        });
-        senhasCarregadasFirebase = true;
-      } else {
-        await salvarSenhasFirebase(false);
-      }
-
       if(dados.cadastros && typeof dados.cadastros === "object"){
         Object.keys(cadastros).forEach(pasta => delete cadastros[pasta]);
         Object.entries(dados.cadastros).forEach(([pasta, nomes]) => {
@@ -3214,19 +3724,11 @@ async function carregarAtendimentosFirebase(){
           if(!pastaLimpa) return;
           cadastros[pastaLimpa] = Array.isArray(nomes) ? nomes.map(prepararNomePaciente).filter(Boolean) : [];
         });
-      } else {
-        await salvarCadastrosFirebase();
       }
+      // Se o banco ainda não tiver cadastros, o SERVIDOR cria a base inicial. O navegador nunca regrava cadastros vazios.
     } else {
       atendimentos = [];
       logsAlteracoes = [];
-      await DOC_ATENDIMENTOS.set({
-        itens: [],
-        logs: [],
-        cadastros: cadastros,
-        senhas: senhas,
-        criadoEm: new Date().toISOString()
-      }, { merge: true });
     }
   }catch(e){
     console.error(e);

@@ -4,12 +4,16 @@ const path = require('path');
 const { createClient } = require('@supabase/supabase-js');
 require('dotenv').config();
 
+const store = require('./lib/store');
+const { criarAuth } = require('./lib/auth');
+const { criarRouter } = require('./lib/api');
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const publicDir = __dirname;
 
 app.disable('x-powered-by');
-app.use(express.json({ limit: '1mb' }));
+app.set('trust proxy', 1); // Render fica atrás de um proxy
 
 // Cabeçalhos básicos de segurança
 app.use((req, res, next) => {
@@ -27,14 +31,14 @@ const blockedFiles = new Set([
   'render.yaml',
   '.env'
 ]);
+const blockedPrefixes = ['/.git', '/node_modules', '/lib', '/data', '/sql', '/test'];
 
 app.use((req, res, next) => {
   const fileName = path.basename(req.path).toLowerCase();
 
   if (
     blockedFiles.has(fileName) ||
-    req.path.toLowerCase().startsWith('/.git') ||
-    req.path.toLowerCase().startsWith('/node_modules')
+    blockedPrefixes.some((p) => req.path.toLowerCase().startsWith(p))
   ) {
     return res.sendStatus(404);
   }
@@ -76,14 +80,32 @@ app.get('/health', (req, res) => {
   });
 });
 
-// Arquivos públicos do site
-app.use(express.static(publicDir, {
-  dotfiles: 'deny',
-  index: 'index.html'
-}));
+// API protegida (login, solicitações de acesso, administração e dados)
+if (supabase) {
+  const auth = criarAuth(supabase);
+  app.use('/api', criarRouter({ supabase, auth }));
+} else {
+  app.use('/api', (req, res) => {
+    res.status(503).json({ erro: 'NAO_CONFIGURADO', mensagem: 'Servidor sem configuração do Supabase.' });
+  });
+}
 
-// Rota de fallback compatível com Express 5
+// Acesso aos dados dos pacientes e atendimentos: somente pelo servidor (Firebase Admin SDK)
+try {
+  if (store.iniciar()) {
+    store.semearSeNecessario().catch((e) => console.error('Falha ao preparar a base de cadastros:', e.message));
+  }
+} catch (e) {
+  console.error('Falha ao iniciar o Firestore no servidor:', e.message);
+}
+
+// Arquivos públicos do site: apenas o que o navegador precisa (nada de pastas internas)
+app.use('/img', express.static(path.join(publicDir, 'img'), { dotfiles: 'deny' }));
+app.get('/favicon.png', (req, res) => res.sendFile(path.join(publicDir, 'favicon.png')));
+
+// Rota de fallback compatível com Express 5 (a página inicial é o próprio sistema)
 app.get('/{*splat}', (req, res) => {
+  res.set('Cache-Control', 'no-cache');
   res.sendFile(path.join(publicDir, 'index.html'));
 });
 
