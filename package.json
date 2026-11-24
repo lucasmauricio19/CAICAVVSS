@@ -7,7 +7,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node test/regras.test.js && node test/cliente.test.js && node test/servidor.test.js"
+    "test": "node test/regras.test.js && node test/cliente.test.js && node test/servidor.test.js",
+    "test:navegador": "python3 test/browser/browser_test.py"
   },
   "engines": {
     "node": ">=20"
